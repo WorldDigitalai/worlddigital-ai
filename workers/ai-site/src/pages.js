@@ -34,14 +34,12 @@ const local = (city, region, path) => ({
   areaServed: { '@type': 'City', name: `${city}, ${region}` }, parentOrganization: { '@id': `${SITE}/#org` },
 });
 
-// FAQ block + matching FAQPage schema from one list, so the two never drift apart.
+// FAQ block. layout.js turns every <details> FAQ into FAQPage schema, so none is added here.
 const faq = (title, items) => ({
   html: `<section class="sec" style="background:#fff;border-top:1px solid #DCE5EF"><div class="wrap" style="max-width:880px">
 <div class="eyebrow">FAQ</div><h2 class="h" style="font-size:34px;margin-top:10px">${esc(title)}</h2><div style="margin-top:20px">
 ${items.map(([q, a], i) => `<details${i ? '' : ' open'}><summary>${esc(q)}</summary><p class="muted" style="line-height:1.6">${a}</p></details>`).join('\n')}
 </div></div></section>`,
-  schema: { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: items.map(([q, a]) => ({
-    '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a.replace(/<[^>]+>/g, '') } })) },
 });
 
 const LOCAL_FAQ = faq('Local SEO questions', [
@@ -135,11 +133,11 @@ export const PAGES = {
     schema: [crumbs([['Home', '/'], ['Careers', '/career']])], sitemap: { priority: '0.4' } },
   '/local-seo-services': { keywords: 'local seo services, local seo, local seo company, google business profile optimization, near me seo, google maps seo, local seo agency', body: localSeo + LOCAL_FAQ.html, title: 'Local SEO Services: Google Maps & Near Me | WorldDigital.ai',
     description: 'Local SEO services for SMBs, SMEs and multi-location brands in the US and Canada: Google Business Profile, Maps rankings, citations and reviews. $199.99/month.',
-    schema: [svc('Local SEO services', '/local-seo-services', 'Google Business Profile, location pages, citations, reviews and local schema.', 'Local SEO'), LOCAL_FAQ.schema,
+    schema: [svc('Local SEO services', '/local-seo-services', 'Google Business Profile, location pages, citations, reviews and local schema.', 'Local SEO'),
       crumbs([['Home', '/'], ['Services', '/services'], ['Local SEO services', '/local-seo-services']])], sitemap: { priority: '0.9' } },
   '/generative-engine-optimization': { keywords: 'generative engine optimization, geo, generative engine optimization services, generative engine optimization agency, ai search optimization, chatgpt seo, how to rank in chatgpt, llm seo', body: geo + GEO_FAQ.html, title: 'Generative Engine Optimization (GEO) | WorldDigital.ai',
     description: 'Generative engine optimization (GEO) services: get your brand mentioned and cited by ChatGPT, Google AI Overviews, Gemini and Perplexity. $199.99/month.',
-    schema: [svc('Generative engine optimization', '/generative-engine-optimization', 'GEO so AI assistants mention and cite your brand.', 'Generative engine optimization'), GEO_FAQ.schema,
+    schema: [svc('Generative engine optimization', '/generative-engine-optimization', 'GEO so AI assistants mention and cite your brand.', 'Generative engine optimization'),
       crumbs([['Home', '/'], ['Services', '/services'], ['Generative engine optimization', '/generative-engine-optimization']])], sitemap: { priority: '0.9' } },
   '/enterprise': { keywords: 'multi location seo, multi-location local seo, franchise seo, multi location marketing, enterprise local seo', body: enterprise, title: 'Multi-Location SEO & Franchise SEO | WorldDigital.ai',
     description: 'Multi-location SEO and franchise SEO for brands with many locations: location pages, Google Business Profiles, AI search and Google Ads, priced per location.',
@@ -147,7 +145,7 @@ export const PAGES = {
       crumbs([['Home', '/'], ['Multi-location', '/enterprise']])], sitemap: { priority: '0.5' } },
   '/free-seo-report': { keywords: 'free seo audit, free seo report, website seo checker, seo checker, free website audit, seo audit, ai visibility checker', body: report + CHECKER_FAQ.html, title: 'Free SEO Audit & Website SEO Checker | WorldDigital.ai',
     description: 'Free SEO audit and website SEO checker: on-page SEO, mobile speed, Google rankings, backlinks and ChatGPT citations, with your top fixes in 60 seconds.',
-    schema: [CHECKER_FAQ.schema, { '@context': 'https://schema.org', '@type': 'WebApplication', name: 'Free SEO & AI Visibility Report', url: `${SITE}/free-seo-report`, applicationCategory: 'BusinessApplication', operatingSystem: 'Any', offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' }, provider: { '@id': `${SITE}/#org` } },
+    schema: [{ '@context': 'https://schema.org', '@type': 'WebApplication', name: 'Free SEO & AI Visibility Report', url: `${SITE}/free-seo-report`, applicationCategory: 'BusinessApplication', operatingSystem: 'Any', offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' }, provider: { '@id': `${SITE}/#org` } },
       crumbs([['Home', '/'], ['Free SEO report', '/free-seo-report']])], sitemap: { priority: '0.9', changefreq: 'monthly' } },
   '/unsubscribe': { body: unsubscribe, cta: false, noindex: true, title: 'Unsubscribe | WorldDigital.ai', description: 'Unsubscribe from WorldDigital.ai marketing emails.', sitemap: null },
   '/privacy-policy': legal(privacy, '/privacy-policy'),

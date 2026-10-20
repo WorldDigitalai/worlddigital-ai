@@ -50,7 +50,7 @@ def store() -> Store:
         s = settings()
         if not s.mongodb_uri:
             raise ApiError("MONGODB_URI missing", 503, "The tool is being set up. Please try again later.")
-        _store = Store(MongoClient(s.mongodb_uri, appname="worlddigital-ai-api", serverSelectionTimeoutMS=8000)[s.mongodb_db])
+        _store = Store(MongoClient(clean_mongo_uri(s.mongodb_uri), appname="worlddigital-ai-api", serverSelectionTimeoutMS=8000)[s.mongodb_db])
         _store.ensure_indexes()
     return _store
 
@@ -256,6 +256,19 @@ def download(session: str = "", format: str = ""):
         "Content-Disposition": f'attachment; filename="{filename}"', "Cache-Control": "private, no-store"})
 
 
+def clean_mongo_uri(raw: str) -> str:
+    """Accept a pasted Atlas string as-is: trim quotes/spaces, drop <> around the password, encode user and password."""
+    from urllib.parse import quote_plus, unquote_plus
+    u = (raw or "").strip().strip("'\"").replace("\n", "").replace("\r", "")
+    if "://" not in u or "@" not in u:
+        return u
+    scheme, rest = u.split("://", 1)
+    userinfo, host = rest.rsplit("@", 1)
+    user, _, pw = userinfo.partition(":")
+    pw = pw.strip().removeprefix("<").removesuffix(">")
+    return f"{scheme}://{quote_plus(unquote_plus(user.strip()))}:{quote_plus(unquote_plus(pw))}@{host.strip()}"
+
+
 @app.get("/api/tools/health")
 def health():
     s = settings()
@@ -267,7 +280,7 @@ def health():
         log.warning("mongodb ping failed: %s", type(e).__name__)
         # Never echo the message: it can contain the host or credentials.
         mongo_error = type(e).__name__
-    if not s.mongodb_uri.startswith(("mongodb://", "mongodb+srv://")):
+    if not s.mongodb_uri.strip().strip("'\"").startswith(("mongodb://", "mongodb+srv://")):
         mongo_error = "MONGODB_URI is not a connection string (it must start with mongodb+srv://)"
     key = s.stripe_secret_key
     return {"ok": True, "configured": {

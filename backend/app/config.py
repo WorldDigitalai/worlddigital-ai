@@ -7,11 +7,15 @@ Secrets (Cloud Run > worlddigital-ai-api > Variables & Secrets, or GitHub Action
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass, field
 
 
 def _env(name: str, default: str = "") -> str:
-    return os.environ.get(name, default).strip()
+    """Read a setting, forgiving how it was pasted: spaces, quotes, `export`, or a whole `NAME=value` line."""
+    v = os.environ.get(name, default).strip()
+    v = re.sub(r"^(export\s+)?[A-Z][A-Z0-9_]*\s*[=:]\s*", "", v) if re.match(r"^(export\s+)?[A-Z][A-Z0-9_]*\s*[=:]\s*\S", v) else v
+    return v.strip().strip("'\"").strip()
 
 
 @dataclass(frozen=True)

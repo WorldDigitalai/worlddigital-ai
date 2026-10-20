@@ -59,7 +59,7 @@ jobs:
           secrets: |
             MONGODB_URI=MONGODB_URI:5
             INTERNAL_TOKEN=INTERNAL_TOKEN:latest
-            OPENAI_API_KEY=OPENAI_API_KEY:latest
+            OPENAI_API_KEY=OPENAI_API_KEY:2
             DATAFORSEO_LOGIN=DATAFORSEO_LOGIN:latest
             DATAFORSEO_PASSWORD=DATAFORSEO_PASSWORD:latest
             STRIPE_SECRET_KEY=STRIPE_SECRET_KEY:latest

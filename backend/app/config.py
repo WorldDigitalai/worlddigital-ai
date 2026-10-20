@@ -24,7 +24,7 @@ class Settings:
     mongodb_db: str = field(default_factory=lambda: _env("MONGODB_DB", "worlddigital_ai"))
 
     openai_api_key: str = field(default_factory=lambda: _env("OPENAI_API_KEY"))
-    openai_model: str = field(default_factory=lambda: _env("OPENAI_MODEL", "gpt-4o-mini"))
+    openai_model: str = field(default_factory=lambda: _env("OPENAI_MODEL", "gpt-5.4-mini"))
     openai_base: str = field(default_factory=lambda: _env("OPENAI_BASE", "https://api.openai.com"))
 
     dataforseo_login: str = field(default_factory=lambda: _env("DATAFORSEO_LOGIN"))

@@ -32,7 +32,7 @@ def _json(res: httpx.Response, service: str):
 
 # ── OpenAI ──────────────────────────────────────────────────────────────────
 
-_MODELS = ["gpt-4o-mini", "gpt-4.1-mini", "gpt-5-mini", "gpt-4o", "gpt-4.1", "gpt-5", "gpt-4-turbo", "gpt-3.5-turbo"]
+_MODELS = ["gpt-5.4-mini", "gpt-5.4-nano", "gpt-5.4", "gpt-5.2", "gpt-5.1", "gpt-4o-mini", "gpt-4.1-mini"]
 _working_model: list[str] = []  # remembered after the first model the project is allowed to use
 
 

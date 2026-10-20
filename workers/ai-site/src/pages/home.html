@@ -187,13 +187,14 @@
 <p class="rf-cta"><a class="btn red" href="/free-seo-report">Run my free report</a></p>
 </div>
 </section>
-<script>(function(){var el=document.currentScript&&document.currentScript.previousElementSibling;var all=document.querySelectorAll('.rf');
-if(!('IntersectionObserver' in window)){all.forEach(function(x){x.classList.add('rf-on')});return}
-var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('rf-on');io.unobserve(e.target)}})},{threshold:.35});
+<script>(function(){var el=document.currentScript&&document.currentScript.previousElementSibling;var all=document.querySelectorAll('.rf,.holo');
+if(!('IntersectionObserver' in window)){all.forEach(function(x){x.classList.add('rf-on','holo-on')});return}
+var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('rf-on','holo-on');io.unobserve(e.target)}})},{threshold:.35});
 all.forEach(function(x){io.observe(x)})})();</script>
 <style>.rf{--h1:#5CC8FF;--h2:#A78BFA;--h3:#3B5BFF;padding-top:64px;padding-bottom:64px}
 .rf-head{max-width:720px}
 .rf:not(.rf-on) .rf-stage *,.rf:not(.rf-on) .rf-stage::after{animation-play-state:paused!important}
+.holo:not(.holo-on) *,.holo:not(.holo-on) *::before,.holo:not(.holo-on) *::after{animation-play-state:paused!important}
 .rf-head .lead{margin-top:10px}
 .rf-stage{position:relative;margin-top:28px;display:grid;grid-template-columns:1fr 1.25fr 1fr;gap:20px;align-items:center;
   padding:28px;border-radius:24px;overflow:hidden;color:#DCEBFF;

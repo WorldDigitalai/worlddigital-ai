@@ -262,6 +262,7 @@ ${o.noindex ? '<meta name="robots" content="noindex, nofollow">' : '<meta name="
 <link rel="manifest" href="/site.webmanifest">
 <link rel="alternate" type="application/rss+xml" title="WorldDigital.ai Blog" href="${SITE}/blog/feed.xml">
 <link rel="preload" href="/fonts/inter-var-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/sora-var-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style>${CSS}</style>
 ${o.extraHead || ''}
 ${String(o.body).includes('cf-turnstile') ? `<script>(function(){var on=false;function go(){if(on)return;on=true;var s=document.createElement('script');s.src='https://challenges.cloudflare.com/turnstile/v0/api.js';s.async=true;document.head.appendChild(s)}

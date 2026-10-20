@@ -52,7 +52,7 @@ def store() -> Store:
         s = settings()
         if not s.mongodb_uri:
             raise ApiError("MONGODB_URI missing", 503, "The tool is being set up. Please try again later.")
-        _store = Store(MongoClient(clean_mongo_uri(s.mongodb_uri), appname="worlddigital-ai-api", serverSelectionTimeoutMS=8000)[s.mongodb_db])
+        _store = Store(MongoClient(clean_mongo_uri(s.mongodb_uri), tz_aware=True, appname="worlddigital-ai-api", serverSelectionTimeoutMS=8000)[s.mongodb_db])
         _store.ensure_indexes()
     return _store
 
@@ -283,6 +283,40 @@ def download(session: str = "", format: str = ""):
 
 MONGO_USER = "ahmadawwad_db_user"
 MONGO_HOST = "worlddigital-ai.dfgex0b.mongodb.net"
+
+
+# ── Site audit (our own domains only) ───────────────────────────────────────
+
+def _run_audit(domain: str) -> None:
+    from . import audit
+    st = store()
+    try:
+        result = audit.run(settings(), domain)
+        st.db["tool_audit"].update_one({"_id": domain}, {"$set": {"state": "done", "result": result, "finished": now()}})
+    except Exception as e:  # noqa: BLE001
+        log.exception("audit failed")
+        st.db["tool_audit"].update_one({"_id": domain}, {"$set": {"state": "error", "error": str(e)[:500], "finished": now()}})
+
+
+@app.get("/api/tools/site-audit", dependencies=[Depends(guard)])
+def site_audit(background: BackgroundTasks, domain: str = "worlddigital.ai", fresh: int = 0):
+    s, st = settings(), store()
+    domain = domain.lower().removeprefix("www.")
+    if domain not in s.test_domains:
+        raise ApiError("audit domain", 403, "Audits run only for our own sites.")
+    doc = st.db["tool_audit"].find_one({"_id": domain})
+    from datetime import timedelta, timezone
+    if doc and doc.get("started") and doc["started"].tzinfo is None:
+        doc["started"] = doc["started"].replace(tzinfo=timezone.utc)
+    stale = not doc or (doc.get("state") != "running" and (now() - doc.get("started", now())).total_seconds() > 6 * 3600)
+    stuck = doc and doc.get("state") == "running" and (now() - doc["started"]).total_seconds() > 900
+    if stale or stuck or (fresh and doc and doc.get("state") != "running"
+                          and (now() - doc.get("started", now())) > timedelta(minutes=20)):
+        st.db["tool_audit"].replace_one({"_id": domain}, {"_id": domain, "state": "running", "started": now()}, upsert=True)
+        background.add_task(_run_audit, domain)
+        return json_ok({"state": "running"})
+    doc.pop("_id", None)
+    return json_ok({k: (v.isoformat() if hasattr(v, "isoformat") else v) for k, v in doc.items()})
 
 
 def clean_mongo_uri(raw: str) -> str:

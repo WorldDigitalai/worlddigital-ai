@@ -193,3 +193,13 @@ def test_one_free_preview_per_website(env):
     for plat in ("instagram", "linkedin", "facebook"):
         d = c.post("/api/tools/content/preview", json={"url": "worlddigital.us", "platform": plat, "kind": "post"}).json()
         assert d["notice"] is None and len(d["items"]) == 1
+
+
+def test_site_audit_only_our_domains(env, monkeypatch):
+    c, _ = env
+    assert c.get("/api/tools/site-audit?domain=competitor.com").status_code == 403
+    from app import audit
+    monkeypatch.setattr(audit, "run", lambda s, d: {"ok": d})
+    assert c.get("/api/tools/site-audit?domain=worlddigital.ai").json()["state"] == "running"
+    d = c.get("/api/tools/site-audit?domain=worlddigital.ai").json()
+    assert d["state"] == "done" and d["result"] == {"ok": "worlddigital.ai"}

@@ -43,6 +43,16 @@ jobs:
               jq -r --arg p "$p" --arg d "${{ matrix.device }}" '. as $r | ["best-practices","performance","accessibility","seo"][] as $c | $r.categories[$c].auditRefs[] | select(.weight > 0) | .id as $id | $r.audits[$id] | select(.score != null and .score < 0.9) | "::notice title=LH \($d) \($p) \($c)::\(.id) (\(.score)) \(.displayValue // "") \((.details.items // [])[0:3] | map(.url // .source.url // .description // .node.snippet // "" | tostring | .[0:120]) | join(" ; "))"' "reports/${name}-${{ matrix.device }}.report.json" | head -25
             fi
           done
+          # Everything below 100, compact: one line of scores, then each failing audit with the pages it hits.
+          d="${{ matrix.device }}"
+          echo "::notice title=LH100 scores $d::$(for f in reports/*-$d.report.json; do jq -r '(.finalDisplayedUrl|sub("https://worlddigital.ai";"")) as $u | [.categories[]|(.score*100|round)] as $s | select(($s|min) < 100) | "\($u)=\($s|map(tostring)|join("/"))"' "$f"; done | tr '\n' ' ')"
+          for c in performance accessibility best-practices seo; do
+            line=$(jq -rs --arg c "$c" '[.[] as $r | ($r.finalDisplayedUrl|sub("https://worlddigital.ai";"")) as $u | $r.categories[$c].auditRefs[] | select(.weight > 0) | .id as $id | $r.audits[$id] | select(.score != null and .score < 1) | {id: .id, u: $u, v: (.displayValue // "")}] | group_by(.id) | map("\(.[0].id)[\(length)p: \(map(.u)|unique|.[0:4]|join(","))] \(.[0].v)") | join(" ; ")' reports/*-$d.report.json)
+            [ -n "$line" ] && echo "::notice title=LH100 $c $d::$line"
+            if [ "$c" = "accessibility" ] || [ "$c" = "best-practices" ] || [ "$c" = "seo" ]; then
+              jq -rs --arg c "$c" '[.[] as $r | $r.categories[$c].auditRefs[] | select(.weight > 0) | .id as $id | $r.audits[$id] | select(.score != null and .score < 1) | "\(.id): " + ((.details.items // [])[0:3] | map((.node.snippet // .url // .source.url // .description // "") | tostring | .[0:140]) | join(" | "))] | unique | .[0:6][] | "::notice title=LH100 detail \($c) '"$d"'::" + .' reports/*-$d.report.json
+            fi
+          done
           { echo "## Lighthouse (${{ matrix.device }})"; cat summary.md; } >> "$GITHUB_STEP_SUMMARY"
           cat summary.md
       - uses: actions/upload-artifact@v4

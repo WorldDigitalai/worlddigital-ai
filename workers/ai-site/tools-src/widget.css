@@ -39,7 +39,7 @@
 .wdt-blur{filter:blur(6px);user-select:none;pointer-events:none}
 .wdt-cta{position:absolute;inset:0;display:flex;align-items:flex-start;justify-content:center;padding:56px 16px 16px;background:linear-gradient(180deg,rgba(244,248,252,.25),rgba(244,248,252,.85) 30%)}
 .wdt-cta-box{background:#fff;border:1px solid #DCE5EF;border-radius:18px;box-shadow:0 12px 40px rgba(14,26,43,.14);padding:24px;max-width:440px;width:100%;text-align:center}
-.wdt-cta-box h4{font-family:Sora,Inter,sans-serif;font-size:20px;margin:0 0 6px;color:#0E1A2B}
+.wdt-cta-box h4{font-family:Sora,"Sora Fallback",Inter,sans-serif;font-size:20px;margin:0 0 6px;color:#0E1A2B}
 .wdt-cta-box p{margin:0 0 14px;color:#33445A;font-size:14.5px}
 .wdt-fmt{display:flex;justify-content:center;gap:8px;margin:0 0 14px;flex-wrap:wrap}
 .wdt-cta-box .btn{width:100%}

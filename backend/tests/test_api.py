@@ -203,3 +203,37 @@ def test_site_audit_only_our_domains(env, monkeypatch):
     assert c.get("/api/tools/site-audit?domain=worlddigital.ai").json()["state"] == "running"
     d = c.get("/api/tools/site-audit?domain=worlddigital.ai").json()
     assert d["state"] == "done" and d["result"] == {"ok": "worlddigital.ai"}
+
+
+def test_hardening(env, monkeypatch):
+    c, _ = env
+    # malformed JSON is a clean 400, not a server error
+    r = c.post("/api/tools/keywords/preview", content=b"{not json", headers={"content-type": "application/json"})
+    assert r.status_code == 400 and r.json()["error"]
+    r = c.post("/api/tools/checkout", content=b"[]", headers={"content-type": "application/json"})
+    assert r.status_code == 404
+    # no shared token configured -> tools refuse to run (fail closed)
+    monkeypatch.delenv("INTERNAL_TOKEN")
+    main.settings.cache_clear()
+    assert c.post("/api/tools/keywords/preview", json={"url": "a.com"}).status_code == 503
+    # health shows only yes/no checks
+    h = c.get("/api/tools/health").json()
+    assert "key_shapes" not in h and "live" not in h and h["ok"] is True
+
+
+def test_customer_pages_must_be_public(monkeypatch):
+    from app import services
+    monkeypatch.setattr(services.socket if hasattr(services, "socket") else __import__("socket"), "getaddrinfo",
+                        lambda host, *a, **k: [(2, 1, 6, "", ("10.0.0.5" if host == "intranet.example" else "93.184.216.34", 443))])
+    assert services._public_host("intranet.example") is False
+    assert services._public_host("example.com") is True
+    assert services.read_site("http://intranet.example/") is None
+
+
+def test_excel_never_writes_formulas():
+    from openpyxl import load_workbook
+    from app.exports import build_xlsx
+    job = {"type": "content", "input": {"domain": "a.com"}, "meta": {"platform": "X (Twitter)", "kind": "post"},
+           "items": [{"angle": "=HYPERLINK(\"http://evil\")", "fields": [{"label": "Post", "max": 280, "text": "=1+1"}]}] * 5}
+    ws = load_workbook(io.BytesIO(build_xlsx(job))).active
+    assert ws["B5"].data_type == "s" and ws["C5"].value == "=1+1" and ws["C5"].data_type == "s"

@@ -154,7 +154,7 @@ export const PAGES = {
     description: 'The WorldDigital.ai Social Hub: our best LinkedIn, Instagram, Facebook, TikTok, YouTube and X posts with SEO, AI search and marketing tips.',
     sitemap: { priority: '0.6', changefreq: 'daily' } },
   // Private product preview: not linked, not in the sitemap, noindex.
-  '/autopilot/preview': { body: autopilot, cta: false, noindex: true, title: 'Autopilot preview | WorldDigital.ai', description: 'Preview of the Social & Email Autopilot dashboard.', sitemap: null },
+  '/autopilot/preview': { body: autopilot, cta: false, noFloat: true, noindex: true, title: 'Autopilot preview | WorldDigital.ai', description: 'Preview of the Social & Email Autopilot dashboard.', sitemap: null },
   '/unsubscribe': { body: unsubscribe, cta: false, noindex: true, title: 'Unsubscribe | WorldDigital.ai', description: 'Unsubscribe from WorldDigital.ai marketing emails.', sitemap: null },
   '/privacy-policy': legal(privacy, '/privacy-policy'),
   '/terms-and-conditions': legal(terms, '/terms-and-conditions'),

@@ -259,7 +259,7 @@ export async function handleAdmin(req, env, url, store, ctx, { pingNow, prod }) 
 
   // --- sign in ---
   if (path === '/blog-admin/login' && method === 'POST') {
-    const f = await req.formData();
+    let f; try { f = await req.formData(); } catch { return loginPage(nonce, { error: 'Please enter your email and try again.' }); }
     const email = String(f.get('email') || '').trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return loginPage(nonce, { error: 'Please enter a valid email address.' });
     if (!(await humanOk(env, String(f.get('cf-turnstile-response') || ''), req.headers.get('CF-Connecting-IP') || ''))) return loginPage(nonce, { error: 'Please complete the quick human check and try again.' });
@@ -270,7 +270,7 @@ export async function handleAdmin(req, env, url, store, ctx, { pingNow, prod }) 
         const sent = await sendEmail(env, email, 'Your sign-in link for the WorldDigital.ai blog editor',
           `<div style="font-family:Arial,sans-serif;font-size:16px;line-height:1.6;color:#0E1A2B"><p>Click the button to sign in to the blog editor. The link works once and expires in 20 minutes.</p>
 <p><a href="${link}" style="display:inline-block;background:#C13A2A;color:#fff;padding:12px 20px;border-radius:10px;text-decoration:none;font-weight:700">Open the blog editor</a></p>
-<p style="color:#4A5B70;font-size:14px">If you didn't ask for this, you can ignore this email.</p><p style="font-size:14px;color:#33445A"><b>WorldDigital.ai</b><br>Local SEO &middot; AI search visibility (AEO &amp; GEO) &middot; Google Ads &amp; PPC &middot; Web design &amp; management<br>worlddigital.ai</p></div>`);
+<p style="color:#4A5B70;font-size:14px">If you didn't ask for this, you can ignore this email.</p><p style="font-size:14px;color:#33445A"><b>WorldDigital.ai</b><br>SEO &amp; AI search (GEO, AEO) &middot; Google Ads &amp; PPC &middot; Content &middot; Websites<br>worlddigital.ai</p></div>`);
         if (!sent && env.DEV_SHOW_LINK === '1') return loginPage(nonce, { notice: `Dev mode: ${link}` });
       }
     }
@@ -283,7 +283,7 @@ export async function handleAdmin(req, env, url, store, ctx, { pingNow, prod }) 
     return new Response(shell('Sign in', body, nonce), { headers: headers(nonce) });
   }
   if (path === '/blog-admin/verify' && method === 'POST') {
-    const f = await req.formData();
+    let f; try { f = await req.formData(); } catch { return loginPage(nonce, { error: 'That sign-in link is not valid. Enter your email for a new one.' }); }
     const email = await store.useLoginToken(await sha256(String(f.get('t') || '')));
     if (!email || !admins(env).includes(email)) return loginPage(nonce, { error: 'That sign-in link has expired or was already used. Enter your email for a new one.' });
     const tok = randomToken();
@@ -337,7 +337,7 @@ export async function handleAdmin(req, env, url, store, ctx, { pingNow, prod }) 
     return json({ ok: true, slug: r.slug, status: r.status, message: messages[v.action] });
   }
   if (path === '/blog-admin/upload' && method === 'POST') {
-    const f = await req.formData();
+    let f; try { f = await req.formData(); } catch { return json({ error: 'No photo received.' }, 400); }
     const file = f.get('file');
     if (!file || typeof file === 'string') return json({ error: 'No photo received.' }, 400);
     if (!IMAGE_TYPES.includes(file.type)) return json({ error: 'Please upload a JPG, PNG, WebP or GIF photo.' }, 400);

@@ -191,6 +191,8 @@ def build_xlsx(job: dict) -> bytes:
     for r, row in enumerate(t["rows"], start=5):
         for c, v in enumerate(row, start=1):
             cell = ws.cell(row=r, column=c, value=v if v != "" else None)
+            if isinstance(v, str) and v.startswith("="):
+                cell.data_type = "s"  # generated text, never a formula
             cell.alignment = Alignment(vertical="top", wrap_text=True)
             cell.border = line
             fmt = t["formats"][c - 1]

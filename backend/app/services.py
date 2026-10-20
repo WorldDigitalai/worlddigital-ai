@@ -203,13 +203,52 @@ def _strip(html: str) -> str:
     return re.sub(r"\s+", " ", html).strip()
 
 
+_MAX_PAGE = 1_500_000  # bytes read from a customer page
+
+
+def _public_host(host: str) -> bool:
+    """True only if every address the host resolves to is on the public internet (no internal or metadata IPs)."""
+    import socket
+    try:
+        infos = socket.getaddrinfo(host, 443, proto=socket.IPPROTO_TCP)
+    except OSError:
+        return False
+    ips = {i[4][0] for i in infos}
+    return bool(ips) and all(ipaddress.ip_address(ip.split("%")[0]).is_global for ip in ips)
+
+
+def _fetch_page(url: str) -> httpx.Response | None:
+    """GET a customer page safely: public addresses only (checked on every redirect), at most 1.5 MB."""
+    headers = {"User-Agent": "Mozilla/5.0 (compatible; WorldDigitalBot/1.0; +https://worlddigital.ai)", "Accept": "text/html"}
+    with httpx.Client(timeout=10, follow_redirects=False, headers=headers) as client:
+        for _ in range(4):
+            u = urlparse(url)
+            if u.scheme not in ("http", "https") or not u.hostname or not _public_host(u.hostname):
+                return None
+            with client.stream("GET", url) as res:
+                if res.is_redirect and res.headers.get("location"):
+                    url = str(res.url.join(res.headers["location"]))
+                    continue
+                body = b""
+                for chunk in res.iter_bytes():
+                    body += chunk
+                    if len(body) >= _MAX_PAGE:
+                        break
+                return httpx.Response(res.status_code, headers={"content-type": res.headers.get("content-type", "")},
+                                      content=body[:_MAX_PAGE], request=res.request)
+    return None
+
+
 def read_site(url: str, *, fetch_base: str = "") -> dict | None:
     """Fetch a page and return its title, description, headings and body text (None if unreadable)."""
-    target = f"{fetch_base}/?u={url}" if fetch_base else url
     try:
-        res = httpx.get(target, headers={"User-Agent": "Mozilla/5.0 (compatible; WorldDigitalBot/1.0; +https://worlddigital.ai)",
-                                          "Accept": "text/html"}, follow_redirects=True, timeout=10)
+        if fetch_base:  # tests: a mock server stands in for the customer's site
+            res = httpx.get(f"{fetch_base}/?u={url}", headers={"Accept": "text/html"}, follow_redirects=True, timeout=10)
+        else:
+            res = _fetch_page(url)
     except httpx.HTTPError:
+        return None
+    if res is None:
         return None
     if res.status_code >= 400 or "html" not in res.headers.get("content-type", ""):
         return None

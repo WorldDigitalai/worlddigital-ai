@@ -83,17 +83,23 @@ jobs:
         if: github.event_name != 'pull_request' && steps.cf.outputs.ok == '1'
         run: |
           sleep 20
-          for p in / /services /about /blog /blog/tiktok-vs-instagram-ads /help /login /sitemap.xml /robots.txt; do
+          for p in / /services /about /social /local-seo-services /blog /blog/tiktok-vs-instagram-ads /help /login /sitemap.xml /robots.txt /llms.txt; do
             code=$(curl -s -o /tmp/p -w "%{http_code}" "https://worlddigital.ai$p"); echo "$p -> $code"
             [ "$code" = "200" ] || echo "::error::live $p returned $code"
           done
           code=$(curl -s -o /dev/null -w "%{http_code}" "https://worlddigital.ai/meta-ads-agency"); [ "$code" = "301" ] || echo "::error::redirect returned $code"
           curl -s https://worlddigital.ai/ | grep -q "Get more customers from" || echo "::error::new homepage not served"
-          curl -s https://worlddigital.ai/login | grep -q "Get more customers from" && echo "::error::login is not reaching the app" || true
+          curl -s https://worlddigital.ai/login | grep -q "customer portal" || echo "::error::/login is not showing the customer portal page"
+          code=$(curl -s -o /dev/null -w "%{http_code}" "https://worlddigital.ai/no-such-page-xyz"); [ "$code" = "404" ] || echo "::error::unknown page returned $code, expected 404"
       - name: Tell Bing and IndexNow engines about every page (sitemap URLs)
         if: github.event_name != 'pull_request' && steps.cf.outputs.ok == '1'
         run: |
-          urls=$(curl -s https://worlddigital.ai/sitemap.xml | grep -o '<loc>https://worlddigital.ai[^<]*</loc>' | sed 's#</\?loc>##g' | grep -v '/media/' | jq -R . | jq -s .)
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            # Nightly run only refreshes the Social Hub; resubmitting unchanged pages every night is treated as spam.
+            urls='["https://worlddigital.ai/social"]'
+          else
+            urls=$(curl -s https://worlddigital.ai/sitemap.xml | grep -o '<loc>https://worlddigital.ai[^<]*</loc>' | sed 's#</\?loc>##g' | grep -v '/media/' | jq -R . | jq -s .)
+          fi
           body=$(jq -n --argjson u "$urls" '{host:"worlddigital.ai",key:"5d1c3f0b8e9a4c7d92b6e1f04a3c8d27",keyLocation:"https://worlddigital.ai/5d1c3f0b8e9a4c7d92b6e1f04a3c8d27.txt",urlList:$u}')
           echo "Submitting $(echo "$urls" | jq length) URLs"
           code=$(curl -s -o /tmp/ix -w "%{http_code}" -X POST https://api.indexnow.org/indexnow -H "Content-Type: application/json; charset=utf-8" -d "$body")

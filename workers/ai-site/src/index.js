@@ -5,7 +5,8 @@ import { page, faqSchema, esc, SITE } from './layout.js';
 import { PAGES, REDIRECTS } from './pages.js';
 import { blogIndex, blogPost, feed, seedPosts } from './blog.js';
 import { handleAdmin, sendEmail, sha256 } from './admin.js';
-import { ROBOTS, LLMS, LLMS_FULL } from './crawl-text.js';
+import { ROBOTS, LLMS, LLMS_FULL, UPDATED } from './crawl-text.js';
+import { SOCIAL_UPDATED } from './social.js';
 import { INDEXNOW_KEY, PROD_HOSTS, isAppPath } from './routing.js';
 import { toolsProxy } from './tools-proxy.js';
 import { withTool } from './tools-widget.js';
@@ -44,10 +45,23 @@ function notFound(prod) {
   }), 404, 'no-store');
 }
 
+// The old customer app is retired. Its sign-in addresses get a clear page instead of the dead app's error.
+const PORTAL = ['/login', '/signup', '/dashboard', '/account', '/forgot-password', '/reset-password', '/onboarding', '/billing', '/settings'];
+function portalPage(prod) {
+  return html(page({
+    path: '/login', title: 'Customer portal | WorldDigital.ai', description: 'Sign-in for WorldDigital.ai customers.', noindex: true, prod, cta: false,
+    body: `<section class="sec"><div class="wrap" style="max-width:760px"><div class="eyebrow">Customer portal</div><h1 class="h" style="font-size:42px;margin-top:10px">Our customer portal is being rebuilt.</h1>
+<p class="muted" style="font-size:18px;line-height:1.6">Your plan, reports and billing aren’t affected. For anything you need right now, message us and we’ll reply within one business day.</p>
+<p style="display:flex;flex-wrap:wrap;gap:12px;margin-top:22px"><a class="btn green" href="https://wa.me/18328340680?text=Hi%2C%20I%27m%20a%20WorldDigital.ai%20customer">WhatsApp us</a><a class="btn ghost" href="mailto:support@worlddigital.ai">Email support@worlddigital.ai</a><a class="btn ghost" href="/help">Help center</a></p></div></section>`,
+  }), 200, 'no-store');
+}
+
 function sitemap(posts) {
   const today = new Date().toISOString().slice(0, 10);
+  // Real change dates: stamping every page with today teaches Google to ignore lastmod.
+  const mod = (p) => (p === '/social' && SOCIAL_UPDATED ? SOCIAL_UPDATED.slice(0, 10) : UPDATED);
   const img = (u) => `<image:image><image:loc>${u}</image:loc></image:image>`;
-  const urls = Object.entries(PAGES).filter(([, o]) => o.sitemap !== null && !o.noindex).map(([p, o]) => `<url><loc>${SITE}${p === '/' ? '/' : p}</loc><lastmod>${today}</lastmod><changefreq>${o.sitemap?.changefreq || 'monthly'}</changefreq><priority>${o.sitemap?.priority || '0.5'}</priority>${img(`${SITE}/og.png`)}</url>`);
+  const urls = Object.entries(PAGES).filter(([, o]) => o.sitemap !== null && !o.noindex).map(([p, o]) => `<url><loc>${SITE}${p === '/' ? '/' : p}</loc><lastmod>${mod(p)}</lastmod><changefreq>${o.sitemap?.changefreq || 'monthly'}</changefreq><priority>${o.sitemap?.priority || '0.5'}</priority>${img(`${SITE}/og.png`)}</url>`);
   urls.push(`<url><loc>${SITE}/blog</loc><lastmod>${(posts[0]?.updated_at || today).slice(0, 10)}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>`);
   for (const p of posts) urls.push(`<url><loc>${SITE}/blog/${p.slug}</loc><lastmod>${(p.updated_at > p.published_at ? p.updated_at : p.published_at).slice(0, 10)}</lastmod><changefreq>monthly</changefreq><priority>0.7</priority>${p.cover_id ? img(`${SITE}/media/${p.cover_id}`) : ''}</url>`);
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n${urls.join('\n')}\n</urlset>\n`;
@@ -129,12 +143,19 @@ async function handle(req, env, ctx) {
   }
   const lower = path.toLowerCase();
   if (REDIRECTS[lower]) return redirect(REDIRECTS[lower] + url.search);
+  if (path !== lower && (PAGES[lower] || lower.startsWith('/blog'))) return redirect(lower + url.search);
 
   // Paid keyword/content tools: Python API in backend/ (Cloud Run + MongoDB).
   if (lower.startsWith('/api/tools/')) return toolsProxy(req, env, url);
 
-  // Customer app: untouched.
-  if (isAppPath(lower)) return passthrough();
+  // Old customer app: retired. LEGACY_APP=1 sends these addresses to it again.
+  const legacy = env.LEGACY_APP === '1';
+  if (isAppPath(lower)) {
+    if (legacy) return passthrough();
+    if ((req.method === 'GET' || req.method === 'HEAD') && PORTAL.some((p) => lower === p || lower.startsWith(`${p}/`))) return portalPage(prod);
+    if (lower.startsWith('/api/')) return new Response(JSON.stringify({ error: 'Not found' }), { status: 404, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
+    return notFound(prod);
+  }
 
   if (req.method === 'GET' || req.method === 'HEAD') {
     if (PAGES[path]) {
@@ -182,8 +203,8 @@ async function handle(req, env, ctx) {
   if (req.method === 'POST' && path === '/api/site/waitlist') return formSubmit(req, env, ctx, 'waitlist');
   if (req.method === 'POST' && path === '/api/site/apply') return formSubmit(req, env, ctx, 'apply');
 
-  // Anything else belongs to the existing app (or is a 404 on the preview address).
-  if (prod) return passthrough();
+  // Anything else: our own 404 (the old app only when LEGACY_APP=1).
+  if (prod && legacy) return passthrough();
   return notFound(prod);
 }
 

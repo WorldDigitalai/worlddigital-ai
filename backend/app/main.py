@@ -24,6 +24,7 @@ from functools import lru_cache
 
 from fastapi import BackgroundTasks, Depends, FastAPI, Request
 from fastapi.responses import JSONResponse, Response
+from starlette.concurrency import run_in_threadpool
 from pymongo import MongoClient
 
 from .config import Settings
@@ -74,13 +75,24 @@ def guard(request: Request) -> None:
     s = settings()
     want = (s.internal_token or "").strip()
     got = (request.headers.get("x-internal-token") or "").strip()
-    if want and not hmac.compare_digest(got.encode(), want.encode()):
+    if not want:  # fail closed: never serve the tools without the site's shared token configured
+        raise ApiError("TOOLS_API_TOKEN missing", 503, "The tool is being set up. Please try again later.")
+    if not hmac.compare_digest(got.encode(), want.encode()):
         log.warning("bad internal token (got %d chars, want %d)", len(got), len(want))
         raise ApiError("bad internal token", 403, "Forbidden")
 
 
 def client_ip(request: Request) -> str:
     return request.headers.get("cf-connecting-ip") or (request.client.host if request.client else "unknown")
+
+
+async def body_of(request: Request) -> dict:
+    """The JSON body as a dict; a malformed body is a 400, not a server error."""
+    try:
+        body = await request.json()
+    except Exception as e:  # noqa: BLE001
+        raise ApiError("bad json", 400, "Something was wrong with that request. Please try again.") from e
+    return body if isinstance(body, dict) else {}
 
 
 def public_preview(job: dict) -> dict:
@@ -157,16 +169,14 @@ def _preview(request: Request, body: dict, kind: str):
 
 @app.post("/api/tools/keywords/preview", dependencies=[Depends(guard)])
 async def keywords_preview(request: Request):
-    body = await request.json()
-    from starlette.concurrency import run_in_threadpool
-    return await run_in_threadpool(_preview, request, body if isinstance(body, dict) else {}, "keywords")
+    body = await body_of(request)
+    return await run_in_threadpool(_preview, request, body, "keywords")
 
 
 @app.post("/api/tools/content/preview", dependencies=[Depends(guard)])
 async def content_preview(request: Request):
-    body = await request.json()
-    from starlette.concurrency import run_in_threadpool
-    return await run_in_threadpool(_preview, request, body if isinstance(body, dict) else {}, "content")
+    body = await body_of(request)
+    return await run_in_threadpool(_preview, request, body, "content")
 
 
 @app.get("/api/tools/job", dependencies=[Depends(guard)])
@@ -181,9 +191,13 @@ def get_job(id: str = ""):
 
 @app.post("/api/tools/checkout", dependencies=[Depends(guard)])
 async def checkout(request: Request):
-    body = await request.json()
+    body = await body_of(request)
+    return await run_in_threadpool(_checkout, body)
+
+
+def _checkout(body: dict):
     s, st = settings(), store()
-    job = st.get_job((body or {}).get("id"))
+    job = st.get_job(body.get("id"))
     if not job:
         raise ApiError("no job", 404, "That preview has expired. Please generate a new one.")
     fmt = body.get("format") if body.get("format") in FORMATS else "pdf"
@@ -225,13 +239,13 @@ def paid_job(session_id: str) -> dict:
     try:
         sess = get_checkout_session(s, session_id)
     except ApiError as e:
-        raise ApiError(str(e), 404, "We couldn't find that order. Email ahmad.awwad@worlddigital.ai with your receipt "
+        raise ApiError(str(e), 404, "We couldn't find that order. Email support@worlddigital.ai with your receipt "
                                     "and we'll sort it out.") from e
     if sess.get("payment_status") != "paid":
         raise ApiError("unpaid", 402, "We haven't received this payment yet. If you just paid, refresh in a moment.")
     job = st.get_job((sess.get("metadata") or {}).get("job_id"))
     if not job:
-        raise ApiError("job gone", 410, "We couldn't find this order's report. Email ahmad.awwad@worlddigital.ai with "
+        raise ApiError("job gone", 410, "We couldn't find this order's report. Email support@worlddigital.ai with "
                                         "your receipt and we'll send it right away.")
     if not job.get("paid"):
         job.update(paid=True, session_id=session_id, paid_at=now(),
@@ -260,7 +274,7 @@ def deliver_email(job: dict) -> None:
         if res.get("skipped"):
             st.unmark_emailed(job["_id"])
     except Exception as e:  # noqa: BLE001 - never fail the order page because of email
-        print("email failed:", e)
+        log.error("delivery email failed: %s", e)
         st.unmark_emailed(job["_id"])
 
 
@@ -311,7 +325,7 @@ def site_audit(background: BackgroundTasks, domain: str = "worlddigital.ai", fre
     stale = not doc or (doc.get("state") != "running" and (now() - doc.get("started", now())).total_seconds() > 6 * 3600)
     stuck = doc and doc.get("state") == "running" and (now() - doc["started"]).total_seconds() > 900
     if stale or stuck or (fresh and doc and doc.get("state") != "running"
-                          and (now() - doc.get("started", now())) > timedelta(minutes=2)):
+                          and (now() - doc.get("started", now())) > timedelta(minutes=30)):
         st.db["tool_audit"].replace_one({"_id": domain}, {"_id": domain, "state": "running", "started": now()}, upsert=True)
         background.add_task(_run_audit, domain)
         return json_ok({"state": "running"})
@@ -336,35 +350,6 @@ def clean_mongo_uri(raw: str) -> str:
     return f"{scheme}://{quote_plus(unquote_plus(user.strip()))}:{quote_plus(unquote_plus(pw))}@{host.strip()}"
 
 
-def key_shapes(s: Settings) -> dict:
-    """Non-secret hints about what kind of value is stored (never any part of the secret itself)."""
-    def stripe(k: str) -> str:
-        m = re.match(r"^([a-z]{2,6})_(test|live)?", k)
-        return (m.group(0).rstrip("_") if m else "unrecognized") + f" ({len(k)} chars)" if k else "empty"
-    def login(v: str) -> str:
-        return "empty" if not v else ("email" if re.fullmatch(r"[^@\s]+@[^@\s]+\.[a-z]{2,}", v, re.I) else
-                                      "placeholder name" if v.isupper() else f"not an email ({len(v)} chars)")
-    return {"stripe": stripe(s.stripe_secret_key), "dataforseo_login": login(s.dataforseo_login),
-            "dataforseo_password": "placeholder name" if s.dataforseo_password.isupper() else f"{len(s.dataforseo_password)} chars"}
-
-
-def live_checks(s: Settings) -> dict:
-    """Free calls that only tell us whether each provider accepts its key."""
-    import httpx
-    out = {}
-    try:
-        out["openai"] = httpx.get(f"{s.openai_base}/v1/models", headers={"Authorization": f"Bearer {s.openai_api_key}"},
-                                  timeout=10).status_code
-    except Exception as e:  # noqa: BLE001
-        out["openai"] = type(e).__name__
-    try:
-        out["dataforseo"] = httpx.get(f"{s.dataforseo_base}/v3/appendix/user_data",
-                                      auth=(s.dataforseo_login, s.dataforseo_password), timeout=10).status_code
-    except Exception as e:  # noqa: BLE001
-        out["dataforseo"] = type(e).__name__
-    return out
-
-
 @app.get("/api/tools/health")
 def health(request: Request):
     s = settings()
@@ -379,10 +364,12 @@ def health(request: Request):
         # Never echo the message: it can contain the host or credentials.
         mongo_error = "wrong password" if type(e).__name__ == "OperationFailure" else type(e).__name__
     key = s.stripe_secret_key
-    return {"ok": True, "configured": {
+    return {"ok": True, "site_token_match": token_match, "mongodb_error": mongo_error, "configured": {
         "mongodb": mongo,
         # True only when the value has the shape of a real key (catches a pasted placeholder name).
         "openai": s.openai_api_key.startswith("sk-"),
         "dataforseo": bool(s.dataforseo_password) and "@" in s.dataforseo_login,
-        "stripe": key.startswith(("sk_test_", "sk_live_", "rk_test_", "rk_live_")), "stripe_mode": ("live" if key.startswith(("sk_live", "rk_live")) else "test") if key else None,
-        "resend": s.resend_api_key.startswith("re_"), "turnstile": bool(s.turnstile_secret), "internal_token": bool(s.internal_token)}, "mongodb_error": mongo_error, "key_shapes": key_shapes(s), "live": live_checks(s) if request.query_params.get("live") else None, "site_token_match": token_match}
+        "stripe": key.startswith(("sk_test_", "sk_live_", "rk_test_", "rk_live_")),
+        "stripe_mode": ("live" if key.startswith(("sk_live", "rk_live")) else "test") if key else None,
+        "resend": s.resend_api_key.startswith("re_"), "turnstile": bool(s.turnstile_secret),
+        "internal_token": bool(s.internal_token)}}

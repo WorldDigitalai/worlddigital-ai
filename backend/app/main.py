@@ -14,6 +14,7 @@ X-Internal-Token and the visitor's IP (CF-Connecting-IP).
 from __future__ import annotations
 
 import hashlib
+import hmac
 import html
 import json
 import logging
@@ -69,7 +70,10 @@ def api_error(_req: Request, e: ApiError):
 
 def guard(request: Request) -> None:
     s = settings()
-    if s.internal_token and request.headers.get("x-internal-token") != s.internal_token:
+    want = (s.internal_token or "").strip()
+    got = (request.headers.get("x-internal-token") or "").strip()
+    if want and not hmac.compare_digest(got.encode(), want.encode()):
+        log.warning("bad internal token (got %d chars, want %d)", len(got), len(want))
         raise ApiError("bad internal token", 403, "Forbidden")
 
 
@@ -278,8 +282,10 @@ def clean_mongo_uri(raw: str) -> str:
 
 
 @app.get("/api/tools/health")
-def health():
+def health(request: Request):
     s = settings()
+    got = (request.headers.get("x-internal-token") or "").strip()
+    token_match = bool(got) and hmac.compare_digest(got.encode(), (s.internal_token or "").strip().encode())
     mongo, mongo_error = False, None
     try:
         store().db.command("ping")
@@ -292,4 +298,4 @@ def health():
     return {"ok": True, "configured": {
         "mongodb": mongo, "openai": bool(s.openai_api_key), "dataforseo": bool(s.dataforseo_login and s.dataforseo_password),
         "stripe": bool(key), "stripe_mode": ("live" if key.startswith(("sk_live", "rk_live")) else "test") if key else None,
-        "resend": bool(s.resend_api_key), "turnstile": bool(s.turnstile_secret), "internal_token": bool(s.internal_token)}, "mongodb_error": mongo_error}
+        "resend": bool(s.resend_api_key), "turnstile": bool(s.turnstile_secret), "internal_token": bool(s.internal_token)}, "mongodb_error": mongo_error, "site_token_match": token_match}

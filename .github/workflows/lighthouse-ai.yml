@@ -34,6 +34,9 @@ jobs:
             [ -n "$low" ] && echo "::warning title=Lighthouse ${{ matrix.device }} $p::$low"
             if [ "$p" = "/" ]; then
               jq -r --arg d "${{ matrix.device }}" '[.audits["network-requests"].details.items[] | select(.url|test("worlddigital.ai")|not) | "\((.networkRequestTime // .startTime // 0)|floor)ms \(.url[0:70])"] | .[0:8] | "::notice title=LH 3P order \($d)::" + join(" | ")' "reports/${name}-${{ matrix.device }}.report.json"
+              jq -r --arg d "${{ matrix.device }}" '"::notice title=LH metrics \($d)::" + ([.audits["first-contentful-paint","largest-contentful-paint","total-blocking-time","cumulative-layout-shift","speed-index"] | "\(.id)=\(.displayValue)"] | join(" | "))' "reports/${name}-${{ matrix.device }}.report.json"
+              jq -r --arg d "${{ matrix.device }}" '"::notice title=LH LCP element \($d)::" + ((.audits["largest-contentful-paint-element"].details.items[0].items[0].node.snippet // "?")[0:160]) + " phases: " + ([(.audits["largest-contentful-paint-element"].details.items[1].items // [])[] | "\(.phase)=\(.timing|round)ms"] | join(", "))' "reports/${name}-${{ matrix.device }}.report.json" || true
+              jq -r --arg d "${{ matrix.device }}" '. as $r | [$r.categories.performance.auditRefs[] | .id as $id | $r.audits[$id] | select(.score != null and .score < 0.9 and (.details.overallSavingsMs // 0) > 0) | "\(.id) save \(.details.overallSavingsMs|round)ms"] | "::notice title=LH opportunities \($d)::" + join(" | ")' "reports/${name}-${{ matrix.device }}.report.json" || true
               jq -r --arg d "${{ matrix.device }}" '"::notice title=LH final url \($d)::" + .finalDisplayedUrl + " ua=" + ((.environment.networkUserAgent // "")[0:60])' "reports/${name}-${{ matrix.device }}.report.json"
             fi
             if [ "$p" = "/google-ads-agency" ]; then

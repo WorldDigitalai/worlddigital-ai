@@ -300,6 +300,18 @@ def clean_mongo_uri(raw: str) -> str:
     return f"{scheme}://{quote_plus(unquote_plus(user.strip()))}:{quote_plus(unquote_plus(pw))}@{host.strip()}"
 
 
+def key_shapes(s: Settings) -> dict:
+    """Non-secret hints about what kind of value is stored (never any part of the secret itself)."""
+    def stripe(k: str) -> str:
+        m = re.match(r"^([a-z]{2,6})_(test|live)?", k)
+        return (m.group(0).rstrip("_") if m else "unrecognized") + f" ({len(k)} chars)" if k else "empty"
+    def login(v: str) -> str:
+        return "empty" if not v else ("email" if re.fullmatch(r"[^@\s]+@[^@\s]+\.[a-z]{2,}", v, re.I) else
+                                      "placeholder name" if v.isupper() else f"not an email ({len(v)} chars)")
+    return {"stripe": stripe(s.stripe_secret_key), "dataforseo_login": login(s.dataforseo_login),
+            "dataforseo_password": "placeholder name" if s.dataforseo_password.isupper() else f"{len(s.dataforseo_password)} chars"}
+
+
 @app.get("/api/tools/health")
 def health(request: Request):
     s = settings()
@@ -320,4 +332,4 @@ def health(request: Request):
         "openai": s.openai_api_key.startswith("sk-"),
         "dataforseo": bool(s.dataforseo_password) and "@" in s.dataforseo_login,
         "stripe": key.startswith(("sk_test_", "sk_live_", "rk_test_", "rk_live_")), "stripe_mode": ("live" if key.startswith(("sk_live", "rk_live")) else "test") if key else None,
-        "resend": s.resend_api_key.startswith("re_"), "turnstile": bool(s.turnstile_secret), "internal_token": bool(s.internal_token)}, "mongodb_error": mongo_error, "site_token_match": token_match}
+        "resend": s.resend_api_key.startswith("re_"), "turnstile": bool(s.turnstile_secret), "internal_token": bool(s.internal_token)}, "mongodb_error": mongo_error, "key_shapes": key_shapes(s), "site_token_match": token_match}

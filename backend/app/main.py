@@ -311,7 +311,7 @@ def site_audit(background: BackgroundTasks, domain: str = "worlddigital.ai", fre
     stale = not doc or (doc.get("state") != "running" and (now() - doc.get("started", now())).total_seconds() > 6 * 3600)
     stuck = doc and doc.get("state") == "running" and (now() - doc["started"]).total_seconds() > 900
     if stale or stuck or (fresh and doc and doc.get("state") != "running"
-                          and (now() - doc.get("started", now())) > timedelta(minutes=20)):
+                          and (now() - doc.get("started", now())) > timedelta(minutes=2)):
         st.db["tool_audit"].replace_one({"_id": domain}, {"_id": domain, "state": "running", "started": now()}, upsert=True)
         background.add_task(_run_audit, domain)
         return json_ok({"state": "running"})

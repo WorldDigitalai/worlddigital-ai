@@ -18,6 +18,7 @@ import report from './pages/free-seo-report.html';
 import localSeo from './pages/local-seo-services.html';
 import geo from './pages/generative-engine-optimization.html';
 import autopilot from './pages/autopilot-preview.html';
+import { socialBody, socialSchema } from './social.js';
 import unsubscribe from './pages/unsubscribe.html';
 import privacy from '../content/legal/privacy-policy.md';
 import terms from '../content/legal/terms-and-conditions.md';
@@ -148,6 +149,10 @@ export const PAGES = {
     description: 'Free SEO audit and website SEO checker: on-page SEO, mobile speed, Google rankings, backlinks and ChatGPT citations, with your top fixes in 60 seconds.',
     schema: [{ '@context': 'https://schema.org', '@type': 'WebApplication', name: 'Free SEO & AI Visibility Report', url: `${SITE}/free-seo-report`, applicationCategory: 'BusinessApplication', operatingSystem: 'Any', offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' }, provider: { '@id': `${SITE}/#org` } },
       crumbs([['Home', '/'], ['Free SEO report', '/free-seo-report']])], sitemap: { priority: '0.9', changefreq: 'monthly' } },
+  '/social': { keywords: 'worlddigital.ai social media, seo tips, ai marketing tips, small business marketing tips, social media marketing', body: socialBody, schema: socialSchema,
+    title: 'Social Hub: SEO & AI Marketing Tips | WorldDigital.ai',
+    description: 'The WorldDigital.ai Social Hub: our best LinkedIn, Instagram, Facebook, TikTok, YouTube and X posts with SEO, AI search and marketing tips.',
+    sitemap: { priority: '0.6', changefreq: 'daily' } },
   // Private product preview: not linked, not in the sitemap, noindex.
   '/autopilot/preview': { body: autopilot, cta: false, noindex: true, title: 'Autopilot preview | WorldDigital.ai', description: 'Preview of the Social & Email Autopilot dashboard.', sitemap: null },
   '/unsubscribe': { body: unsubscribe, cta: false, noindex: true, title: 'Unsubscribe | WorldDigital.ai', description: 'Unsubscribe from WorldDigital.ai marketing emails.', sitemap: null },

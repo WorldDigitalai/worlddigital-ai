@@ -5,6 +5,8 @@ on:
     paths: ["workers/ai-site/**", ".github/workflows/deploy-ai-site.yml"]
   pull_request:
     paths: ["workers/ai-site/**"]
+  schedule:
+    - cron: "17 4 * * *"   # nightly ~11pm Chicago: refresh the Social Hub from Buffer and redeploy
   workflow_dispatch:
 jobs:
   test-and-deploy:
@@ -14,6 +16,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
+      - name: Pull latest social posts from Buffer (keeps the saved copy if Buffer is unavailable)
+        if: github.event_name != 'pull_request'
+        working-directory: .
+        run: python3 tools/fetch_social.py
+        env:
+          BUFFER_API_TOKEN: ${{ secrets.BUFFER_API_TOKEN }}
       - name: Tests
         run: node --test test/*.test.mjs
       - name: Tool widget is built from tools-src/

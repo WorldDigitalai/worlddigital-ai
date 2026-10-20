@@ -81,6 +81,7 @@ Clients include Murfreesboro Kabob, RPM Auto Group and Bean Loft Coffee Company 
 - [Multi-location](${SITE}/enterprise): SEO and Google Ads for brands with many locations
 - [Reviews](${SITE}/testimonials): Client reviews, BBB A+ and Google rating
 - [Blog](${SITE}/blog): Guides on SEO, AI search and Google Ads
+- [Social Hub](${SITE}/social): Our LinkedIn, Instagram, Facebook, TikTok, YouTube and X posts with SEO and AI marketing tips, updated nightly
 - [Help Center](${SITE}/help): Plans, billing, cancelling and results
 - [Careers](${SITE}/career)
 - [Privacy Policy](${SITE}/privacy-policy)

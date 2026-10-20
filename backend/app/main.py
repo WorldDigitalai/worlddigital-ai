@@ -264,9 +264,11 @@ def health():
         store().db.command("ping")
         mongo = True
     except Exception as e:  # noqa: BLE001
-        log.warning("mongodb ping failed: %s", e)
-        msg = re.sub(r"mongodb(\+srv)?://\S+", "<uri>", str(e))
-        mongo_error = f"{type(e).__name__}: {msg[:160]}"
+        log.warning("mongodb ping failed: %s", type(e).__name__)
+        # Never echo the message: it can contain the host or credentials.
+        mongo_error = type(e).__name__
+    if not s.mongodb_uri.startswith(("mongodb://", "mongodb+srv://")):
+        mongo_error = "MONGODB_URI is not a connection string (it must start with mongodb+srv://)"
     key = s.stripe_secret_key
     return {"ok": True, "configured": {
         "mongodb": mongo, "openai": bool(s.openai_api_key), "dataforseo": bool(s.dataforseo_login and s.dataforseo_password),

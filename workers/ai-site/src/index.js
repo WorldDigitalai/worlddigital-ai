@@ -7,6 +7,8 @@ import { blogIndex, blogPost, feed, seedPosts } from './blog.js';
 import { handleAdmin, sendEmail, sha256 } from './admin.js';
 import { ROBOTS, LLMS, LLMS_FULL } from './crawl-text.js';
 import { INDEXNOW_KEY, PROD_HOSTS, isAppPath } from './routing.js';
+import { toolsProxy } from './tools-proxy.js';
+import { withTool } from './tools-widget.js';
 import { humanOk } from './human.js';
 export { Store } from './store.js';
 
@@ -128,12 +130,16 @@ async function handle(req, env, ctx) {
   const lower = path.toLowerCase();
   if (REDIRECTS[lower]) return redirect(REDIRECTS[lower] + url.search);
 
+  // Paid keyword/content tools: Python API in backend/ (Cloud Run + MongoDB).
+  if (lower.startsWith('/api/tools/')) return toolsProxy(req, env, url);
+
   // Customer app: untouched.
   if (isAppPath(lower)) return passthrough();
 
   if (req.method === 'GET' || req.method === 'HEAD') {
     if (PAGES[path]) {
-      const o = PAGES[path];
+      // Paid tools show only once the Python API is configured (TOOLS_API_URL).
+      const o = PAGES[path].tool && env.TOOLS_API_URL ? { ...PAGES[path], body: withTool(PAGES[path].body, PAGES[path].tool) } : PAGES[path];
       const schema = [].concat(o.schema || []);
       const faq = faqSchema(o.body);
       if (faq) schema.push(faq);

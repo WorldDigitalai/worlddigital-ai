@@ -1,0 +1,30 @@
+// Forwards /api/tools/* to the Python tools API (backend/, deployed on Cloud Run).
+// vars: TOOLS_API_URL (e.g. https://worlddigital-ai-api-xxxx.run.app)   secret: TOOLS_API_TOKEN
+const JSON_HEADERS = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
+
+export async function toolsProxy(req, env, url) {
+  if (!env.TOOLS_API_URL) {
+    return new Response(JSON.stringify({ error: 'The tool is being set up. Please try again later.' }), { status: 503, headers: JSON_HEADERS });
+  }
+  if (!['GET', 'POST'].includes(req.method)) return new Response('Method not allowed', { status: 405 });
+  const headers = new Headers({
+    'x-internal-token': env.TOOLS_API_TOKEN || '',
+    'cf-connecting-ip': req.headers.get('CF-Connecting-IP') || '',
+    'user-agent': req.headers.get('User-Agent') || '',
+  });
+  if (req.method === 'POST') headers.set('content-type', 'application/json');
+  try {
+    const res = await fetch(env.TOOLS_API_URL.replace(/\/$/, '') + url.pathname + url.search, {
+      method: req.method,
+      headers,
+      body: req.method === 'POST' ? await req.text() : undefined,
+      signal: AbortSignal.timeout(90000),
+    });
+    const out = new Headers();
+    for (const h of ['content-type', 'content-disposition', 'cache-control']) if (res.headers.get(h)) out.set(h, res.headers.get(h));
+    out.set('X-Content-Type-Options', 'nosniff');
+    return new Response(res.body, { status: res.status, headers: out });
+  } catch {
+    return new Response(JSON.stringify({ error: 'The tool is busy right now. Please try again in a minute.' }), { status: 502, headers: JSON_HEADERS });
+  }
+}

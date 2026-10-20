@@ -1,0 +1,26 @@
+{
+  "name": "worlddigital-ai",
+  "version": "1.0.0",
+  "description": "worlddigital.ai monorepo",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test:site": "cd workers/ai-site && node --test test/*.test.mjs",
+    "build:widget": "node workers/ai-site/tools-src/build.mjs",
+    "test:api": "cd backend && uv run pytest -q"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/WorldDigitalai/worlddigital-ai.git"
+  },
+  "bugs": {
+    "url": "https://github.com/WorldDigitalai/worlddigital-ai/issues"
+  },
+  "homepage": "https://github.com/WorldDigitalai/worlddigital-ai#readme",
+  "devDependencies": {
+    "esbuild": "^0.25.12",
+    "wrangler": "^4.151.2"
+  },
+  "private": true
+}

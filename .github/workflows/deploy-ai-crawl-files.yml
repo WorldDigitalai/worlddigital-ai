@@ -16,8 +16,13 @@ jobs:
         with: { node-version: 22 }
       - name: Tests
         run: node --test test/*.test.mjs
-      - name: Deploy to Cloudflare (worker "worlddigital-ai-crawl-files" on worlddigital.ai)
+      - name: Check Cloudflare secrets
+        id: cf
         if: github.event_name != 'pull_request'
+        run: |
+          if [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ]; then echo "::warning::CLOUDFLARE_API_TOKEN not set — deploy skipped."; echo "ok=0" >> "$GITHUB_OUTPUT"; else echo "ok=1" >> "$GITHUB_OUTPUT"; fi
+      - name: Deploy to Cloudflare (worker "worlddigital-ai-crawl-files" on worlddigital.ai)
+        if: github.event_name != 'pull_request' && steps.cf.outputs.ok == '1'
         run: |
           set -o pipefail
           npx --yes wrangler@4.42.0 deploy 2>&1 | tee deploy.log || { tail -15 deploy.log | sed "s/\x1b\[[0-9;]*m//g" | grep -v "^\s*$" | while read -r l; do echo "::error::$l"; done; exit 1; }
@@ -25,7 +30,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       - name: Check the live files
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && steps.cf.outputs.ok == '1'
         run: |
           sleep 20
           for p in robots.txt llms.txt llms-full.txt sitemap.xml; do

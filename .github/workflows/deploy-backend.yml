@@ -1,0 +1,72 @@
+name: Deploy tools API (Python + MongoDB → Cloud Run)
+on:
+  push:
+    branches: [main]
+    paths: ["backend/**", ".github/workflows/deploy-backend.yml"]
+  pull_request:
+    paths: ["backend/**"]
+  workflow_dispatch:
+
+# One-time setup (see README "Backend setup"):
+#   GitHub secrets: GCP_PROJECT_ID, GCP_SA_KEY (service account JSON with Cloud Run Admin,
+#   Artifact Registry Writer, Secret Manager Secret Accessor, Service Account User)
+#   Google Secret Manager secrets (values never touch GitHub): MONGODB_URI, OPENAI_API_KEY,
+#   DATAFORSEO_LOGIN, DATAFORSEO_PASSWORD, STRIPE_SECRET_KEY, RESEND_API_KEY, INTERNAL_TOKEN
+env:
+  SERVICE: worlddigital-ai-api
+  REGION: us-central1
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: backend } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --frozen || uv sync
+      - run: uv run pytest -q
+
+  deploy:
+    needs: test
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check setup
+        id: ready
+        run: |
+          if [ -z "${{ secrets.GCP_SA_KEY }}" ] || [ -z "${{ secrets.GCP_PROJECT_ID }}" ]; then
+            echo "::warning::GCP_SA_KEY / GCP_PROJECT_ID not set yet — tests passed, deploy skipped."
+            echo "ok=0" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=1" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.ready.outputs.ok == '1'
+        uses: google-github-actions/auth@v2
+        with: { credentials_json: "${{ secrets.GCP_SA_KEY }}" }
+      - if: steps.ready.outputs.ok == '1'
+        uses: google-github-actions/deploy-cloudrun@v2
+        id: run
+        with:
+          service: ${{ env.SERVICE }}
+          region: ${{ env.REGION }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          source: backend
+          flags: "--allow-unauthenticated --min-instances=0 --max-instances=3 --memory=512Mi --timeout=120"
+          env_vars: |
+            MONGODB_DB=worlddigital_ai
+            PUBLIC_ORIGIN=https://worlddigital.ai
+            PREVIEW_DAILY_LIMIT=6
+          secrets: |
+            MONGODB_URI=MONGODB_URI:latest
+            OPENAI_API_KEY=OPENAI_API_KEY:latest
+            DATAFORSEO_LOGIN=DATAFORSEO_LOGIN:latest
+            DATAFORSEO_PASSWORD=DATAFORSEO_PASSWORD:latest
+            STRIPE_SECRET_KEY=STRIPE_SECRET_KEY:latest
+            RESEND_API_KEY=RESEND_API_KEY:latest
+            INTERNAL_TOKEN=INTERNAL_TOKEN:latest
+      - if: steps.ready.outputs.ok == '1'
+        name: Health check
+        run: |
+          curl -fsS "${{ steps.run.outputs.url }}/api/tools/health" | tee /tmp/h.json
+          echo "::notice title=API URL::${{ steps.run.outputs.url }} (set as TOOLS_API_URL in workers/ai-site/wrangler.jsonc)"

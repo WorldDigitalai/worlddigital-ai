@@ -16,8 +16,21 @@ jobs:
         with: { node-version: 22 }
       - name: Tests
         run: node --test test/*.test.mjs
-      - name: Deploy to Cloudflare (worker "worlddigital-ai-site", workers.dev preview only, no routes)
+      - name: Tool widget is built from tools-src/
+        run: |
+          npm i --no-save --no-audit --no-fund esbuild@0.25.12 >/dev/null
+          node tools-src/build.mjs
+          git diff --exit-code src/tools-widget.js || { echo "::error::src/tools-widget.js is stale: run node tools-src/build.mjs"; exit 1; }
+      - name: Check Cloudflare secrets
+        id: cf
         if: github.event_name != 'pull_request'
+        run: |
+          if [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ]; then
+            echo "::warning::CLOUDFLARE_API_TOKEN is not set in this repo yet — tests passed, deploy skipped."
+            echo "ok=0" >> "$GITHUB_OUTPUT"
+          else echo "ok=1" >> "$GITHUB_OUTPUT"; fi
+      - name: Deploy to Cloudflare (worker "worlddigital-ai-site", workers.dev preview only, no routes)
+        if: github.event_name != 'pull_request' && steps.cf.outputs.ok == '1'
         run: |
           set -o pipefail
           npx --yes wrangler@4.149.0 deploy 2>&1 | tee deploy.log || { tail -15 deploy.log | sed "s/\x1b\[[0-9;]*m//g" | grep -v "^\s*$" | while read -r l; do echo "::error::$l"; done; exit 1; }
@@ -25,8 +38,16 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Set the tools API token (if the GitHub secret exists)
+        if: github.event_name != 'pull_request' && steps.cf.outputs.ok == '1'
+        run: |
+          if [ -n "$TOOLS_API_TOKEN" ]; then printf '%s' "$TOOLS_API_TOKEN" | npx --yes wrangler@4.149.0 secret put TOOLS_API_TOKEN; fi
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          TOOLS_API_TOKEN: ${{ secrets.TOOLS_API_TOKEN }}
       - name: Set the email key for editor sign-in links (if the GitHub secret exists)
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && steps.cf.outputs.ok == '1'
         run: |
           if [ -n "$RESEND_API_KEY" ]; then
             printf '%s' "$RESEND_API_KEY" | npx --yes wrangler@4.149.0 secret put RESEND_API_KEY
@@ -38,7 +59,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
       - name: Check the preview
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && steps.cf.outputs.ok == '1'
         run: |
           url=$(grep -o "https://[a-z0-9.-]*workers.dev" deploy.log | head -1)
           [ -n "$url" ] || { echo "::warning::No workers.dev address found"; exit 0; }
@@ -47,7 +68,7 @@ jobs:
             code=$(curl -s -o /dev/null -w "%{http_code}" "$url$p"); echo "$p -> $code"; [ "$code" = "200" ] || echo "::error::$p returned $code"
           done
       - name: Check the live site
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && steps.cf.outputs.ok == '1'
         run: |
           sleep 20
           for p in / /services /about /blog /blog/tiktok-vs-instagram-ads /help /login /sitemap.xml /robots.txt; do
@@ -58,7 +79,7 @@ jobs:
           curl -s https://worlddigital.ai/ | grep -q "Get more customers from" || echo "::error::new homepage not served"
           curl -s https://worlddigital.ai/login | grep -q "Get more customers from" && echo "::error::login is not reaching the app" || true
       - name: Tell Bing and IndexNow engines about every page (sitemap URLs)
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && steps.cf.outputs.ok == '1'
         run: |
           urls=$(curl -s https://worlddigital.ai/sitemap.xml | grep -o '<loc>https://worlddigital.ai[^<]*</loc>' | sed 's#</\?loc>##g' | grep -v '/media/' | jq -R . | jq -s .)
           body=$(jq -n --argjson u "$urls" '{host:"worlddigital.ai",key:"5d1c3f0b8e9a4c7d92b6e1f04a3c8d27",keyLocation:"https://worlddigital.ai/5d1c3f0b8e9a4c7d92b6e1f04a3c8d27.txt",urlList:$u}')

@@ -39,7 +39,7 @@ class Settings:
     resend_api_key: str = field(default_factory=lambda: _env("GH_RESEND_API_KEY") or _env("RESEND_API_KEY"))
     resend_base: str = field(default_factory=lambda: _env("RESEND_BASE", "https://api.resend.com"))
     email_from: str = field(default_factory=lambda: _env("EMAIL_FROM", "WorldDigital.ai <reports@worlddigital.ai>"))
-    email_reply_to: str = field(default_factory=lambda: _env("EMAIL_REPLY_TO", "ahmad.awwad@worlddigital.ai"))
+    email_reply_to: str = field(default_factory=lambda: _env("EMAIL_REPLY_TO", "support@worlddigital.ai"))
 
     turnstile_secret: str = field(default_factory=lambda: _env("TURNSTILE_SECRET"))
     # Shared secret the Cloudflare site worker sends; blocks direct calls that skip the site.

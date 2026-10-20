@@ -312,6 +312,23 @@ def key_shapes(s: Settings) -> dict:
             "dataforseo_password": "placeholder name" if s.dataforseo_password.isupper() else f"{len(s.dataforseo_password)} chars"}
 
 
+def live_checks(s: Settings) -> dict:
+    """Free calls that only tell us whether each provider accepts its key."""
+    import httpx
+    out = {}
+    try:
+        out["openai"] = httpx.get(f"{s.openai_base}/v1/models", headers={"Authorization": f"Bearer {s.openai_api_key}"},
+                                  timeout=10).status_code
+    except Exception as e:  # noqa: BLE001
+        out["openai"] = type(e).__name__
+    try:
+        out["dataforseo"] = httpx.get(f"{s.dataforseo_base}/v3/appendix/user_data",
+                                      auth=(s.dataforseo_login, s.dataforseo_password), timeout=10).status_code
+    except Exception as e:  # noqa: BLE001
+        out["dataforseo"] = type(e).__name__
+    return out
+
+
 @app.get("/api/tools/health")
 def health(request: Request):
     s = settings()
@@ -332,4 +349,4 @@ def health(request: Request):
         "openai": s.openai_api_key.startswith("sk-"),
         "dataforseo": bool(s.dataforseo_password) and "@" in s.dataforseo_login,
         "stripe": key.startswith(("sk_test_", "sk_live_", "rk_test_", "rk_live_")), "stripe_mode": ("live" if key.startswith(("sk_live", "rk_live")) else "test") if key else None,
-        "resend": s.resend_api_key.startswith("re_"), "turnstile": bool(s.turnstile_secret), "internal_token": bool(s.internal_token)}, "mongodb_error": mongo_error, "key_shapes": key_shapes(s), "site_token_match": token_match}
+        "resend": s.resend_api_key.startswith("re_"), "turnstile": bool(s.turnstile_secret), "internal_token": bool(s.internal_token)}, "mongodb_error": mongo_error, "key_shapes": key_shapes(s), "live": live_checks(s) if request.query_params.get("live") else None, "site_token_match": token_match}

@@ -134,6 +134,7 @@ main details:not(.rp-fix-ai)>:not(summary){padding:0 20px;margin-top:0}main deta
 .nav-cta{display:flex;align-items:center;gap:10px}
 .wa-float{position:fixed;right:20px;bottom:20px;z-index:60;width:56px;height:56px;border-radius:50%;background:#25D366;display:grid;place-items:center;box-shadow:0 10px 24px -6px rgba(37,211,102,.6);transition:transform .15s}.wa-float:hover{transform:scale(1.07)}.wa-float svg{width:30px;height:30px;fill:#fff}
 .m-cta{display:none}
+main>section:not(:first-of-type){content-visibility:auto;contain-intrinsic-size:auto 720px}
 .js .reveal{opacity:0;transform:translateY(12px);transition:opacity .45s ease,transform .45s ease}.js .reveal.in{opacity:1;transform:none}
 @media (prefers-reduced-motion:reduce){.js .reveal{opacity:1;transform:none;transition:none}}
 @media (max-width:1060px){.nav-cta .btn.red{display:none}}

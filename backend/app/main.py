@@ -315,6 +315,9 @@ def health(request: Request):
         mongo_error = "wrong password" if type(e).__name__ == "OperationFailure" else type(e).__name__
     key = s.stripe_secret_key
     return {"ok": True, "configured": {
-        "mongodb": mongo, "openai": bool(s.openai_api_key), "dataforseo": bool(s.dataforseo_login and s.dataforseo_password),
-        "stripe": bool(key), "stripe_mode": ("live" if key.startswith(("sk_live", "rk_live")) else "test") if key else None,
-        "resend": bool(s.resend_api_key), "turnstile": bool(s.turnstile_secret), "internal_token": bool(s.internal_token)}, "mongodb_error": mongo_error, "site_token_match": token_match}
+        "mongodb": mongo,
+        # True only when the value has the shape of a real key (catches a pasted placeholder name).
+        "openai": s.openai_api_key.startswith("sk-"),
+        "dataforseo": bool(s.dataforseo_password) and "@" in s.dataforseo_login,
+        "stripe": key.startswith(("sk_test_", "sk_live_", "rk_test_", "rk_live_")), "stripe_mode": ("live" if key.startswith(("sk_live", "rk_live")) else "test") if key else None,
+        "resend": s.resend_api_key.startswith("re_"), "turnstile": bool(s.turnstile_secret), "internal_token": bool(s.internal_token)}, "mongodb_error": mongo_error, "site_token_match": token_match}

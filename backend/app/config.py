@@ -32,7 +32,7 @@ class Settings:
     stripe_automatic_tax: bool = field(default_factory=lambda: _env("STRIPE_AUTOMATIC_TAX", "true") != "false")
     stripe_tax_behavior: str = field(default_factory=lambda: _env("STRIPE_TAX_BEHAVIOR", "inclusive"))
 
-    resend_api_key: str = field(default_factory=lambda: _env("RESEND_API_KEY"))
+    resend_api_key: str = field(default_factory=lambda: _env("GH_RESEND_API_KEY") or _env("RESEND_API_KEY"))
     resend_base: str = field(default_factory=lambda: _env("RESEND_BASE", "https://api.resend.com"))
     email_from: str = field(default_factory=lambda: _env("EMAIL_FROM", "WorldDigital.ai <reports@worlddigital.ai>"))
     email_reply_to: str = field(default_factory=lambda: _env("EMAIL_REPLY_TO", "ahmad.awwad@worlddigital.ai"))

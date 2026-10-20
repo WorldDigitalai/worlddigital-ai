@@ -39,6 +39,12 @@ jobs:
               jq -r --arg d "${{ matrix.device }}" '. as $r | [$r.categories.performance.auditRefs[] | .id as $id | $r.audits[$id] | select(.score != null and .score < 0.9 and (.details.overallSavingsMs // 0) > 0) | "\(.id) save \(.details.overallSavingsMs|round)ms"] | "::notice title=LH opportunities \($d)::" + join(" | ")' "reports/${name}-${{ matrix.device }}.report.json" || true
               jq -r --arg d "${{ matrix.device }}" '"::notice title=LH final url \($d)::" + .finalDisplayedUrl + " ua=" + ((.environment.networkUserAgent // "")[0:60])' "reports/${name}-${{ matrix.device }}.report.json"
             fi
+            if [ "$p" = "/" ]; then
+              jq -r --arg d "${{ matrix.device }}" '"::notice title=LH home main thread \($d)::" + ([.audits["mainthread-work-breakdown"].details.items[] | "\(.groupLabel // .group)=\(.duration|round)ms"] | join(" | "))' "reports/${name}-${{ matrix.device }}.report.json" || true
+              jq -r --arg d "${{ matrix.device }}" '"::notice title=LH home scripts \($d)::" + ([.audits["bootup-time"].details.items[] | "\(.url|.[0:70]) total=\(.total|round) script=\(.scripting|round)"] | .[0:6] | join(" | "))' "reports/${name}-${{ matrix.device }}.report.json" || true
+              jq -r --arg d "${{ matrix.device }}" '"::notice title=LH home long tasks \($d)::" + ([(.audits["long-tasks"].details.items // [])[] | "\(.url|.[0:60]) start=\(.startTime|round) dur=\(.duration|round)"] | .[0:8] | join(" | "))' "reports/${name}-${{ matrix.device }}.report.json" || true
+              jq -r --arg d "${{ matrix.device }}" '"::notice title=LH home DOM \($d)::" + (.audits["dom-size"].displayValue // "") + " | non-composited animations: " + (.audits["non-composited-animations"].displayValue // "none")' "reports/${name}-${{ matrix.device }}.report.json" || true
+            fi
             if [ "$p" = "/google-ads-agency" ]; then
               jq -r --arg p "$p" --arg d "${{ matrix.device }}" '. as $r | ["best-practices","performance","accessibility","seo"][] as $c | $r.categories[$c].auditRefs[] | select(.weight > 0) | .id as $id | $r.audits[$id] | select(.score != null and .score < 0.9) | "::notice title=LH \($d) \($p) \($c)::\(.id) (\(.score)) \(.displayValue // "") \((.details.items // [])[0:3] | map(.url // .source.url // .description // .node.snippet // "" | tostring | .[0:120]) | join(" ; "))"' "reports/${name}-${{ matrix.device }}.report.json" | head -25
             fi

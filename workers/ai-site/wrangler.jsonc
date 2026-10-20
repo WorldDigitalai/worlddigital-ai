@@ -23,7 +23,7 @@
     "TS_SITEKEY": "0x4AAAAAAFRt-4be4VSc7r_H",
     "TS_REQUIRED": "1",
     // Python tools API (backend/). Empty = /api/tools answers "being set up". Secret: TOOLS_API_TOKEN
-    "TOOLS_API_URL": ""
+    "TOOLS_API_URL": "https://worlddigital-ai-api-250920469327.us-central1.run.app"
   },
   // Secret (set by the deploy workflow from the GitHub secret of the same name): RESEND_API_KEY
   "triggers": { "crons": ["23 * * * *"] },

@@ -50,7 +50,7 @@ jobs:
             line=$(jq -rs --arg c "$c" '[.[] as $r | ($r.finalDisplayedUrl|sub("https://worlddigital.ai";"")) as $u | $r.categories[$c].auditRefs[] | select(.weight > 0) | .id as $id | $r.audits[$id] | select(.score != null and .score < 1) | {id: .id, u: $u, v: (.displayValue // "")}] | group_by(.id) | map("\(.[0].id)[\(length)p: \(map(.u)|unique|.[0:4]|join(","))] \(.[0].v)") | join(" ; ")' reports/*-$d.report.json)
             [ -n "$line" ] && echo "::notice title=LH100 $c $d::$line"
             if [ "$c" = "accessibility" ] || [ "$c" = "best-practices" ] || [ "$c" = "seo" ]; then
-              jq -rs --arg c "$c" '[.[] as $r | $r.categories[$c].auditRefs[] | select(.weight > 0) | .id as $id | $r.audits[$id] | select(.score != null and .score < 1) | "\(.id): " + ((.details.items // [])[0:3] | map((.node.snippet // .url // .source.url // .description // "") | tostring | .[0:140]) | join(" | "))] | unique | .[0:6][] | "::notice title=LH100 detail \($c) '"$d"'::" + .' reports/*-$d.report.json
+              jq -rs --arg c "$c" '[.[] as $r | $r.categories[$c].auditRefs[] | select(.weight > 0) | .id as $id | $r.audits[$id] | select(.score != null and .score < 1) | "\(.id): " + ((.details.items // [])[0:3] | map((.issueType // .node.snippet // .url // .source.url // .description // "") | tostring | .[0:140]) | join(" | "))] | unique | .[0:6][] | "::notice title=LH100 detail \($c) '"$d"'::" + .' reports/*-$d.report.json
             fi
           done
           { echo "## Lighthouse (${{ matrix.device }})"; cat summary.md; } >> "$GITHUB_STEP_SUMMARY"

@@ -181,9 +181,13 @@ export const CTA = `<section class="cta-sec"><div class="wrap"><div class="cta-b
 const FORM_JS = `
 (function(){var r=document.documentElement;if(!('IntersectionObserver' in window)){return}
 var els=[].slice.call(document.querySelectorAll('main section:not(:first-of-type) .card,main .svc,main .tcard,main .step,main .stat,main .clients,main section:not(:first-of-type) h2.h,main details:not(.rp-fix-ai)'));
-var vh=innerHeight;els=els.filter(function(e){return e.getBoundingClientRect().top>vh*0.94});
-var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{threshold:0,rootMargin:'0px 0px -6% 0px'});
-els.forEach(function(e){e.classList.add('reveal');io.observe(e)})})();
+var seen=new WeakSet();
+// No getBoundingClientRect here: measuring during load forces a full layout. The observer's first report
+// tells us what is already on screen (left alone) and what is below the fold (hidden, then faded in).
+var io=new IntersectionObserver(function(es){es.forEach(function(e){var t=e.target;
+if(!seen.has(t)){seen.add(t);if(e.isIntersecting){io.unobserve(t);return}t.classList.add('reveal');return}
+if(e.isIntersecting){t.classList.add('in');io.unobserve(t)}})},{threshold:0,rootMargin:'0px 0px -6% 0px'});
+els.forEach(function(e){io.observe(e)})})();
 document.addEventListener('submit',function(e){var f=e.target;
 if(f.hasAttribute('data-subscribe')){e.preventDefault();var i=f.querySelector('input'),v=(i.value||'').trim();
 if(!/^(https?:\\/\\/)?([a-z0-9-]+\\.)+[a-z]{2,}(\\/\\S*)?$/i.test(v)){i.setCustomValidity('Please enter your business website, for example yourbusiness.com');i.reportValidity();i.addEventListener('input',function(){i.setCustomValidity('')},{once:true});return}

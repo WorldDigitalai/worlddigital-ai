@@ -20,7 +20,7 @@ jobs:
       - name: Run Lighthouse (Google's open-source auditor) on key pages
         run: |
           mkdir -p reports
-          pages="/ /services /services/keyword-research /services/content-marketing /ai-seo-agency /google-ads-agency /build /about /houston /murfreesboro /free-seo-report /blog /blog/google-ads-management-local-businesses"
+          pages="/ /services /local-seo-services /generative-engine-optimization /services/keyword-research /services/content-marketing /ai-seo-agency /google-ads-agency /build /about /houston /murfreesboro /free-seo-report /blog /blog/google-ads-management-local-businesses"
           preset=""; [ "${{ matrix.device }}" = "desktop" ] && preset="--preset=desktop"
           echo "| Page | Performance | Accessibility | Best practices | SEO |" > summary.md
           echo "|---|---|---|---|---|" >> summary.md

@@ -68,6 +68,8 @@ Clients include Murfreesboro Kabob, RPM Auto Group and Bean Loft Coffee Company 
 - [About](${SITE}/about): The company, how we work, founder
 - [Services](${SITE}/services): All services
 - [AI SEO Agency](${SITE}/ai-seo-agency): SEO, AI SEO, answer engine optimization (AEO) and generative engine optimization (GEO), $199.99/month
+- [Local SEO services](${SITE}/local-seo-services): Google Business Profile, Maps and “near me” rankings, citations and reviews, included in the $199.99/month plan
+- [Generative engine optimization](${SITE}/generative-engine-optimization): GEO so ChatGPT, Google AI Overviews, Gemini and Perplexity mention and cite your brand
 - [Google Ads Agency](${SITE}/google-ads-agency): Google Search, Maps and Performance Max campaign management
 - [AI Marketing Automation](${SITE}/ai-marketing-automation): Automated marketing workflows for growing businesses
 - [Website Build](${SITE}/build): Website design, maintenance and management for SMBs, SMEs and enterprises

@@ -15,6 +15,8 @@ import enterprise from './pages/enterprise.html';
 import keywords from './pages/keyword-research.html';
 import content from './pages/content-marketing.html';
 import report from './pages/free-seo-report.html';
+import localSeo from './pages/local-seo-services.html';
+import geo from './pages/generative-engine-optimization.html';
 import unsubscribe from './pages/unsubscribe.html';
 import privacy from '../content/legal/privacy-policy.md';
 import terms from '../content/legal/terms-and-conditions.md';
@@ -31,6 +33,41 @@ const local = (city, region, path) => ({
   url: SITE + path, telephone: '+1-832-834-0680', email: 'support@worlddigital.ai', priceRange: '$199.99/month+',
   areaServed: { '@type': 'City', name: `${city}, ${region}` }, parentOrganization: { '@id': `${SITE}/#org` },
 });
+
+// FAQ block + matching FAQPage schema from one list, so the two never drift apart.
+const faq = (title, items) => ({
+  html: `<section class="sec" style="background:#fff;border-top:1px solid #DCE5EF"><div class="wrap" style="max-width:880px">
+<div class="eyebrow">FAQ</div><h2 class="h" style="font-size:34px;margin-top:10px">${esc(title)}</h2><div style="margin-top:20px">
+${items.map(([q, a], i) => `<details${i ? '' : ' open'}><summary>${esc(q)}</summary><p class="muted" style="line-height:1.6">${a}</p></details>`).join('\n')}
+</div></div></section>`,
+  schema: { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: items.map(([q, a]) => ({
+    '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a.replace(/<[^>]+>/g, '') } })) },
+});
+
+const LOCAL_FAQ = faq('Local SEO questions', [
+  ['What are local SEO services?', 'Local SEO services improve how a business shows up when people nearby search for what it sells: the Google Maps “local pack”, “near me” searches, Apple Maps, Bing Places and AI assistants. The work covers your Google Business Profile, location and service pages, consistent listings, reviews and local schema.'],
+  ['How much do local SEO services cost?', 'Local SEO is included in our SEO &amp; AI Search Visibility plan at $199.99 a month, with no contract. Brands with many locations are quoted per location on the <a href="/enterprise">multi-location page</a>.'],
+  ['How long does local SEO take?', 'Google Business Profile and listing fixes can show results within a few weeks. Competitive “service + city” rankings usually build over three to six months.'],
+  ['Do I need a storefront?', 'No. Service-area businesses that travel to customers can rank in local results too. We set up the profile as a service-area business and build pages for the areas you cover.'],
+  ['Does local SEO help with ChatGPT and AI answers?', 'Yes. AI assistants lean on the same signals: consistent business details, reviews and clear pages about what you do and where. See our <a href="/generative-engine-optimization">generative engine optimization</a> work.'],
+  ['Do you work outside Houston and Murfreesboro?', 'Yes. We work remotely with businesses across the United States and Canada.'],
+]);
+
+const GEO_FAQ = faq('GEO questions', [
+  ['What is generative engine optimization (GEO)?', 'GEO is the practice of making a brand easy for AI systems such as ChatGPT, Google AI Overviews, Gemini and Perplexity to find, understand and trust, so they mention or cite it in generated answers.'],
+  ['How is GEO different from SEO?', 'SEO aims to rank pages in search results. GEO aims to get your brand named inside AI answers. They share a lot of work (clear content, technical health, trusted mentions), so we run them together.'],
+  ['Can you guarantee ChatGPT will recommend my business?', 'No one can guarantee what an AI model says. What we can do is fix the reasons it skips you today and track mentions and citations over time, so you can see progress.'],
+  ['How do you measure GEO?', 'We run a fixed set of buyer questions through AI assistants each month and record whether you are mentioned or cited, which competitors are, and which sources the answers rely on.'],
+  ['What is llms.txt?', 'llms.txt is a plain-text file at the root of a website that summarizes the business and lists its key pages for AI tools. We write and maintain it as part of GEO.'],
+  ['How much do GEO services cost?', 'GEO is included in the SEO &amp; AI Search Visibility plan at $199.99 a month, together with SEO, AI SEO and AEO. No contract.'],
+]);
+
+const CHECKER_FAQ = faq('SEO checker questions', [
+  ['What does this SEO checker test?', 'It checks on-page SEO (titles, descriptions, headings, schema), mobile speed with Google Lighthouse, where you rank on Google, your backlinks, and whether AI assistants cite your site, then lists your top fixes.'],
+  ['Is the SEO audit really free?', 'Yes. Enter your website and you get the report in about a minute, with no credit card.'],
+  ['How accurate is it?', 'Speed scores come from Google Lighthouse and rankings and backlinks from live search data, so they reflect what Google sees today. Rankings change daily, so treat it as a snapshot.'],
+  ['What should I do after the audit?', 'Start with the top fixes; each one has plain steps and an AI prompt you can paste into ChatGPT, Claude or Gemini. If you would rather have it done for you, the <a href="/ai-seo-agency#plan">$199.99 a month SEO plan</a> covers it.'],
+]);
 
 function legal(md, path) {
   const { meta, body } = parseFrontmatter(md);
@@ -96,13 +133,21 @@ export const PAGES = {
   '/career': { body: career, title: 'Careers at WorldDigital.ai | Digital Marketing Jobs',
     description: 'Join WorldDigital.ai: remote-friendly digital marketing and AI roles with flexible hours, learning and growth. Apply online.',
     schema: [crumbs([['Home', '/'], ['Careers', '/career']])], sitemap: { priority: '0.4' } },
+  '/local-seo-services': { keywords: 'local seo services, local seo, local seo company, google business profile optimization, near me seo, google maps seo, local seo agency', body: localSeo + LOCAL_FAQ.html, title: 'Local SEO Services: Google Maps & Near Me | WorldDigital.ai',
+    description: 'Local SEO services for SMBs, SMEs and multi-location brands in the US and Canada: Google Business Profile, Maps rankings, citations and reviews. $199.99/month.',
+    schema: [svc('Local SEO services', '/local-seo-services', 'Google Business Profile, location pages, citations, reviews and local schema.', 'Local SEO'), LOCAL_FAQ.schema,
+      crumbs([['Home', '/'], ['Services', '/services'], ['Local SEO services', '/local-seo-services']])], sitemap: { priority: '0.9' } },
+  '/generative-engine-optimization': { keywords: 'generative engine optimization, geo, generative engine optimization services, generative engine optimization agency, ai search optimization, chatgpt seo, how to rank in chatgpt, llm seo', body: geo + GEO_FAQ.html, title: 'Generative Engine Optimization (GEO) | WorldDigital.ai',
+    description: 'Generative engine optimization (GEO) services: get your brand mentioned and cited by ChatGPT, Google AI Overviews, Gemini and Perplexity. $199.99/month.',
+    schema: [svc('Generative engine optimization', '/generative-engine-optimization', 'GEO so AI assistants mention and cite your brand.', 'Generative engine optimization'), GEO_FAQ.schema,
+      crumbs([['Home', '/'], ['Services', '/services'], ['Generative engine optimization', '/generative-engine-optimization']])], sitemap: { priority: '0.9' } },
   '/enterprise': { keywords: 'multi location seo, multi-location local seo, franchise seo, multi location marketing, enterprise local seo', body: enterprise, title: 'Multi-Location SEO & Franchise SEO | WorldDigital.ai',
     description: 'Multi-location SEO and franchise SEO for brands with many locations: location pages, Google Business Profiles, AI search and Google Ads, priced per location.',
     schema: [svc('Multi-location marketing', '/enterprise', 'Local SEO, AI search and Google Ads across many locations.', 'Multi-location SEO'),
       crumbs([['Home', '/'], ['Multi-location', '/enterprise']])], sitemap: { priority: '0.5' } },
-  '/free-seo-report': { keywords: 'free seo audit, free seo report, website seo checker, seo checker, free website audit, seo audit, ai visibility checker', body: report, title: 'Free SEO Audit & Website SEO Checker | WorldDigital.ai',
+  '/free-seo-report': { keywords: 'free seo audit, free seo report, website seo checker, seo checker, free website audit, seo audit, ai visibility checker', body: report + CHECKER_FAQ.html, title: 'Free SEO Audit & Website SEO Checker | WorldDigital.ai',
     description: 'Free SEO audit and website SEO checker: on-page SEO, mobile speed, Google rankings, backlinks and ChatGPT citations, with your top fixes in 60 seconds.',
-    schema: [{ '@context': 'https://schema.org', '@type': 'WebApplication', name: 'Free SEO & AI Visibility Report', url: `${SITE}/free-seo-report`, applicationCategory: 'BusinessApplication', operatingSystem: 'Any', offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' }, provider: { '@id': `${SITE}/#org` } },
+    schema: [CHECKER_FAQ.schema, { '@context': 'https://schema.org', '@type': 'WebApplication', name: 'Free SEO & AI Visibility Report', url: `${SITE}/free-seo-report`, applicationCategory: 'BusinessApplication', operatingSystem: 'Any', offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' }, provider: { '@id': `${SITE}/#org` } },
       crumbs([['Home', '/'], ['Free SEO report', '/free-seo-report']])], sitemap: { priority: '0.9', changefreq: 'monthly' } },
   '/unsubscribe': { body: unsubscribe, cta: false, noindex: true, title: 'Unsubscribe | WorldDigital.ai', description: 'Unsubscribe from WorldDigital.ai marketing emails.', sitemap: null },
   '/privacy-policy': legal(privacy, '/privacy-policy'),
@@ -133,6 +178,8 @@ export const REDIRECTS = {
   '/blog/google-gemini-ai-news-features-use-cases-comparisons': '/blog/how-ai-marketing-automation-works',
   '/blog/machine-learning-in-2026-ai-news-tools-business-uses': '/blog/how-ai-marketing-automation-works',
   '/feed.xml': '/blog/feed.xml',
+  '/local-seo': '/local-seo-services', '/services/local-seo': '/local-seo-services',
+  '/geo': '/generative-engine-optimization', '/generative-engine-optimization-agency': '/generative-engine-optimization', '/services/geo': '/generative-engine-optimization',
   '/blog/ai-marketing-for-small-businesses-turn-tech-trends-into-seo-wins': '/blog/how-ai-marketing-automation-works',
   '/services/meta-ads': '/services', '/services/tiktok-ads': '/services', '/services/linkedin-ads': '/services',
   '/services/x-ads': '/services', '/services/snapchat-ads': '/services', '/services/youtube-shorts': '/services',

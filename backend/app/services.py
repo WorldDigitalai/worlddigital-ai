@@ -32,7 +32,7 @@ def _json(res: httpx.Response, service: str):
 
 # ── OpenAI ──────────────────────────────────────────────────────────────────
 
-_MODELS = ["gpt-5.4-mini", "gpt-5.4-nano", "gpt-5.4", "gpt-5.2", "gpt-5.1", "gpt-4o-mini", "gpt-4.1-mini"]
+_MODELS = ["gpt-5.4-mini", "gpt-5.5", "gpt-6-luna", "gpt-5.4", "gpt-5.2"]
 _working_model: list[str] = []  # remembered after the first model the project is allowed to use
 
 
@@ -53,6 +53,7 @@ def openai_json(s: Settings, *, system: str, user: str, max_tokens: int = 2500, 
                          json=body, timeout=90)
         if res.status_code in (403, 404) and "model" in res.text:
             last = res
+            print(f"openai model {model} refused: {res.status_code} {res.text[:200]}", flush=True)
             continue  # this project can't use this model; try the next
         data = _json(res, "OpenAI")
         if not _working_model:

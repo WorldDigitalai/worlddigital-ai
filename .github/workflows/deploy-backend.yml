@@ -7,14 +7,20 @@ on:
     paths: ["backend/**"]
   workflow_dispatch:
 
-# One-time setup (see README "Backend setup"):
-#   GitHub secrets: GCP_PROJECT_ID, GCP_SA_KEY (service account JSON with Cloud Run Admin,
-#   Artifact Registry Writer, Secret Manager Secret Accessor, Service Account User)
-#   Google Secret Manager secrets (values never touch GitHub): MONGODB_URI, OPENAI_API_KEY,
-#   DATAFORSEO_LOGIN, DATAFORSEO_PASSWORD, STRIPE_SECRET_KEY, RESEND_API_KEY, INTERNAL_TOKEN
+# One-time setup: run backend/setup-gcp.sh in Google Cloud Shell. GitHub signs in to Google with
+# Workload Identity Federation (short-lived tokens, no stored service-account key).
+# Secret values live only in Google Secret Manager: MONGODB_URI, OPENAI_API_KEY, DATAFORSEO_LOGIN,
+# DATAFORSEO_PASSWORD, STRIPE_SECRET_KEY, RESEND_API_KEY, INTERNAL_TOKEN
 env:
   SERVICE: worlddigital-ai-api
   REGION: us-central1
+  GCP_PROJECT: cs-poc-0zqkvyxapah85tnxz2byzqa
+  WIF_PROVIDER: projects/250920469327/locations/global/workloadIdentityPools/github/providers/github
+  DEPLOY_SA: github-deploy@cs-poc-0zqkvyxapah85tnxz2byzqa.iam.gserviceaccount.com
+
+permissions:
+  contents: read
+  id-token: write
 
 jobs:
   test:
@@ -32,25 +38,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Check setup
-        id: ready
-        run: |
-          if [ -z "${{ secrets.GCP_SA_KEY }}" ] || [ -z "${{ secrets.GCP_PROJECT_ID }}" ]; then
-            echo "::warning::GCP_SA_KEY / GCP_PROJECT_ID not set yet — tests passed, deploy skipped."
-            echo "ok=0" >> "$GITHUB_OUTPUT"
-          else
-            echo "ok=1" >> "$GITHUB_OUTPUT"
-          fi
-      - if: steps.ready.outputs.ok == '1'
-        uses: google-github-actions/auth@v2
-        with: { credentials_json: "${{ secrets.GCP_SA_KEY }}" }
-      - if: steps.ready.outputs.ok == '1'
-        uses: google-github-actions/deploy-cloudrun@v2
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.DEPLOY_SA }}
+      - uses: google-github-actions/deploy-cloudrun@v2
         id: run
         with:
           service: ${{ env.SERVICE }}
           region: ${{ env.REGION }}
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          project_id: ${{ env.GCP_PROJECT }}
           source: backend
           flags: "--allow-unauthenticated --min-instances=0 --max-instances=3 --memory=512Mi --timeout=120"
           env_vars: |
@@ -65,8 +62,7 @@ jobs:
             STRIPE_SECRET_KEY=STRIPE_SECRET_KEY:latest
             RESEND_API_KEY=RESEND_API_KEY:latest
             INTERNAL_TOKEN=INTERNAL_TOKEN:latest
-      - if: steps.ready.outputs.ok == '1'
-        name: Health check
+      - name: Health check
         run: |
           curl -fsS "${{ steps.run.outputs.url }}/api/tools/health" | tee /tmp/h.json
           echo "::notice title=API URL::${{ steps.run.outputs.url }} (set as TOOLS_API_URL in workers/ai-site/wrangler.jsonc)"

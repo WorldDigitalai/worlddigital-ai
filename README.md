@@ -43,9 +43,9 @@ cd workers/ai-site && npx wrangler dev --local --port 8791 # site; .dev.vars: TO
 **GitHub → Settings → Secrets and variables → Actions**
 - `CLOUDFLARE_API_TOKEN` (Workers Scripts: Edit), `CLOUDFLARE_ACCOUNT_ID` = `7a05f2ae447b2e57f5c902dc6f593d22`
 - `RESEND_API_KEY` (blog editor sign-in emails), `TOOLS_API_TOKEN` (same value as the backend's `INTERNAL_TOKEN`)
-- `GCP_PROJECT_ID`, `GCP_SA_KEY` (service account JSON: Cloud Run Admin, Artifact Registry Writer, Cloud Build Editor, Secret Manager Secret Accessor, Service Account User)
+- (No Google key needed in GitHub: the deploy signs in with Workload Identity Federation.)
 
-**Google Secret Manager** (same project): `MONGODB_URI`, `OPENAI_API_KEY`, `DATAFORSEO_LOGIN`, `DATAFORSEO_PASSWORD`, `STRIPE_SECRET_KEY`, `RESEND_API_KEY`, `INTERNAL_TOKEN`.
+**Google Cloud**: run `backend/setup-gcp.sh` once in Google Cloud Shell. It sets up keyless GitHub sign-in (Workload Identity Federation), permissions, and asks for each secret (MONGODB_URI, OPENAI_API_KEY, DATAFORSEO_LOGIN, DATAFORSEO_PASSWORD, STRIPE_SECRET_KEY, RESEND_API_KEY, INTERNAL_TOKEN).
 
 **MongoDB Atlas**: create a database user for the API; Network Access must allow Cloud Run (0.0.0.0/0 with a strong password, or a Cloud NAT static IP).
 

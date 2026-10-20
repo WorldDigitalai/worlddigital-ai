@@ -32,27 +32,39 @@ def _json(res: httpx.Response, service: str):
 
 # ── OpenAI ──────────────────────────────────────────────────────────────────
 
+_MODELS = ["gpt-4o-mini", "gpt-4.1-mini", "gpt-5-mini", "gpt-4o", "gpt-4.1", "gpt-5", "gpt-4-turbo", "gpt-3.5-turbo"]
+_working_model: list[str] = []  # remembered after the first model the project is allowed to use
+
+
 def openai_json(s: Settings, *, system: str, user: str, max_tokens: int = 2500, temperature: float = 0.4) -> dict:
     if not s.openai_api_key:
         raise ApiError("OPENAI_API_KEY missing", 503, "The generator is being set up. Please try again later.")
-    res = httpx.post(
-        f"{s.openai_base}/v1/chat/completions",
-        headers={"Authorization": f"Bearer {s.openai_api_key}"},
-        json={
-            "model": s.openai_model,
-            "temperature": temperature,
-            "max_tokens": max_tokens,
-            "response_format": {"type": "json_object"},
-            "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
-        },
-        timeout=60,
-    )
-    data = _json(res, "OpenAI")
-    content = ((data.get("choices") or [{}])[0].get("message") or {}).get("content") or "{}"
-    try:
-        return json.loads(content)
-    except ValueError as e:
-        raise ApiError("OpenAI returned invalid JSON", 502) from e
+    candidates = _working_model or [s.openai_model] + [m for m in _MODELS if m != s.openai_model]
+    last = None
+    for model in candidates:
+        reasoning = model.startswith(("gpt-5", "o1", "o3", "o4"))
+        body = {"model": model, "response_format": {"type": "json_object"},
+                "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
+        if reasoning:
+            body["max_completion_tokens"] = max_tokens * 4  # room for reasoning tokens
+        else:
+            body.update(max_tokens=max_tokens, temperature=temperature)
+        res = httpx.post(f"{s.openai_base}/v1/chat/completions", headers={"Authorization": f"Bearer {s.openai_api_key}"},
+                         json=body, timeout=90)
+        if res.status_code in (403, 404) and "model" in res.text:
+            last = res
+            continue  # this project can't use this model; try the next
+        data = _json(res, "OpenAI")
+        if not _working_model:
+            _working_model.append(model)
+            print(f"openai model in use: {model}")
+        content = ((data.get("choices") or [{}])[0].get("message") or {}).get("content") or "{}"
+        try:
+            return json.loads(content)
+        except ValueError as e:
+            raise ApiError("OpenAI returned invalid JSON", 502) from e
+    _json(last, "OpenAI")  # raises with the last error
+    raise ApiError("no OpenAI model available", 502)
 
 
 # ── DataForSEO (Google Ads keyword data) ───────────────────────────────────

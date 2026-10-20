@@ -79,7 +79,7 @@ export const PAGES = {
     description: 'AI marketing agency for growing businesses: AI marketing automation for SEO, Google Ads monitoring and reporting, checked by real strategists.',
     schema: [svc('AI marketing automation', '/ai-marketing-automation', 'AI-assisted research, content drafts, ad monitoring and reporting, reviewed by strategists.', 'Marketing automation'),
       crumbs([['Home', '/'], ['Services', '/services'], ['AI marketing automation', '/ai-marketing-automation']])], sitemap: { priority: '0.7' } },
-  '/services/keyword-research': { keywords: 'keyword research services, keyword research, local keyword research, seo keyword research', body: keywords, tool: 'keywords', title: 'Keyword Research Tool: 10 Keywords for $9.99 | WorldDigital.ai',
+  '/services/keyword-research': { keywords: 'keyword research services, keyword research, local keyword research, seo keyword research', body: keywords, tool: 'keywords', title: 'Keyword Research Tool: 10 Keywords, $9.99 | WorldDigital.ai',
     description: 'Keyword research for SMBs, SMEs and enterprises in the US and Canada: real Google volume and CPC. 3 keywords free, all 10 for $9.99 as PDF, Excel or Word.',
     schema: [svc('Keyword research', '/services/keyword-research', 'Search and AI-question research grouped by service and city.', 'Keyword research'),
       crumbs([['Home', '/'], ['Services', '/services'], ['Keyword research', '/services/keyword-research']])], sitemap: { priority: '0.6' } },

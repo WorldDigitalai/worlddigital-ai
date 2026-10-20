@@ -32,6 +32,7 @@ from .products import COUNTRIES, PLATFORMS, PRODUCTS, generate_content, generate
 from .services import ApiError, create_checkout_session, get_checkout_session, parse_site_url, send_email, verify_turnstile
 from .store import Store, now
 
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 log = logging.getLogger("worlddigital.api")
 
 app = FastAPI(title="worlddigital.ai tools API", docs_url=None, redoc_url=None)
@@ -64,8 +65,9 @@ def set_store(st: Store | None) -> None:
 
 @app.exception_handler(ApiError)
 def api_error(_req: Request, e: ApiError):
-    print(f"error {e.status}: {e}")
-    return JSONResponse({"error": e.public}, status_code=e.status, headers={"Cache-Control": "no-store"})
+    log.error("error %s: %s", e.status, e)
+    # Cloudflare replaces 502 bodies with its own page, so upstream failures go out as 503.
+    return JSONResponse({"error": e.public}, status_code=503 if e.status == 502 else e.status, headers={"Cache-Control": "no-store"})
 
 
 def guard(request: Request) -> None:

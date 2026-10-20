@@ -14,7 +14,6 @@ export const CSS = `
 @font-face{font-family:Inter;font-style:normal;font-weight:100 900;font-display:swap;src:url(/fonts/inter-var-latin.woff2) format("woff2")}
 @font-face{font-family:"Inter Fallback";src:local("Arial");ascent-override:90.44%;descent-override:22.52%;line-gap-override:0%;size-adjust:107.12%}
 @font-face{font-family:Sora;font-style:normal;font-weight:100 800;font-display:swap;src:url(/fonts/sora-var-latin.woff2) format("woff2")}
-@font-face{font-family:"Sora Fallback";src:local("Arial");ascent-override:84.52%;descent-override:25.27%;line-gap-override:0%;size-adjust:114.76%}
 @font-face{font-family:"IBM Plex Mono";font-style:normal;font-weight:500;font-display:swap;src:url(/fonts/plex-mono-500-latin.woff2) format("woff2")}
 :root{--ink:#0E1A2B;--ink2:#33445A;--muted:#4A5B70;--line:#DCE5EF;--bg:#F4F8FC;--blue:#0D5EC7;--blue2:#0B4FA8;--red:#C13A2A;--green:#15803D}
 *{box-sizing:border-box}
@@ -25,11 +24,11 @@ a{color:#0D5EC7}a:hover{color:#0B4FA8}
 :focus-visible{outline:3px solid #93C5FD;outline-offset:2px}
 .skip{position:absolute;left:-999px;top:8px;background:#fff;padding:10px 14px;border-radius:8px;z-index:50}.skip:focus{left:8px}
 .wrap{max-width:1180px;margin:0 auto;padding:0 24px}
-.h{font-family:Sora,"Sora Fallback",Inter,sans-serif;letter-spacing:-0.02em;margin:0}
+.h{font-family:Sora,Inter,sans-serif;letter-spacing:-0.02em;margin:0}
 .eyebrow{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#0B4FA8}
 .top{background:#fff;border-bottom:1px solid #DCE5EF;position:sticky;top:0;z-index:20}
 .topin{display:flex;align-items:center;justify-content:space-between;gap:14px;min-height:72px}
-.brand{font-family:Sora,"Sora Fallback",Inter,sans-serif;font-weight:800;font-size:21px;color:#0E1A2B;text-decoration:none;display:flex;align-items:center;gap:10px}
+.brand{font-family:Sora,Inter,sans-serif;font-weight:800;font-size:21px;color:#0E1A2B;text-decoration:none;display:flex;align-items:center;gap:10px}
 .brand img{width:36px;height:36px;border-radius:9px;box-shadow:0 0 0 1px #DCE5EF}
 .brand small{display:block;font-family:Inter,sans-serif;font-weight:500;font-size:11.5px;color:#4A5B70;letter-spacing:.02em}
 .nav{display:flex;gap:20px;font-size:15px;white-space:nowrap}
@@ -50,7 +49,7 @@ a{color:#0D5EC7}a:hover{color:#0B4FA8}
 .kv{display:grid;grid-template-columns:max-content 1fr;gap:12px 24px;font-size:15.5px;margin:0}.kv dt{color:#4A5B70}.kv dd{margin:0;font-weight:600}
 .foot{background:#0E1A2B;color:#C9D6E6;padding:56px 0 32px}
 .foot a{color:#E6EDF6;text-decoration:none}.foot a:hover{text-decoration:underline}
-.foot p a[href$="-policy"],.foot p a[href="/terms-and-conditions"]{text-decoration:underline;text-underline-offset:2px}.foot h2.fh{font-family:Sora,"Sora Fallback",Inter,sans-serif;color:#fff;font-size:15px;margin:0 0 12px}
+.foot p a[href$="-policy"],.foot p a[href="/terms-and-conditions"]{text-decoration:underline;text-underline-offset:2px}.foot h2.fh{font-family:Sora,Inter,sans-serif;color:#fff;font-size:15px;margin:0 0 12px}
 table.cmp{width:100%;border-collapse:collapse;font-size:15px;background:#fff;border-radius:16px;overflow:hidden}
 table.cmp th,table.cmp td{padding:14px 16px;border-bottom:1px solid #DCE5EF;text-align:left;vertical-align:top}
 table.cmp th{background:#F7FAFD;color:#33445A;font-weight:600}
@@ -65,8 +64,8 @@ textarea{min-height:120px;resize:vertical}
 .form-msg{margin:12px 0 0;font-weight:600}.form-msg.ok{color:#15803D}.form-msg.err{color:#B42318}
 .cta{background:#0D5EC7;color:#fff;padding:64px 0}
 .prose{font-size:17.5px;line-height:1.75;color:#1F2D3D}
-.prose h2{font-family:Sora,"Sora Fallback",Inter,sans-serif;font-size:28px;line-height:1.25;margin:44px 0 12px;letter-spacing:-.01em}
-.prose h3{font-family:Sora,"Sora Fallback",Inter,sans-serif;font-size:21px;margin:32px 0 10px}
+.prose h2{font-family:Sora,Inter,sans-serif;font-size:28px;line-height:1.25;margin:44px 0 12px;letter-spacing:-.01em}
+.prose h3{font-family:Sora,Inter,sans-serif;font-size:21px;margin:32px 0 10px}
 .prose p{margin:0 0 18px}.prose ul,.prose ol{padding-left:22px;margin:0 0 18px}.prose li{margin:6px 0}
 .prose blockquote{margin:0 0 18px;padding:12px 18px;border-left:4px solid #0D5EC7;background:#fff;border-radius:0 12px 12px 0}
 .prose img{border-radius:14px;display:block;margin:8px 0 22px}
@@ -87,7 +86,7 @@ textarea{min-height:120px;resize:vertical}
 /* ===== Same look as worlddigital.us (Design direction A · Analyst's Desk) ===== */
 :root{--shadow:0 1px 2px rgba(14,26,43,.04),0 18px 36px -26px rgba(14,26,43,.4);--navy:#0E1A2B;--mono-blue:#0B4FA8}
 body{-webkit-font-smoothing:antialiased;overflow-x:hidden}
-.h,h1,h2,h3{font-family:Sora,"Sora Fallback",Inter,"Inter Fallback",system-ui,sans-serif}
+.h,h1,h2,h3{font-family:Sora,Inter,"Inter Fallback",system-ui,sans-serif}
 h2.h{font-weight:700;letter-spacing:-.025em}
 .hero-h{font-weight:800;letter-spacing:-.035em}
 .eyebrow{font-weight:500;letter-spacing:.06em}
@@ -103,7 +102,7 @@ a.card:hover,.svc:hover,.post-card:hover{transform:translateY(-3px);box-shadow:v
 .ic-blue{background:#E8F0FA;color:#0B4FA8}.ic-mix{background:#ECEFFA;color:#3346A0}.ic-red{background:#FBECE9;color:#A8321F}.ic-green{background:#E3F4EA;color:#146C3A}
 .tags{list-style:none;padding:0;margin:4px 0 0;display:flex;flex-wrap:wrap;gap:6px}.tags li{font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px;background:#F1F6FD;color:#0B4FA8}
 .stats{display:grid;background:#0E1A2B;border-radius:18px;padding:28px 32px;gap:24px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));box-shadow:0 30px 60px -30px rgba(14,26,43,.6)}
-.stat{color:#fff;text-decoration:none;display:block}.stat b{display:block;font-family:Sora,"Sora Fallback",Inter,sans-serif;color:#fff;font-weight:700;font-size:clamp(22px,2.4vw,28px);letter-spacing:-.03em}
+.stat{color:#fff;text-decoration:none;display:block}.stat b{display:block;font-family:Sora,Inter,sans-serif;color:#fff;font-weight:700;font-size:clamp(22px,2.4vw,28px);letter-spacing:-.03em}
 .stat span{display:block;font-size:14px;color:#B7C5D6;margin-top:4px;line-height:1.45}
 a.stat span{text-decoration:underline;text-decoration-color:rgba(183,197,214,.5);text-underline-offset:3px}a.stat:hover span{color:#fff}
 .clients{margin:34px 0 0;text-align:center}

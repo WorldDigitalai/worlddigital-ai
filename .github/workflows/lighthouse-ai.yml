@@ -53,6 +53,7 @@ jobs:
               jq -rs --arg c "$c" '[.[] as $r | $r.categories[$c].auditRefs[] | select(.weight > 0) | .id as $id | $r.audits[$id] | select(.score != null and .score < 1) | "\(.id): " + ((.details.items // [])[0:3] | map((.issueType // .node.snippet // .url // .source.url // .description // "") | tostring | .[0:140]) | join(" | "))] | unique | .[0:6][] | "::notice title=LH100 detail \($c) '"$d"'::" + .' reports/*-$d.report.json
             fi
           done
+          jq -rs '[.[] as $r | ($r.finalDisplayedUrl|sub("https://worlddigital.ai";"")) as $u | ($r.audits["inspector-issues"].details.items // [])[] | "\($u) \(.issueType): " + ([(.subItems.items // [])[] | (.url // .violatedDirective // .blockedURL // (.|tostring))] | unique | join(" , ") | .[0:300])] | unique | .[0:8][] | "::notice title=LH100 issue '"$d"'::" + .' reports/*-$d.report.json || true
           { echo "## Lighthouse (${{ matrix.device }})"; cat summary.md; } >> "$GITHUB_STEP_SUMMARY"
           cat summary.md
       - uses: actions/upload-artifact@v4

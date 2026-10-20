@@ -48,7 +48,7 @@ export function blogIndex(posts, { category, prod }) {
   const body = `<section style="background:#fff;border-bottom:1px solid #DCE5EF"><div class="wrap" style="padding-top:60px;padding-bottom:44px">
 <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> / Blog</nav>
 <div class="eyebrow" style="margin-top:14px">Blog &amp; guides</div>
-<h1 class="h hero-h" style="font-size:50px;line-height:1.08;margin-top:12px">${catName ? esc(catName) : 'Marketing guides for local businesses'}</h1>
+<h1 class="h hero-h" style="font-size:50px;line-height:1.08;margin-top:12px">${catName ? esc(catName) : 'Marketing guides for growing businesses'}</h1>
 <p style="font-size:18px;line-height:1.6;color:#33445A;margin:16px 0 0;max-width:720px">Plain-English guides on SEO, AI search, Google Ads and growing a local business online.</p>
 ${filters}
 </div></section>
@@ -91,7 +91,7 @@ ${img ? `<img src="${img}" alt="${esc(p.cover_alt || '')}" width="1200" height="
 ${related.length ? `<section class="sec" style="padding-top:40px"><div class="wrap"><div class="eyebrow">Keep reading</div><div class="grid3" style="margin-top:18px">${related.map(card).join('')}</div></div></section>` : ''}`;
   return page({
     path: `/blog/${p.slug}`, prod, noindex: preview, ogType: 'article',
-    title: `${p.seo_title || p.title} | WorldDigital.ai`, ogTitle: p.seo_title || p.title,
+    title: ((t) => (t.length <= 42 ? `${t} | WorldDigital.ai` : t))(p.seo_title || p.title), ogTitle: p.seo_title || p.title,
     description: p.description || p.excerpt || mdToText(p.body).slice(0, 155),
     ogImage: img ? SITE + img : undefined,
     extraHead: `<meta property="article:published_time" content="${esc(date)}"><meta property="article:modified_time" content="${esc(p.updated_at || date)}"><meta property="article:section" content="${esc(p.category || '')}">`,

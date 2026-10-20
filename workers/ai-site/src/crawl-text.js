@@ -2,7 +2,7 @@
 // Same format as worlddigital.us, written for the company. Social-platform pages are left out on purpose
 // (they come back later as the Social & Email Autopilot service).
 
-export const UPDATED = '2026-10-16';
+export const UPDATED = '2026-10-20';
 const SITE = 'https://worlddigital.ai';
 
 // One group only: crawlers that find a group naming them ignore the "*" group,
@@ -51,9 +51,9 @@ export const LLMS = `# WorldDigital.ai — Digital Marketing Company
 
 Last updated: ${UPDATED}
 
-> WorldDigital.ai Corporation LLC is a digital marketing company serving small and local businesses across the United States and Canada, from hubs in Houston, TX and Murfreesboro, TN. We help restaurants, cafés, auto dealers and home-service businesses get more customers from Google Search, Google Maps, ChatGPT and other AI assistants, and Google Ads.
+> WorldDigital.ai Corporation LLC is a digital marketing company serving SMBs, SMEs and enterprises (including multi-location brands) across the United States and Canada, from hubs in Houston, TX and Murfreesboro, TN. We help businesses get more customers from Google Search, Google Maps, ChatGPT and other AI assistants, and Google Ads.
 
-Services: SEO and AI search visibility (SEO, AI SEO, AEO, GEO), local SEO and Google Business Profile, Google Ads and PPC management, website design and management, analytics and reporting (GA4, Search Console).
+Services: SEO and AI search visibility (SEO, AI SEO, AEO, GEO), technical, national and local SEO, Google Business Profile, keyword research, content marketing, Google Ads and PPC management, website design and management, analytics and reporting (GA4, Search Console).
 
 Pricing: the SEO & AI Search Visibility plan is $199.99 per month, tax included, with SEO, AI SEO, AEO and GEO included, no long-term contract and cancel anytime. Google Ads management and website projects are quoted after a strategy call.
 
@@ -69,11 +69,11 @@ Clients include Murfreesboro Kabob, RPM Auto Group and Bean Loft Coffee Company 
 - [Services](${SITE}/services): All services
 - [AI SEO Agency](${SITE}/ai-seo-agency): SEO, AI SEO, answer engine optimization (AEO) and generative engine optimization (GEO), $199.99/month
 - [Google Ads Agency](${SITE}/google-ads-agency): Google Search, Maps and Performance Max campaign management
-- [AI Marketing Automation](${SITE}/ai-marketing-automation): Automated marketing workflows for small businesses
-- [Website Build](${SITE}/build): Small business website design, maintenance and management
+- [AI Marketing Automation](${SITE}/ai-marketing-automation): Automated marketing workflows for growing businesses
+- [Website Build](${SITE}/build): Website design, maintenance and management for SMBs, SMEs and enterprises
 - [Free SEO audit](${SITE}/free-seo-report): Free SEO and AI visibility report (website SEO checker) in about 60 seconds
-- [Keyword research](${SITE}/services/keyword-research): Keyword research services for local SEO
-- [SEO content](${SITE}/services/content-marketing): SEO content writing and content marketing services
+- [Keyword research](${SITE}/services/keyword-research): Keyword research tool and services: real Google search volume, CPC and competition (3 keywords free, all 10 for $9.99)
+- [SEO content](${SITE}/services/content-marketing): Content marketing services and an AI content generator for ads and posts on 8 platforms (1 free, 5 for $24.99)
 - [Houston, TX](${SITE}/houston): Local SEO, Google Ads and web design for Houston businesses
 - [Murfreesboro, TN](${SITE}/murfreesboro): Local SEO, Google Ads and web design for Murfreesboro and Rutherford County businesses
 - [Multi-location](${SITE}/enterprise): SEO and Google Ads for brands with many locations
@@ -86,6 +86,8 @@ Clients include Murfreesboro Kabob, RPM Auto Group and Bean Loft Coffee Company 
 
 ## Free tools
 - [Free SEO & AI visibility report](${SITE}/free-seo-report): Scores for on-page SEO, mobile speed, Google rankings, backlinks and AI-answer citations in about 60 seconds
+- [Keyword research tool](${SITE}/services/keyword-research): Enter a website, get its top 3 keywords free with Google search volume, CPC and competition; all 10 for $9.99 one-time (PDF, Excel or Word)
+- [Content generator](${SITE}/services/content-marketing): Ads or posts for Google Search Ads, Facebook, Instagram, LinkedIn, X, TikTok, YouTube Shorts or Snapchat; 1 free, 5 for $24.99 one-time
 
 ## Optional
 - [Full knowledge file](${SITE}/llms-full.txt): Detailed reference on the company, services, process and common questions
@@ -108,7 +110,7 @@ Last updated: ${UPDATED}
 - Trust: BBB A+ rated; Google Business Profile rated 5.0
 
 ## Who we help
-Local businesses that get customers from Google, Maps and word of mouth: restaurants and cafés, auto dealers and repair shops, home-service businesses (plumbers, HVAC, cleaners, contractors), and shops, salons and local brands.
+SMBs, SMEs and enterprises across the United States and Canada: owner-led local businesses (restaurants, auto dealers, home services, clinics, retail), growing companies with several services or regions, and multi-location brands and franchises.
 
 ## Services
 ### SEO & AI Search Visibility ($199.99/month)
@@ -127,6 +129,12 @@ Search, Maps and Performance Max campaigns built around calls, bookings and cost
 ### Website design & management (custom quote)
 Planning, mobile-first design and development, domain/DNS/SSL/hosting (including Cloudflare), SEO-ready launch with schema, sitemap, GA4 and Search Console, conversion optimization and ongoing maintenance.
 
+### Keyword research tool ($9.99 one-time)
+Enter a website and market (United States or Canada). The tool reads the site, pulls Google Ads keyword data (monthly search volume, cost per click, competition) and ranks the 10 keywords most likely to bring customers, with intent and target page. Top 3 are free; all 10 are $9.99, delivered as PDF, Excel or Word and by email. One free preview per website. ${SITE}/services/keyword-research
+
+### Content generator ($24.99 one-time)
+Five ads or posts written from the website's real offer, within each platform's character limits: Google Search Ads, Facebook, Instagram, LinkedIn, X (Twitter), TikTok, YouTube Shorts or Snapchat. One is free to preview; all five are $24.99, as PDF, Excel or Word and by email. One free preview per website. ${SITE}/services/content-marketing
+
 ## How we work
 1. Listen: what customers ask Google, ChatGPT and Gemini, and who shows up today.
 2. Strategize: keyword priorities, page fixes and a plan tied to the client's services and cities.
@@ -141,7 +149,7 @@ A: Making a brand visible inside AI-generated answers from ChatGPT, Google AI Ov
 Q: What is AEO (Answer Engine Optimization)?
 A: Structuring a website so search engines and voice assistants can pull direct answers from it, using question-and-answer content, concise explanations and schema markup.
 
-Q: How much does SEO cost for a small business?
+Q: How much does SEO cost?
 A: $199.99 per month, tax included, with SEO, AI SEO, AEO and GEO included and no long-term contract. Larger sites or several locations are quoted separately.
 
 Q: How much does Google Ads management cost?

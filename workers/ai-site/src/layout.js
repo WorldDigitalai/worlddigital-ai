@@ -238,7 +238,7 @@ export function page(o) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(o.title)}</title>
 <meta name="description" content="${esc(o.description)}">
-${o.keywords ? `<meta name="keywords" content="${esc(o.keywords)}">` : ''}
+
 ${o.noindex ? '<meta name="robots" content="noindex, nofollow">' : '<meta name="robots" content="index, follow, max-image-preview:large">'}
 <link rel="canonical" href="${esc(o.canonical || url)}">
 <meta property="og:type" content="${o.ogType || 'website'}">

@@ -74,41 +74,40 @@ def target_volumes(s: Settings) -> dict:
 
 
 def serp(s: Settings, domain: str) -> list:
-    tasks = [{"keyword": k, "location_code": US, "language_code": "en", "depth": 30} for k in SERP_CHECK]
-    out = []
-    for t in _post(s, "/v3/serp/google/organic/live/regular", tasks):
+    def one(k):
+        t = _post(s, "/v3/serp/google/organic/live/regular",
+                  [{"keyword": k, "location_code": US, "language_code": "en", "depth": 30}])[0]
         r = (t.get("result") or [{}])[0] or {}
         items = [i for i in (r.get("items") or []) if i.get("type") == "organic"]
         ours = next((i for i in items if domain in (i.get("domain") or "")), None)
-        out.append({"kw": (t.get("data") or {}).get("keyword"), "our_pos": ours and ours.get("rank_group"),
-                    "our_url": ours and ours.get("url"),
-                    "top3": [i.get("domain") for i in items[:3]],
-                    "features": sorted({i.get("type") for i in (r.get("items") or [])} - {"organic"}),
-                    "status": t.get("status_message")})
-    return out
+        ai = next((i for i in (r.get("items") or []) if i.get("type") == "ai_overview"), None)
+        ai_refs = [x.get("domain") for x in ((ai or {}).get("references") or [])][:10]
+        return {"kw": k, "our_pos": ours and ours.get("rank_group"), "our_url": ours and ours.get("url"),
+                "top5": [i.get("domain") for i in items[:5]],
+                "features": sorted({i.get("type") for i in (r.get("items") or [])} - {"organic"}),
+                "ai_overview_refs": ai_refs, "status": t.get("status_message")}
+    with ThreadPoolExecutor(5) as ex:
+        return list(ex.map(lambda k: _safe(lambda: one(k)), SERP_CHECK))
 
 
 def onpage(s: Settings, origin: str, paths: list[str]) -> list:
-    tasks = [{"url": origin + p, "enable_javascript": False, "custom_user_agent": "Mozilla/5.0 (compatible; WorldDigitalAudit/1.0)"}
-             for p in paths]
-    out = []
-    for chunk in (tasks[i:i + 20] for i in range(0, len(tasks), 20)):
-        for t in _post(s, "/v3/on_page/instant_pages", chunk):
-            r = (t.get("result") or [{}])[0] or {}
-            it = (r.get("items") or [{}])[0] or {}
-            meta = it.get("meta") or {}
-            checks = it.get("checks") or {}
-            bad = sorted(k for k, v in checks.items() if v is True and k not in GOOD_CHECKS)
-            out.append({"url": (t.get("data") or {}).get("url", "").replace(origin, "") or "/",
-                        "status": it.get("status_code"), "score": it.get("onpage_score"),
-                        "title": meta.get("title"), "title_len": meta.get("title_length"),
-                        "desc_len": meta.get("description_length"), "h1": (meta.get("htags") or {}).get("h1"),
-                        "words": (meta.get("content") or {}).get("plain_text_word_count"),
-                        "readability": (meta.get("content") or {}).get("flesch_kincaid_readability_index"),
-                        "internal_links": meta.get("internal_links_count"), "images_no_alt": meta.get("images_count"),
-                        "size_kb": round((it.get("size") or 0) / 1024), "load_ms": (it.get("page_timing") or {}).get("duration_time"),
-                        "issues": bad, "task": t.get("status_message")})
-    return out
+    def one(p):
+        t = _post(s, "/v3/on_page/instant_pages", [{"url": origin + p, "enable_javascript": False}])[0]
+        r = (t.get("result") or [{}])[0] or {}
+        it = (r.get("items") or [{}])[0] or {}
+        meta = it.get("meta") or {}
+        checks = it.get("checks") or {}
+        bad = sorted(k for k, v in checks.items() if v is True and k not in GOOD_CHECKS)
+        return {"url": p, "status": it.get("status_code"), "score": it.get("onpage_score"),
+                "title": meta.get("title"), "title_len": meta.get("title_length"),
+                "desc_len": meta.get("description_length"), "h1": (meta.get("htags") or {}).get("h1"),
+                "words": (meta.get("content") or {}).get("plain_text_word_count"),
+                "readability": (meta.get("content") or {}).get("flesch_kincaid_readability_index"),
+                "internal_links": meta.get("internal_links_count"),
+                "size_kb": round((it.get("size") or 0) / 1024), "load_ms": (it.get("page_timing") or {}).get("duration_time"),
+                "issues": bad, "task": t.get("status_message")}
+    with ThreadPoolExecutor(5) as ex:
+        return list(ex.map(lambda p: _safe(lambda: one(p)), paths))
 
 
 # OnPage "checks" that are True when things are GOOD.
@@ -127,8 +126,9 @@ def llm(s: Settings, brand: str) -> list:
             text = " ".join(str(m.get("text") or "") for it in (r.get("items") or [])
                             for m in (it.get("sections") or [it]))[:6000]
             cited = [a.get("url") for it in (r.get("items") or []) for a in (it.get("annotations") or []) if a.get("url")]
+            doms = sorted({re.sub(r"^www\.", "", (re.findall(r"https?://([^/]+)", u) or [""])[0]) for u in cited} - {""})
             return {"prompt": prompt, "mentioned": bool(re.search(brand, text, re.I)) or any(brand.lower() in (u or "").lower() for u in cited),
-                    "brands": sorted(set(re.findall(r"\*\*([^*]{3,40})\*\*", text)))[:12], "cited": cited[:10],
+                    "answer": text[:900], "cited_domains": doms[:15],
                     "status": t.get("status_message"), "cost": t.get("cost")}
         out.append(_safe(one))
     return out

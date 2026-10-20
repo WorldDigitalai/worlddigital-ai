@@ -115,8 +115,16 @@ export const REDIRECTS = {
   // social-platform service pages: back later as Social & Email Autopilot
   '/meta-ads-agency': '/services', '/facebook-ads-management': '/services', '/instagram-marketing': '/services',
   '/tiktok-ads-agency': '/services', '/tiktok-marketing': '/services', '/snapchat-ads-agency': '/services',
-  '/snapchat-marketing': '/services', '/linkedin-ads-agency': '/services', '/x-ads-agency': '/services',
-  '/youtube-shorts-marketing': '/services',
+  '/snapchat-marketing': '/blog/snapchat-marketing-strategies', '/linkedin-ads-agency': '/services', '/x-ads-agency': '/services',
+  '/youtube-shorts-marketing': '/blog/youtube-shorts-marketing-guide',
+  // old blog posts Google still shows (Search Console, Oct 2026): send to the closest live page
+  '/blog/ai-search-optimization-is-exploding-in-2026': '/ai-seo-agency',
+  '/blog/seo-visibility-score-south-fix-searchmetrics-drops': '/free-seo-report',
+  '/blog/ai-news-today-2026-trends-smbs-must-know': '/blog/how-ai-marketing-automation-works',
+  '/blog/ai-trend-marketing-turn-tech-news-into-local-leads': '/blog/how-ai-marketing-automation-works',
+  '/blog/ai-marketing-for-small-businesses-seo-ads': '/blog/how-ai-marketing-automation-works',
+  '/blog/ai-marketing-agency-for-small-business-growth': '/ai-marketing-automation',
+  '/blog/why-is-nike-stock-down-so-much-key-reasons-lessons': '/blog',
   '/services/meta-ads': '/services', '/services/tiktok-ads': '/services', '/services/linkedin-ads': '/services',
   '/services/x-ads': '/services', '/services/snapchat-ads': '/services', '/services/youtube-shorts': '/services',
   '/services/reels-generator': '/services', '/services/image-generator': '/services',

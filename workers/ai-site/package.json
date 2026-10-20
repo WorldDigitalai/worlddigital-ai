@@ -1,0 +1,9 @@
+{
+  "name": "worlddigital-ai-site",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --local --port 8791",
+    "test": "node --test test/*.test.mjs"
+  }
+}

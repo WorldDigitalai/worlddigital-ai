@@ -1,0 +1,49 @@
+name: Lighthouse reports (worlddigital.ai)
+on:
+  workflow_run:
+    workflows: ["Deploy worlddigital.ai site"]
+    types: [completed]
+  schedule:
+    - cron: "41 11 * * 1"   # Mondays ~6:41am Chicago
+  workflow_dispatch:
+jobs:
+  lighthouse:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        device: [mobile, desktop]
+    steps:
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Run Lighthouse (Google's open-source auditor) on key pages
+        run: |
+          mkdir -p reports
+          pages="/ /services /ai-seo-agency /google-ads-agency /build /about /houston /murfreesboro /free-seo-report /blog /blog/google-ads-management-local-businesses"
+          preset=""; [ "${{ matrix.device }}" = "desktop" ] && preset="--preset=desktop"
+          echo "| Page | Performance | Accessibility | Best practices | SEO |" > summary.md
+          echo "|---|---|---|---|---|" >> summary.md
+          for p in $pages; do
+            name=$(echo "$p" | sed 's#^/##; s#/#_#g'); [ -z "$name" ] && name=home
+            npx --yes lighthouse@12.8.2 "https://worlddigital.ai$p" $preset --quiet --chrome-flags="--headless=new --no-sandbox" \
+              --output=json --output=html --output-path="reports/${name}-${{ matrix.device }}" || { echo "| $p | failed | | | |" >> summary.md; continue; }
+            s=$(jq -r '[.categories.performance.score,.categories.accessibility.score,.categories["best-practices"].score,.categories.seo.score] | map((. // 0) * 100 | round) | join(" | ")' "reports/${name}-${{ matrix.device }}.report.json")
+            echo "| $p | $s |" >> summary.md
+            low=$(jq -r '[.categories[] | select(.score != null and .score < 0.9) | "\(.title) \((.score*100)|round)"] | join(", ")' "reports/${name}-${{ matrix.device }}.report.json")
+            [ -n "$low" ] && echo "::warning title=Lighthouse ${{ matrix.device }} $p::$low"
+            if [ "$p" = "/" ]; then
+              jq -r --arg d "${{ matrix.device }}" '[.audits["network-requests"].details.items[] | select(.url|test("worlddigital.ai")|not) | "\((.networkRequestTime // .startTime // 0)|floor)ms \(.url[0:70])"] | .[0:8] | "::notice title=LH 3P order \($d)::" + join(" | ")' "reports/${name}-${{ matrix.device }}.report.json"
+              jq -r --arg d "${{ matrix.device }}" '"::notice title=LH final url \($d)::" + .finalDisplayedUrl + " ua=" + ((.environment.networkUserAgent // "")[0:60])' "reports/${name}-${{ matrix.device }}.report.json"
+            fi
+            if [ "$p" = "/google-ads-agency" ]; then
+              jq -r --arg p "$p" --arg d "${{ matrix.device }}" '. as $r | ["best-practices","performance","accessibility","seo"][] as $c | $r.categories[$c].auditRefs[] | select(.weight > 0) | .id as $id | $r.audits[$id] | select(.score != null and .score < 0.9) | "::notice title=LH \($d) \($p) \($c)::\(.id) (\(.score)) \(.displayValue // "") \((.details.items // [])[0:3] | map(.url // .source.url // .description // .node.snippet // "" | tostring | .[0:120]) | join(" ; "))"' "reports/${name}-${{ matrix.device }}.report.json" | head -25
+            fi
+          done
+          { echo "## Lighthouse (${{ matrix.device }})"; cat summary.md; } >> "$GITHUB_STEP_SUMMARY"
+          cat summary.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-${{ matrix.device }}
+          path: reports/
+          retention-days: 30

@@ -1,0 +1,36 @@
+// worlddigital.ai edge helpers: crawler files (robots.txt, llms.txt, llms-full.txt, sitemap.xml) and
+// 301 redirects for the retired social-platform pages, served in front of the worlddigital.ai app.
+// Retire this worker when the router worker takes over the domain.
+{
+  "name": "worlddigital-ai-crawl-files",
+  "main": "src/index.js",
+  "account_id": "7a05f2ae447b2e57f5c902dc6f593d22",
+  "compatibility_date": "2025-09-01",
+  "workers_dev": false,
+  // Forwards everything to the company site worker (it now owns robots/sitemap/llms and the redirects).
+  "services": [{ "binding": "SITE", "service": "worlddigital-ai-site" }],
+  "routes": [
+    { "pattern": "worlddigital.ai/robots.txt", "zone_name": "worlddigital.ai" },
+    { "pattern": "worlddigital.ai/llms.txt", "zone_name": "worlddigital.ai" },
+    { "pattern": "worlddigital.ai/llms-full.txt", "zone_name": "worlddigital.ai" },
+    { "pattern": "worlddigital.ai/sitemap.xml", "zone_name": "worlddigital.ai" },
+    { "pattern": "worlddigital.ai/meta-ads-agency*", "zone_name": "worlddigital.ai" },
+    { "pattern": "worlddigital.ai/facebook-ads-management*", "zone_name": "worlddigital.ai" },
+    { "pattern": "worlddigital.ai/instagram-marketing*", "zone_name": "worlddigital.ai" },
+    { "pattern": "worlddigital.ai/tiktok-ads-agency*", "zone_name": "worlddigital.ai" },
+    { "pattern": "worlddigital.ai/tiktok-marketing*", "zone_name": "worlddigital.ai" },
+    { "pattern": "worlddigital.ai/snapchat-ads-agency*", "zone_name": "worlddigital.ai" },
+    { "pattern": "worlddigital.ai/snapchat-marketing*", "zone_name": "worlddigital.ai" },
+    { "pattern": "worlddigital.ai/linkedin-ads-agency*", "zone_name": "worlddigital.ai" },
+    { "pattern": "worlddigital.ai/x-ads-agency*", "zone_name": "worlddigital.ai" },
+    { "pattern": "worlddigital.ai/youtube-shorts-marketing*", "zone_name": "worlddigital.ai" },
+    { "pattern": "worlddigital.ai/services/meta-ads*", "zone_name": "worlddigital.ai" },
+    { "pattern": "worlddigital.ai/services/tiktok-ads*", "zone_name": "worlddigital.ai" },
+    { "pattern": "worlddigital.ai/services/linkedin-ads*", "zone_name": "worlddigital.ai" },
+    { "pattern": "worlddigital.ai/services/x-ads*", "zone_name": "worlddigital.ai" },
+    { "pattern": "worlddigital.ai/services/snapchat-ads*", "zone_name": "worlddigital.ai" },
+    { "pattern": "worlddigital.ai/services/youtube-shorts*", "zone_name": "worlddigital.ai" },
+    { "pattern": "worlddigital.ai/services/reels-generator*", "zone_name": "worlddigital.ai" },
+    { "pattern": "worlddigital.ai/services/image-generator*", "zone_name": "worlddigital.ai" }
+  ]
+}

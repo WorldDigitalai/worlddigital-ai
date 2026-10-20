@@ -1,0 +1,58 @@
+<section style="background:#fff;border-bottom:1px solid #DCE5EF"><div class="wrap" style="padding-top:56px;padding-bottom:40px;max-width:760px">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> / Unsubscribe</nav>
+<div class="eyebrow" style="margin-top:14px">Email preferences</div>
+<h1 class="h" style="font-size:44px;margin-top:10px">Unsubscribe from our emails.</h1>
+<p style="font-size:18px;line-height:1.6;color:#33445A">One click and you are off the list. You will not receive any more marketing emails from WorldDigital.ai.</p>
+</div></section>
+<section class="sec" style="padding-top:36px"><div class="wrap" style="max-width:760px">
+<div class="unsub card">
+  <div id="u-step1">
+    <form id="u-form" novalidate>
+      <label for="u-email">Your email address</label>
+      <div class="u-row"><input id="u-email" type="email" autocomplete="email" placeholder="you@company.com" required><button type="submit" class="btn red" id="u-btn">Unsubscribe</button></div>
+      <p class="u-err" id="u-err" role="alert"></p>
+    </form>
+  </div>
+  <div id="u-step2" hidden>
+    <p class="u-done"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>You&rsquo;re unsubscribed. You won&rsquo;t get any more marketing emails.</p>
+    <form id="r-form">
+      <fieldset><legend>Mind telling us why? <span>(optional)</span></legend>
+        <label class="r"><input type="radio" name="reason" value="too_many"> Too many emails</label>
+        <label class="r"><input type="radio" name="reason" value="not_relevant"> Not relevant to my business</label>
+        <label class="r"><input type="radio" name="reason" value="never_signed_up"> I never signed up</label>
+        <label class="r"><input type="radio" name="reason" value="have_provider"> I already have someone for this</label>
+        <label class="r"><input type="radio" name="reason" value="other"> Other</label>
+        <textarea id="r-note" rows="2" maxlength="300" placeholder="Anything else? (optional)" aria-label="Anything else (optional)"></textarea>
+      </fieldset>
+      <button type="submit" class="btn ghost">Send</button>
+    </form>
+  </div>
+  <p class="u-done" id="u-step3" hidden>Thank you for the feedback. Have a great day.</p>
+  <p class="u-help">Unsubscribed by mistake or have a question? Email <a href="mailto:support@worlddigital.ai">support@worlddigital.ai</a>.</p>
+</div>
+  </div>
+
+</div></section>
+<style>
+.u-row{display:flex;gap:10px;flex-wrap:wrap}.u-row input{flex:1 1 240px}
+.u-err{color:#B42318;font-weight:600}.u-err:empty{display:none}
+.u-done{display:flex;gap:10px;align-items:center;font-weight:700;color:#15803D}
+fieldset{border:0;padding:0;margin:18px 0 12px}legend{font-weight:700;margin-bottom:8px}legend span{font-weight:400;color:#4A5B70}
+label.r{display:flex;gap:10px;align-items:center;font-weight:500;margin:8px 0}label.r input{width:20px;min-height:20px;height:20px}
+.u-help{color:#4A5B70;font-size:15px;margin-top:18px}
+</style>
+<script>(function(){var EP='https://worlddigital-unsubscribe.ahmad-awwad-7a0.workers.dev',em='';
+var h=location.hash.replace(/^#/,''),q=new URLSearchParams(location.search);
+var m=/(?:^|&)e=([^&]+)/.exec(h);em=m?decodeURIComponent(m[1]):(q.get('e')||'');
+if(em||location.hash||location.search){try{history.replaceState(null,'',location.pathname)}catch(e){}}
+var inp=document.getElementById('u-email'),err=document.getElementById('u-err'),btn=document.getElementById('u-btn');if(em)inp.value=em.trim();
+function post(d){return fetch(EP,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(function(r){return r.json().catch(function(){return{ok:false}}).then(function(j){if(!r.ok||!j.ok)throw j;return j})})}
+document.getElementById('u-form').addEventListener('submit',function(e){e.preventDefault();err.textContent='';var v=inp.value.trim().toLowerCase();
+if(!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(v)){err.textContent='Please enter a valid email address.';inp.focus();return}
+em=v;btn.disabled=true;btn.textContent='Unsubscribing\u2026';
+post({email:v}).then(function(){document.getElementById('u-step1').hidden=true;document.getElementById('u-step2').hidden=false})
+.catch(function(){btn.disabled=false;btn.textContent='Unsubscribe';err.innerHTML='Something went wrong. Please try again, or email <a href="mailto:support@worlddigital.ai?subject=Unsubscribe">support@worlddigital.ai</a> with the word unsubscribe.'})});
+document.getElementById('r-form').addEventListener('submit',function(e){e.preventDefault();var c=document.querySelector('input[name=reason]:checked'),n=document.getElementById('r-note').value.trim();
+document.getElementById('u-step2').hidden=true;document.getElementById('u-step3').hidden=false;
+if(c||n)post({email:em,step:'reason',reason:c?c.value:'other',note:n}).catch(function(){})});
+})();</script>

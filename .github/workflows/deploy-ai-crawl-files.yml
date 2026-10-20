@@ -1,0 +1,34 @@
+name: Deploy worlddigital.ai crawler files
+on:
+  push:
+    branches: [main]
+    paths: ["workers/ai-crawl-files/**", ".github/workflows/deploy-ai-crawl-files.yml"]
+  pull_request:
+    paths: ["workers/ai-crawl-files/**"]
+  workflow_dispatch:
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: workers/ai-crawl-files } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Tests
+        run: node --test test/*.test.mjs
+      - name: Deploy to Cloudflare (worker "worlddigital-ai-crawl-files" on worlddigital.ai)
+        if: github.event_name != 'pull_request'
+        run: |
+          set -o pipefail
+          npx --yes wrangler@4.42.0 deploy 2>&1 | tee deploy.log || { tail -15 deploy.log | sed "s/\x1b\[[0-9;]*m//g" | grep -v "^\s*$" | while read -r l; do echo "::error::$l"; done; exit 1; }
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Check the live files
+        if: github.event_name != 'pull_request'
+        run: |
+          sleep 20
+          for p in robots.txt llms.txt llms-full.txt sitemap.xml; do
+            code=$(curl -s -o /tmp/f -w "%{http_code}" "https://worlddigital.ai/$p"); echo "$p -> $code"; head -3 /tmp/f
+          done
+          grep -q "WorldDigital.ai Corporation LLC" <(curl -s https://worlddigital.ai/robots.txt); curl -s https://worlddigital.ai/sitemap.xml | grep -q "/houston"

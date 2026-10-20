@@ -256,11 +256,19 @@ def download(session: str = "", format: str = ""):
         "Content-Disposition": f'attachment; filename="{filename}"', "Cache-Control": "private, no-store"})
 
 
+MONGO_USER = "ahmadawwad_db_user"
+MONGO_HOST = "worlddigital-ai.dfgex0b.mongodb.net"
+
+
 def clean_mongo_uri(raw: str) -> str:
     """Accept a pasted Atlas string as-is: trim quotes/spaces, drop <> around the password, encode user and password."""
     from urllib.parse import quote_plus, unquote_plus
     u = (raw or "").strip().strip("'\"").replace("\n", "").replace("\r", "")
-    if "://" not in u or "@" not in u:
+    if not u.startswith(("mongodb://", "mongodb+srv://")):
+        # Only the password was saved: build the Atlas address from the known user and cluster.
+        u = (f"mongodb+srv://{MONGO_USER}:{u.removeprefix('<').removesuffix('>')}@{MONGO_HOST}"
+             "/?retryWrites=true&w=majority&appName=worlddigital-ai")
+    if "@" not in u:
         return u
     scheme, rest = u.split("://", 1)
     userinfo, host = rest.rsplit("@", 1)
@@ -279,9 +287,7 @@ def health():
     except Exception as e:  # noqa: BLE001
         log.warning("mongodb ping failed: %s", type(e).__name__)
         # Never echo the message: it can contain the host or credentials.
-        mongo_error = type(e).__name__
-    if not s.mongodb_uri.strip().strip("'\"").startswith(("mongodb://", "mongodb+srv://")):
-        mongo_error = "MONGODB_URI is not a connection string (it must start with mongodb+srv://)"
+        mongo_error = "wrong password" if type(e).__name__ == "OperationFailure" else type(e).__name__
     key = s.stripe_secret_key
     return {"ok": True, "configured": {
         "mongodb": mongo, "openai": bool(s.openai_api_key), "dataforseo": bool(s.dataforseo_login and s.dataforseo_password),

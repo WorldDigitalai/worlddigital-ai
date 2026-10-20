@@ -16,6 +16,7 @@ from __future__ import annotations
 import hashlib
 import html
 import json
+import logging
 import re
 import uuid
 from functools import lru_cache
@@ -29,6 +30,8 @@ from .exports import FORMATS, build_file
 from .products import COUNTRIES, PLATFORMS, PRODUCTS, generate_content, generate_keywords, report_title
 from .services import ApiError, create_checkout_session, get_checkout_session, parse_site_url, send_email, verify_turnstile
 from .store import Store, now
+
+log = logging.getLogger("worlddigital.api")
 
 app = FastAPI(title="worlddigital.ai tools API", docs_url=None, redoc_url=None)
 
@@ -256,14 +259,16 @@ def download(session: str = "", format: str = ""):
 @app.get("/api/tools/health")
 def health():
     s = settings()
-    mongo = False
+    mongo, mongo_error = False, None
     try:
         store().db.command("ping")
         mongo = True
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as e:  # noqa: BLE001
+        log.warning("mongodb ping failed: %s", e)
+        msg = re.sub(r"mongodb(\+srv)?://\S+", "<uri>", str(e))
+        mongo_error = f"{type(e).__name__}: {msg[:160]}"
     key = s.stripe_secret_key
     return {"ok": True, "configured": {
         "mongodb": mongo, "openai": bool(s.openai_api_key), "dataforseo": bool(s.dataforseo_login and s.dataforseo_password),
         "stripe": bool(key), "stripe_mode": ("live" if key.startswith(("sk_live", "rk_live")) else "test") if key else None,
-        "resend": bool(s.resend_api_key), "turnstile": bool(s.turnstile_secret), "internal_token": bool(s.internal_token)}}
+        "resend": bool(s.resend_api_key), "turnstile": bool(s.turnstile_secret), "internal_token": bool(s.internal_token)}, "mongodb_error": mongo_error}

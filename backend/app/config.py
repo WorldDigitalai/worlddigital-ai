@@ -40,6 +40,9 @@ class Settings:
     turnstile_secret: str = field(default_factory=lambda: _env("TURNSTILE_SECRET"))
     # Shared secret the Cloudflare site worker sends; blocks direct calls that skip the site.
     # TOOLS_API_TOKEN comes from the same GitHub secret the site uses, so the two always match.
+    # Our own sites: unlimited free previews for testing. Everyone else gets one per website per tool.
+    test_domains: tuple = field(default_factory=lambda: tuple(
+        d.strip().lower() for d in _env("FREE_TEST_DOMAINS", "worlddigital.ai,worlddigital.us").split(",") if d.strip()))
     internal_token: str = field(default_factory=lambda: _env("TOOLS_API_TOKEN") or _env("INTERNAL_TOKEN"))
 
     public_origin: str = field(default_factory=lambda: _env("PUBLIC_ORIGIN", "https://worlddigital.ai"))

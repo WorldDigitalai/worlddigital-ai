@@ -70,3 +70,8 @@
  .wdt-cta{padding-top:28px}
  .wdt-lock{max-height:620px}
 }
+
+.wdt-modal{position:fixed;inset:0;z-index:1000;background:rgba(10,20,35,.55);display:flex;align-items:center;justify-content:center;padding:16px}
+.wdt-modal-box{background:#fff;color:#14202f;max-width:440px;width:100%;border-radius:14px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.wdt-modal-box h4{margin:0 0 8px;font-size:20px}.wdt-modal-box p{margin:0 0 18px;line-height:1.5}
+.wdt-modal-act{display:flex;gap:10px;flex-wrap:wrap}.wdt-modal-act .btn{flex:1 1 auto;text-align:center}

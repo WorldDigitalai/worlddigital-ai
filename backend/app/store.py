@@ -31,6 +31,7 @@ class Store:
         self.cache: Collection = db["tool_cache"]
         self.paid: Collection = db["tool_paid"]
         self.limits: Collection = db["tool_limits"]
+        self.free: Collection = db["tool_free_used"]  # one free preview per website per tool, kept for good
 
     def ensure_indexes(self) -> None:
         for c in (self.jobs, self.cache, self.paid, self.limits):
@@ -71,6 +72,14 @@ class Store:
     def put_paid(self, session_id: str, job_id: str) -> None:
         self.paid.replace_one({"_id": session_id}, {"_id": session_id, "job_id": job_id, "expires_at": now() + PAID_TTL},
                               upsert=True)
+
+    # one free preview per website
+    def free_used(self, kind: str, domain: str) -> dict | None:
+        return self.free.find_one({"_id": f"{kind}:{domain}"})
+
+    def mark_free(self, kind: str, domain: str, job_id: str) -> None:
+        self.free.update_one({"_id": f"{kind}:{domain}"},
+                             {"$setOnInsert": {"job_id": job_id, "created": now()}}, upsert=True)
 
     # rate limit
     def hit(self, ip: str, limit: int) -> bool:

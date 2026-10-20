@@ -176,3 +176,20 @@ def test_requires_internal_token(env):
     r = TestClient(main.app).post("/api/tools/keywords/preview", json={"url": "a.com"})
     assert r.status_code == 403
     assert TestClient(main.app).get("/api/tools/health").status_code == 200
+
+
+def test_one_free_preview_per_website(env):
+    c, _ = env
+    first = c.post("/api/tools/content/preview", json={"url": "acme-roofing.com", "platform": "instagram", "kind": "post"}).json()
+    assert first["notice"] is None and len(first["items"]) == 1
+    # Same request again: the same preview comes back, with the "already generated" message.
+    again = c.post("/api/tools/content/preview", json={"url": "www.acme-roofing.com", "platform": "instagram", "kind": "post"}).json()
+    assert again["id"] == first["id"] and "already been generated" in again["notice"]
+    # Different platform for the same website: nothing free, everything locked until paid.
+    other = c.post("/api/tools/content/preview", json={"url": "acme-roofing.com", "platform": "linkedin", "kind": "post"}).json()
+    assert other["items"] == [] and other["locked"] == 5 and "already been generated" in other["notice"]
+    assert c.post("/api/tools/checkout", json={"id": other["id"], "format": "pdf"}).status_code == 200
+    # Our own sites stay unlimited for testing.
+    for plat in ("instagram", "linkedin", "facebook"):
+        d = c.post("/api/tools/content/preview", json={"url": "worlddigital.us", "platform": plat, "kind": "post"}).json()
+        assert d["notice"] is None and len(d["items"]) == 1

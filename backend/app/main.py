@@ -83,12 +83,14 @@ def client_ip(request: Request) -> str:
 
 def public_preview(job: dict) -> dict:
     p = PRODUCTS[job["type"]]
-    locked = job["items"][p["free"]:]
+    free = job.get("free", p["free"])
+    locked = job["items"][free:]
     return {
         "id": job["_id"], "type": job["type"],
         "input": {k: job["input"].get(k) for k in ("domain", "country", "platform", "kind")},
-        "meta": job["meta"], "items": job["items"][: p["free"]], "locked": len(locked), "total": len(job["items"]),
+        "meta": job["meta"], "items": job["items"][:free], "locked": len(locked), "total": len(job["items"]),
         "price": p["price_cents"] / 100,
+        "notice": job.get("_notice"),
         # Lengths only, so blurred rows look real without sending the content.
         "lockedShapes": [{"len": len(it["keyword"])} if job["type"] == "keywords"
                          else {"fields": [{"label": f["label"], "len": len(f["text"])} for f in it["fields"]]}
@@ -117,21 +119,38 @@ def _preview(request: Request, body: dict, kind: str):
                    offer=str(body.get("offer") or "")[:300])
 
     key = f"{kind}:" + hashlib.sha256(json.dumps({**inp, "url": domain}, sort_keys=True).encode()).hexdigest()
-    cached = st.get_job(st.cached_job_id(key))
-    if cached:
-        return json_ok(public_preview(cached))
+    test_site = domain in s.test_domains
+    used = None if test_site else st.free_used(kind, domain)
+    notice = None
+    if used:
+        what = "keyword preview" if kind == "keywords" else "content preview"
+        notice = (f"A free {what} for {domain} has already been generated. "
+                  f"Each website gets one free preview; unlock the full report to get more.")
+        prior = st.get_job(used.get("job_id"))
+        cached = st.get_job(st.cached_job_id(key))
+        same = cached or (prior if prior and prior["input"] == inp else None)
+        if same:
+            return json_ok(public_preview({**same, "_notice": notice}))
+    else:
+        cached = st.get_job(st.cached_job_id(key))
+        if cached:
+            return json_ok(public_preview(cached))
 
     verify_turnstile(s, body.get("turnstile"), client_ip(request))
-    if not st.hit(client_ip(request), s.preview_daily_limit):
+    if not test_site and not st.hit(client_ip(request), s.preview_daily_limit):
         raise ApiError("rate limited", 429, f"You've reached today's limit of {s.preview_daily_limit} free previews. "
                                             "Come back tomorrow, or unlock a report you've already previewed.")
 
     result = generate_keywords(s, **inp) if kind == "keywords" else generate_content(s, **inp)
     job = {"_id": str(uuid.uuid4()), "type": kind, "input": inp, "items": result["items"], "meta": result["meta"],
            "created": now(), "paid": False}
+    if used:
+        job["free"] = 0  # free preview already used for this website: everything stays locked until paid
     st.save_job(job)
     st.put_cache(key, job["_id"])
-    return json_ok(public_preview(job))
+    if not test_site and not used:
+        st.mark_free(kind, domain, job["_id"])
+    return json_ok(public_preview({**job, "_notice": notice}))
 
 
 @app.post("/api/tools/keywords/preview", dependencies=[Depends(guard)])

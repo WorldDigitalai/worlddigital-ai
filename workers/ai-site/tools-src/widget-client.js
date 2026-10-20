@@ -69,7 +69,7 @@
     var price = "$" + d.price.toFixed(2);
     var what = KW ? d.locked + " more keywords are ready" : d.locked + " more " + (d.meta.kind === "ad" ? "ads are" : "posts are") + " ready";
     var unlock = KW ? "Unlock all " + d.total + " keywords — " + price : "Unlock all " + d.total + " — " + price;
-    var free = KW ? kwTable(d.items.map(kwRow).join(""), true) : "<div class='wdt-cards'>" + d.items.map(contentCard).join("") + "</div>";
+    var free = !d.items.length ? "" : KW ? kwTable(d.items.map(kwRow).join(""), true) : "<div class='wdt-cards'>" + d.items.map(contentCard).join("") + "</div>";
     var locked = KW
       ? kwTable(d.lockedShapes.map(function (s, j) { return kwRow({ keyword: fake(s.len), reason: fake(60), volume: 1000 + j * 370, cpc: 2.1 + j, competition: "MEDIUM", intent: "Commercial" }, d.items.length + j); }).join(""), false)
       : "<div class='wdt-cards'>" + d.lockedShapes.map(function (s, j) { return contentCard({ angle: fake(18), fields: s.fields.map(function (f) { return { label: f.label, text: fake(f.len) }; }) }, d.items.length + j); }).join("") + "</div>";
@@ -82,6 +82,26 @@
       "</div></div></div>";
     res.querySelector(".wdt-buy").addEventListener("click", function () { checkout(d); });
     res.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (d.notice) popup(d.notice, unlock, function () { checkout(d); });
+  }
+
+  // "Already generated" message: one free preview per website.
+  function popup(msg, buyLabel, onBuy) {
+    var o = document.createElement("div");
+    o.className = "wdt-modal";
+    o.innerHTML = "<div class='wdt-modal-box' role='alertdialog' aria-modal='true' aria-labelledby='wdt-m-h' aria-describedby='wdt-m-p'>" +
+      "<h4 id='wdt-m-h'>Free preview already used</h4><p id='wdt-m-p'>" + esc(msg) + "</p>" +
+      "<div class='wdt-modal-act'><button type='button' class='btn red wdt-m-buy'>" + esc(buyLabel) + "</button>" +
+      "<button type='button' class='btn ghost wdt-m-x'>Close</button></div></div>";
+    var close = function () { o.remove(); document.removeEventListener("keydown", key); };
+    var key = function (e) { if (e.key === "Escape") close(); };
+    o.addEventListener("click", function (e) { if (e.target === o) close(); });
+    o.querySelector(".wdt-m-x").addEventListener("click", close);
+    o.querySelector(".wdt-m-buy").addEventListener("click", function () { close(); onBuy(); });
+    document.addEventListener("keydown", key);
+    document.body.appendChild(o);
+    o.querySelector(".wdt-m-buy").focus();
+    ev("tool_free_used", { tool: C.type });
   }
 
   function renderOrder(d) {

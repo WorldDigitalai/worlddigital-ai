@@ -201,7 +201,7 @@ async function handle(req, env, ctx) {
         return html(blogIndex(posts, { category: topic || null, prod }), 200, 'public, max-age=0, s-maxage=60');
       }
       const slug = decodeURIComponent(path.slice(6)).toLowerCase();
-      if (!/^[a-z0-9-]+$/.test(slug)) return notFound(prod);
+      if (!/^[a-z0-9-]+$/.test(slug)) return redirect('/blog'); // old WordPress addresses (tags, feeds, sitemaps)
       const p = await st.getPost(slug);
       if (p?.redirect) return redirect(`/blog/${p.redirect}`);
       if (!p) return redirect('/blog'); // retired post from the old site: the blog, not a dead end

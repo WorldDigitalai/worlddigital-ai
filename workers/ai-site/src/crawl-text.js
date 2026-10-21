@@ -28,6 +28,8 @@ User-agent: PerplexityBot
 User-agent: Perplexity-User
 User-agent: DuckAssistBot
 User-agent: MistralAI-User
+# Content Signals (contentsignals.org): search engines, AI answers and AI training may all use this public content.
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
 Allow: /
 Disallow: /admin/
 Disallow: /dashboard/

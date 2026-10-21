@@ -11,6 +11,7 @@ import { INDEXNOW_KEY, PROD_HOSTS, isAppPath } from './routing.js';
 import { toolsProxy } from './tools-proxy.js';
 import { withTool } from './tools-widget.js';
 import { humanOk } from './human.js';
+import { htmlToMarkdown, wantsMarkdown } from './markdown.js';
 export { Store } from './store.js';
 
 const RAW = new WeakSet(); // app responses we must not touch
@@ -235,7 +236,7 @@ export default {
     if (url.hostname === 'www.worlddigital.ai') return redirect(`${SITE}${url.pathname}${url.search}`);
     // Edge cache for pages built from the blog database (blog, sitemap, llms.txt, feed): crawlers get them
     // without a database round trip. Signed-in editors (cookie) always get a fresh copy.
-    const cacheable = prod && req.method === 'GET' && !req.headers.get('Cookie') &&
+    const cacheable = prod && req.method === 'GET' && !req.headers.get('Cookie') && !wantsMarkdown(req) &&
       (/^\/blog(\/|$)/.test(url.pathname) || ['/sitemap.xml', '/sitemap.txt', '/llms.txt', '/llms-full.txt'].includes(url.pathname));
     const cache = caches.default;
     if (cacheable) {
@@ -246,7 +247,13 @@ export default {
       const res = await handle(req, env, ctx);
       // Responses from the app pass through unchanged.
       if (RAW.has(res)) return res;
-      const out = withHeaders(res, prod);
+      let out = withHeaders(res, prod);
+      // AI agents asking for Markdown get the same page as clean Markdown.
+      if (wantsMarkdown(req) && out.status === 200 && (out.headers.get('Content-Type') || '').startsWith('text/html')) {
+        const md = htmlToMarkdown(await out.text(), url.origin + url.pathname);
+        out = withHeaders(new Response(md, { headers: { 'Content-Type': 'text/markdown; charset=utf-8', 'Cache-Control': 'public, max-age=0, s-maxage=300', Vary: 'Accept' } }), prod);
+        return out;
+      }
       if (cacheable && out.status === 200) ctx.waitUntil(cache.put(req.url, out.clone()));
       return out;
     } catch (e) {

@@ -64,36 +64,36 @@ Founder: Ahmad Awwad, digital marketing strategist (personal site: https://world
 Clients include Murfreesboro Kabob, RPM Auto Group and Bean Loft Coffee Company in Murfreesboro, TN.
 
 ## Pages
-- [Home](${SITE}/): What we do and who we help
-- [About](${SITE}/about): The company, how we work, founder
-- [Services](${SITE}/services): All services
-- [AI SEO Agency](${SITE}/ai-seo-agency): SEO, AI SEO, answer engine optimization (AEO) and generative engine optimization (GEO), $199.99/month
-- [Local SEO services](${SITE}/local-seo-services): Google Business Profile, Maps and “near me” rankings, citations and reviews, included in the $199.99/month plan
-- [Generative engine optimization](${SITE}/generative-engine-optimization): GEO so ChatGPT, Google AI Overviews, Gemini and Perplexity mention and cite your brand
-- [Google Ads Agency](${SITE}/google-ads-agency): Google Search, Maps and Performance Max campaign management
-- [AI Marketing Automation](${SITE}/ai-marketing-automation): Automated marketing workflows for growing businesses
-- [Website Build](${SITE}/build): Website design, maintenance and management for SMBs, SMEs and enterprises
-- [Free SEO audit](${SITE}/free-seo-report): Free SEO and AI visibility report (website SEO checker) in about 60 seconds
-- [Keyword research](${SITE}/services/keyword-research): Keyword research tool and services: real Google search volume, CPC and competition (3 keywords free, all 10 for $9.99)
-- [SEO content](${SITE}/services/content-marketing): Content marketing services and an AI content generator for ads and posts on 8 platforms (1 free, 5 for $24.99)
-- [Houston, TX](${SITE}/houston): Local SEO, Google Ads and web design for Houston businesses
-- [Murfreesboro, TN](${SITE}/murfreesboro): Local SEO, Google Ads and web design for Murfreesboro and Rutherford County businesses
-- [Multi-location](${SITE}/enterprise): SEO and Google Ads for brands with many locations
-- [Reviews](${SITE}/testimonials): Client reviews, BBB A+ and Google rating
-- [Blog](${SITE}/blog): Guides on SEO, AI search and Google Ads
-- [Social Hub](${SITE}/social): Our LinkedIn, Instagram, Facebook, TikTok, YouTube and X posts with SEO and AI marketing tips, updated nightly
-- [Help Center](${SITE}/help): Plans, billing, cancelling and results
+- [Home](${SITE}/) — What we do and who we help
+- [About](${SITE}/about) — The company, how we work, founder
+- [Services](${SITE}/services) — All services
+- [AI SEO Agency](${SITE}/ai-seo-agency) — SEO, AI SEO, answer engine optimization (AEO) and generative engine optimization (GEO), $199.99/month
+- [Local SEO services](${SITE}/local-seo-services) — Google Business Profile, Maps and “near me” rankings, citations and reviews, included in the $199.99/month plan
+- [Generative engine optimization](${SITE}/generative-engine-optimization) — GEO so ChatGPT, Google AI Overviews, Gemini and Perplexity mention and cite your brand
+- [Google Ads Agency](${SITE}/google-ads-agency) — Google Search, Maps and Performance Max campaign management
+- [AI Marketing Automation](${SITE}/ai-marketing-automation) — Automated marketing workflows for growing businesses
+- [Website Build](${SITE}/build) — Website design, maintenance and management for SMBs, SMEs and enterprises
+- [Free SEO audit](${SITE}/free-seo-report) — Free SEO and AI visibility report (website SEO checker) in about 60 seconds
+- [Keyword research](${SITE}/services/keyword-research) — Keyword research tool and services: real Google search volume, CPC and competition (3 keywords free, all 10 for $9.99)
+- [SEO content](${SITE}/services/content-marketing) — Content marketing services and an AI content generator for ads and posts on 8 platforms (1 free, 5 for $24.99)
+- [Houston, TX](${SITE}/houston) — Local SEO, Google Ads and web design for Houston businesses
+- [Murfreesboro, TN](${SITE}/murfreesboro) — Local SEO, Google Ads and web design for Murfreesboro and Rutherford County businesses
+- [Multi-location](${SITE}/enterprise) — SEO and Google Ads for brands with many locations
+- [Reviews](${SITE}/testimonials) — Client reviews, BBB A+ and Google rating
+- [Blog](${SITE}/blog) — Guides on SEO, AI search and Google Ads
+- [Social Hub](${SITE}/social) — Our LinkedIn, Instagram, Facebook, TikTok, YouTube and X posts with SEO and AI marketing tips, updated nightly
+- [Help Center](${SITE}/help) — Plans, billing, cancelling and results
 - [Careers](${SITE}/career)
 - [Privacy Policy](${SITE}/privacy-policy)
 - [Terms and Conditions](${SITE}/terms-and-conditions)
 
 ## Free tools
-- [Free SEO & AI visibility report](${SITE}/free-seo-report): Scores for on-page SEO, mobile speed, Google rankings, backlinks and AI-answer citations in about 60 seconds
-- [Keyword research tool](${SITE}/services/keyword-research): Enter a website, get its top 3 keywords free with Google search volume, CPC and competition; all 10 for $9.99 one-time (PDF, Excel or Word)
-- [Content generator](${SITE}/services/content-marketing): Ads or posts for Google Search Ads, Facebook, Instagram, LinkedIn, X, TikTok, YouTube Shorts or Snapchat; 1 free, 5 for $24.99 one-time
+- [Free SEO & AI visibility report](${SITE}/free-seo-report) — Scores for on-page SEO, mobile speed, Google rankings, backlinks and AI-answer citations in about 60 seconds
+- [Keyword research tool](${SITE}/services/keyword-research) — Enter a website, get its top 3 keywords free with Google search volume, CPC and competition; all 10 for $9.99 one-time (PDF, Excel or Word)
+- [Content generator](${SITE}/services/content-marketing) — Ads or posts for Google Search Ads, Facebook, Instagram, LinkedIn, X, TikTok, YouTube Shorts or Snapchat; 1 free, 5 for $24.99 one-time
 
 ## Optional
-- [Full knowledge file](${SITE}/llms-full.txt): Detailed reference on the company, services, process and common questions
+- [Full knowledge file](${SITE}/llms-full.txt) — Detailed reference on the company, services, process and common questions
 `;
 
 export const LLMS_FULL = `# WorldDigital.ai — Full Reference

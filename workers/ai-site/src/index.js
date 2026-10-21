@@ -34,7 +34,7 @@ function withHeaders(res, prod, extra = {}) {
   return new Response(res.body, { status: res.status, statusText: res.statusText, headers: h });
 }
 const html = (body, status = 200, cache = 'public, max-age=0, s-maxage=300') => new Response(body, { status, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': cache } });
-const text = (body, type) => new Response(body, { headers: { 'Content-Type': type, 'Cache-Control': 'public, max-age=3600' } });
+const text = (body, type) => new Response(body, { headers: { 'Content-Type': type, 'Cache-Control': 'public, max-age=600' } });
 const redirect = (to, status = 301) => new Response(null, { status, headers: { Location: to, 'Cache-Control': status === 301 ? 'public, max-age=86400' : 'no-store' } });
 
 function notFound(prod) {
@@ -56,6 +56,12 @@ function portalPage(prod) {
   }), 200, 'no-store');
 }
 
+const SECURITY_TXT = `Contact: mailto:support@worlddigital.ai
+Expires: 2027-10-20T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://worlddigital.ai/.well-known/security.txt
+`;
+
 function sitemap(posts) {
   const today = new Date().toISOString().slice(0, 10);
   // Real change dates: stamping every page with today teaches Google to ignore lastmod.
@@ -68,8 +74,8 @@ function sitemap(posts) {
 }
 
 function llms(posts, full) {
-  const list = posts.slice(0, 40).map((p) => `- [${p.title}](${SITE}/blog/${p.slug}): ${p.description || p.excerpt || ''}`).join('\n');
-  const topics = Object.entries(PAGES).filter(([, o]) => o.keywords).map(([p, o]) => `- ${SITE}${p === '/' ? '/' : p}: ${o.keywords}`).join('\n');
+  const list = posts.slice(0, 40).map((p) => `- [${p.title}](${SITE}/blog/${p.slug}) — ${p.description || p.excerpt || ''}`).join('\n');
+  const topics = Object.entries(PAGES).filter(([, o]) => o.keywords).map(([p, o]) => `- ${SITE}${p === '/' ? '/' : p} — ${o.keywords}`).join('\n');
   return `${full ? LLMS_FULL : LLMS}\n## Topics by page (search terms each page answers)\n${topics}\n\n## Blog posts\n${list}\n`;
 }
 
@@ -141,6 +147,17 @@ async function handle(req, env, ctx) {
     const clean = path.replace(/\/+$/, '');
     if (PAGES[clean] || clean.startsWith('/blog')) return redirect(clean + url.search);
   }
+  // Old blog subdomain (if routed here): send each post to its new address.
+  if (url.hostname === 'blog.worlddigital.ai') {
+    const slug = path.replace(/^\/+|\/+$/g, '').split('/').pop() || '';
+    return redirect(/^[a-z0-9-]+$/.test(slug) && !/sitemap|feed|author|tag|category|wp-/.test(slug) ? `${SITE}/blog/${slug}` : `${SITE}/blog`);
+  }
+  // Links copied with trailing punctuation, e.g. "/murfreesboro):" from Markdown lists.
+  if (/[):.,;'"\]>]+$/.test(path) && path.length > 1) {
+    const clean = path.replace(/[):.,;'"\]>]+$/, '') || '/';
+    if (clean !== path) return redirect(clean + url.search);
+  }
+  if (path === '/favicon.svg') return redirect('/icon.svg');
   const lower = path.toLowerCase();
   if (REDIRECTS[lower]) return redirect(REDIRECTS[lower] + url.search);
   if (path !== lower && (PAGES[lower] || lower.startsWith('/blog'))) return redirect(lower + url.search);
@@ -168,11 +185,13 @@ async function handle(req, env, ctx) {
     }
     if (path === '/robots.txt') return text(prod ? ROBOTS : 'User-agent: *\nDisallow: /\n', 'text/plain; charset=utf-8');
     if (path === `/${INDEXNOW_KEY}.txt`) return text(INDEXNOW_KEY, 'text/plain; charset=utf-8');
-    if (['/sitemap.xml', '/llms.txt', '/llms-full.txt', '/blog', '/blog/feed.xml'].includes(path) || path.startsWith('/blog/')) {
+    if (path === '/.well-known/security.txt' || path === '/security.txt') return text(SECURITY_TXT, 'text/plain; charset=utf-8');
+    if (['/sitemap.xml', '/sitemap.txt', '/llms.txt', '/llms-full.txt', '/blog', '/blog/feed.xml'].includes(path) || path.startsWith('/blog/')) {
       const st = store(env);
       await ensureSeed(st);
       const posts = await st.listPosts();
       if (path === '/sitemap.xml') return text(sitemap(posts), 'application/xml; charset=utf-8');
+      if (path === '/sitemap.txt') return text([...sitemap(posts).matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]).filter((u) => !u.includes('/media/')).join('\n') + '\n', 'text/plain; charset=utf-8');
       if (path === '/llms.txt') return text(llms(posts, false), 'text/plain; charset=utf-8');
       if (path === '/llms-full.txt') return text(llms(posts, true), 'text/plain; charset=utf-8');
       if (path === '/blog/feed.xml') return text(feed(posts), 'application/rss+xml; charset=utf-8');
@@ -184,7 +203,8 @@ async function handle(req, env, ctx) {
       if (!/^[a-z0-9-]+$/.test(slug)) return notFound(prod);
       const p = await st.getPost(slug);
       if (p?.redirect) return redirect(`/blog/${p.redirect}`);
-      if (!p || !p.live) return notFound(prod);
+      if (!p) return redirect('/blog'); // retired post from the old site: the blog, not a dead end
+      if (!p.live) return notFound(prod);
       return html(blogPost(p, posts, { prod }), 200, 'public, max-age=0, s-maxage=60');
     }
     const media = /^\/media\/([a-f0-9]{20})$/.exec(path);
@@ -213,11 +233,22 @@ export default {
     const url = new URL(req.url);
     const prod = PROD_HOSTS.has(url.hostname);
     if (url.hostname === 'www.worlddigital.ai') return redirect(`${SITE}${url.pathname}${url.search}`);
+    // Edge cache for pages built from the blog database (blog, sitemap, llms.txt, feed): crawlers get them
+    // without a database round trip. Signed-in editors (cookie) always get a fresh copy.
+    const cacheable = prod && req.method === 'GET' && !req.headers.get('Cookie') &&
+      (/^\/blog(\/|$)/.test(url.pathname) || ['/sitemap.xml', '/sitemap.txt', '/llms.txt', '/llms-full.txt'].includes(url.pathname));
+    const cache = caches.default;
+    if (cacheable) {
+      const hit = await cache.match(req.url);
+      if (hit) return hit;
+    }
     try {
       const res = await handle(req, env, ctx);
       // Responses from the app pass through unchanged.
       if (RAW.has(res)) return res;
-      return withHeaders(res, prod);
+      const out = withHeaders(res, prod);
+      if (cacheable && out.status === 200) ctx.waitUntil(cache.put(req.url, out.clone()));
+      return out;
     } catch (e) {
       console.log('error', e.stack || e.message);
       return withHeaders(html('<!doctype html><title>Error</title><p style="font-family:sans-serif;padding:40px">Something went wrong. Please try again in a moment, or email support@worlddigital.ai.</p>', 500, 'no-store'), prod);

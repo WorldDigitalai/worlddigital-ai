@@ -233,7 +233,10 @@ export function zebra(body) {
 export function page(o) {
   const url = SITE + (o.path === '/' ? '/' : o.path);
   const og = o.ogImage || `${SITE}/og.png`;
-  const schema = [].concat(o.schema || []).filter(Boolean)
+  const list = [].concat(o.schema || []).filter(Boolean);
+  // Every page carries the Organization, so search engines and AI tools never have to resolve it from another page.
+  if (!o.noindex && !list.some((s) => s['@id'] === ORG['@id'])) list.unshift(ORG);
+  const schema = list
     .map((s) => `<script type="application/ld+json">${JSON.stringify(s).replace(/</g, '\\u003c')}</script>`).join('\n');
   return `<!doctype html>
 <html lang="en">
@@ -298,7 +301,13 @@ export const ORG = {
   '@context': 'https://schema.org', '@type': ['Organization', 'ProfessionalService'], '@id': `${SITE}/#org`,
   name: 'WorldDigital.ai', legalName: 'WorldDigital.ai Corporation LLC', url: `${SITE}/`, logo: `${SITE}/icon-512.png`, image: `${SITE}/og.png`,
   email: 'support@worlddigital.ai', telephone: '+1-832-834-0680', priceRange: '$199.99/month+',
-  description: 'Digital marketing company helping local businesses get more customers from Google, Maps and AI search: SEO, AEO, GEO, Google Ads management and web design.',
+  description: 'Digital marketing company helping SMBs, SMEs and enterprises across the US and Canada get more customers from Google, Maps and AI search: SEO, AEO, GEO, Google Ads management, content marketing and web design.',
+  address: [{ '@type': 'PostalAddress', addressLocality: 'Houston', addressRegion: 'TX', addressCountry: 'US' },
+    { '@type': 'PostalAddress', addressLocality: 'Murfreesboro', addressRegion: 'TN', addressCountry: 'US' }],
+  contactPoint: { '@type': 'ContactPoint', contactType: 'customer support', email: 'support@worlddigital.ai', telephone: '+1-832-834-0680',
+    areaServed: ['US', 'CA'], availableLanguage: ['English', 'Arabic'] },
+  knowsAbout: ['Search engine optimization', 'Local SEO', 'Generative engine optimization (GEO)', 'Answer engine optimization (AEO)',
+    'AI search visibility', 'Google Ads management', 'PPC management', 'Keyword research', 'Content marketing', 'Website design', 'Multi-location SEO'],
   areaServed: [{ '@type': 'Country', name: 'United States' }, { '@type': 'Country', name: 'Canada' }],
   founder: { '@type': 'Person', name: 'Ahmad Awwad', url: `${SITE}/about`, sameAs: ['https://www.linkedin.com/in/ahmadawwad89'] },
   sameAs: ['https://linkedin.com/company/worlddigitalai', 'https://facebook.com/worlddigitalai', 'https://instagram.com/worlddigitalai', 'https://x.com/worlddigitalai', 'https://youtube.com/@worlddigitalai', 'https://tiktok.com/@worlddigitalai', BBB],

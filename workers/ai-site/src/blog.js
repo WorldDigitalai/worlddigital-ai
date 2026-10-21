@@ -27,6 +27,8 @@ export function seedPosts() {
 
 const fmtDate = (iso) => new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });
 const catSlug = (c) => String(c || '').toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+// Trim to a search-snippet length at a word boundary.
+const clip = (t, n) => { t = String(t || '').replace(/\s+/g, ' ').trim(); if (t.length <= n) return t; const c = t.slice(0, n - 1); return `${c.slice(0, c.lastIndexOf(' ')).replace(/[,;:\s]+$/, '')}…`; };
 const cover = (p) => (p.cover_id ? `/media/${p.cover_id}` : null);
 
 function card(p) {
@@ -92,7 +94,7 @@ ${related.length ? `<section class="sec" style="padding-top:40px"><div class="wr
   return page({
     path: `/blog/${p.slug}`, prod, noindex: preview, ogType: 'article',
     title: ((t) => (t.length <= 42 ? `${t} | WorldDigital.ai` : t))(p.seo_title || p.title), ogTitle: p.seo_title || p.title,
-    description: p.description || p.excerpt || mdToText(p.body).slice(0, 155),
+    description: clip(p.description || p.excerpt || mdToText(p.body), 158),
     ogImage: img ? SITE + img : undefined,
     extraHead: `<meta property="article:published_time" content="${esc(date)}"><meta property="article:modified_time" content="${esc(p.updated_at || date)}"><meta property="article:section" content="${esc(p.category || '')}">`,
     schema: [{

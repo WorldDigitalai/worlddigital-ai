@@ -83,7 +83,7 @@ jobs:
         if: github.event_name != 'pull_request' && steps.cf.outputs.ok == '1'
         run: |
           sleep 20
-          for p in / /services /about /social /local-seo-services /blog /blog/tiktok-vs-instagram-ads /help /login /sitemap.xml /robots.txt /llms.txt; do
+          for p in / /services /tools /about /social /local-seo-services /blog /blog/tiktok-vs-instagram-ads /help /login /sitemap.xml /robots.txt /llms.txt; do
             code=$(curl -s -o /tmp/p -w "%{http_code}" "https://worlddigital.ai$p"); echo "$p -> $code"
             [ "$code" = "200" ] || echo "::error::live $p returned $code"
           done

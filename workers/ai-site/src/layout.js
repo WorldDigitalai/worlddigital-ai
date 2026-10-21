@@ -76,7 +76,7 @@ textarea{min-height:120px;resize:vertical}
 .post-card:hover h2,.post-card:hover h3{color:#0D5EC7}
 .filters{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}.filters a{padding:8px 14px;border-radius:99px;border:1px solid #DCE5EF;background:#fff;text-decoration:none;color:#33445A;font-weight:600;font-size:14.5px}.filters a[aria-current=page]{background:#0E1A2B;color:#fff;border-color:#0E1A2B}
 @media (max-width:1260px){.brand small{display:none}.nav{gap:16px;font-size:14.5px}}
-@media (max-width:1060px){.nav{display:none}.menu{display:block}.top .btn.red{display:none}}
+@media (max-width:1200px){.nav{display:none}.menu{display:block}.top .btn.red{display:none}}
 @media (max-width:420px){.brand small{display:none}}
 @media (max-width:720px){.sec{padding:48px 0}.hero-h{font-size:36px!important}.kv{grid-template-columns:1fr}.wrap{padding:0 16px}h2.h{font-size:30px!important}}
 .menu summary{list-style:none;border:1.5px solid #B9C7D8;border-radius:10px;padding:10px 14px;font-size:15px}.menu summary::-webkit-details-marker{display:none}
@@ -146,8 +146,8 @@ main>section:not(:first-of-type){content-visibility:auto;contain-intrinsic-size:
 `;
 
 const NAV = [
-  ['/services', 'Services'], ['/ai-seo-agency', 'SEO & AI Search'], ['/google-ads-agency', 'Google Ads'], ['/build', 'Websites'],
-  ['/houston', 'Locations'], ['/about', 'About us'], ['/blog', 'Blog'],
+  ['/services', 'Services'], ['/ai-seo-agency', 'AI SEO'], ['/google-ads-agency', 'Google Ads'], ['/build', 'Websites'],
+  ['/tools', 'Free tools'], ['/houston', 'Locations'], ['/about', 'About'], ['/blog', 'Blog'],
 ];
 
 function header(path) {
@@ -168,10 +168,39 @@ function footer() {
 <div><div class="brand" style="color:#fff">WorldDigital.ai</div><p style="margin:10px 0 0;line-height:1.6">WorldDigital.ai Corporation LLC<br>Serving businesses across the US and Canada<br>Hubs: Houston, TX · Murfreesboro, TN</p><p style="margin:10px 0 0"><a href="mailto:support@worlddigital.ai">support@worlddigital.ai</a><br><a href="tel:+18328340680">(832) 834-0680</a></p><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:16px"><a href="${BBB}" style="border:1px solid #33506F;border-radius:10px;padding:8px 12px;font-size:13px;font-weight:700;color:#fff">BBB A+ rated</a><a href="${GBP}" style="border:1px solid #33506F;border-radius:10px;padding:8px 12px;font-size:13px;font-weight:700;color:#fff">5.0 on Google Business Profile</a></div></div>
 <div><h2 class="fh">Services</h2><p style="margin:0;line-height:2"><a href="/ai-seo-agency">SEO &amp; AI Search</a><br><a href="/local-seo-services">Local SEO</a><br><a href="/generative-engine-optimization">GEO</a><br><a href="/google-ads-agency">Google Ads &amp; PPC</a><br><a href="/build">Web design</a><br><a href="/ai-marketing-automation">AI marketing automation</a><br><a href="/enterprise">Multi-location</a><br><a href="/services">All services</a></p></div>
 <div><h2 class="fh">Our hubs</h2><p style="margin:0;line-height:2"><a href="/houston">Houston, TX</a><br><a href="/murfreesboro">Murfreesboro, TN</a></p></div>
-<div><h2 class="fh">Company</h2><p style="margin:0;line-height:2"><a href="/about">About us</a><br><a href="/testimonials">Reviews</a><br><a href="/blog">Blog &amp; guides</a><br><a href="/social">Social Hub</a><br><a href="/help">Help center</a><br><a href="/career">Careers</a><br><a href="${REPORT}">Free SEO report</a></p></div>
+<div><h2 class="fh">Company</h2><p style="margin:0;line-height:2"><a href="/about">About us</a><br><a href="/testimonials">Reviews</a><br><a href="/blog">Blog &amp; guides</a><br><a href="/social">Social Hub</a><br><a href="/help">Help center</a><br><a href="/career">Careers</a></p></div>
+<div><h2 class="fh">Free tools</h2><p style="margin:0;line-height:2"><a href="${REPORT}">Free SEO report</a><br><a href="/services/keyword-research">Keyword research · $9.99</a><br><a href="/services/content-marketing">Content pack · $24.99</a><br><a href="/tools">All tools &amp; prices</a></p></div>
 </div>
 <p style="margin:36px 0 0;font-size:13px;border-top:1px solid #1E3A5F;padding-top:20px;line-height:1.9">© ${new Date().getUTCFullYear()} WorldDigital.ai Corporation LLC · <a href="/privacy-policy">Privacy</a> · <a href="/terms-and-conditions">Terms</a> · <a href="/cookies-policy">Cookies</a></p>
 </div></footer>`;
+}
+
+// The three self-serve tools, with their prices. Shown on every public page (except the tool's own page).
+export const TOOLS = [
+  { path: '/free-seo-report', name: 'Free SEO & AI visibility report', price: 'Free', note: 'No sign-up',
+    text: 'On-page SEO, mobile speed, Google rankings, backlinks and ChatGPT mentions, with your top fixes in about 60 seconds.', btn: 'Get my free report' },
+  { path: '/services/keyword-research', name: 'Keyword research', price: '$9.99', note: '3 keywords free · all 10 for $9.99',
+    text: 'The 10 keywords your site can win, with real Google search volume, cost per click and competition. PDF, Excel or Word.', btn: 'Try it free' },
+  { path: '/services/content-marketing', name: 'Content pack', price: '$24.99', note: '1 piece free · 5 for $24.99',
+    text: 'Five ready-to-post ads or posts for Google, Facebook, Instagram, LinkedIn, X, TikTok, YouTube Shorts or Snapchat.', btn: 'Try it free' },
+];
+export function toolCards(skip) {
+  return TOOLS.filter((t) => t.path !== skip).map((t) => `<a class="card svc" href="${t.path}"><span class="chip" style="align-self:flex-start">${t.note}</span><h3 class="h" style="font-size:21px">${esc(t.name)}</h3><p class="muted" style="margin:0;line-height:1.55">${t.text}</p><span style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-top:auto"><b class="h" style="font-size:26px">${t.price}</b><span style="font-weight:700;color:#0D5EC7">${t.btn} →</span></span></a>`).join('');
+}
+function toolsBand(path) {
+  return `<section class="sec tools-band"><div class="wrap">
+<div class="eyebrow">Free tools</div><h2 class="h" style="font-size:30px;margin-top:8px">Try our SEO tools, no sign-up</h2>
+<p class="muted" style="margin:8px 0 0;max-width:720px;line-height:1.6">Instant results from real Google data. Pay only if you want the full set, one time, no subscription. <a href="/tools" style="font-weight:700;color:#0B4FA8">See all tools and prices</a></p>
+<div class="grid3" style="margin-top:22px">${toolCards(path)}</div>
+</div></section>`;
+}
+
+// The tools band goes before a page's own closing call-to-action, or at the end of the page.
+function withTools(o) {
+  const body = String(o.body);
+  if (o.noindex || o.tools === false) return body;
+  const i = body.lastIndexOf('<section class="cta-sec"');
+  return i < 0 ? body + toolsBand(o.path) : body.slice(0, i) + toolsBand(o.path) + body.slice(i);
 }
 
 export const CTA = `<section class="cta-sec"><div class="wrap"><div class="cta-band">
@@ -277,7 +306,7 @@ ${analytics(o.prod)}
 <body>
 ${header(o.path)}
 <main id="main">
-${zebra(o.body)}
+${zebra(withTools(o))}
 ${o.cta === false ? '' : CTA}
 </main>
 ${footer()}
@@ -300,7 +329,14 @@ export function faqSchema(body) {
 export const ORG = {
   '@context': 'https://schema.org', '@type': ['Organization', 'ProfessionalService'], '@id': `${SITE}/#org`,
   name: 'WorldDigital.ai', legalName: 'WorldDigital.ai Corporation LLC', url: `${SITE}/`, logo: `${SITE}/icon-512.png`, image: `${SITE}/og.png`,
-  email: 'support@worlddigital.ai', telephone: '+1-832-834-0680', priceRange: '$199.99/month+',
+  email: 'support@worlddigital.ai', telephone: '+1-832-834-0680', priceRange: '$0–$199.99/month',
+  hasOfferCatalog: { '@type': 'OfferCatalog', name: 'Plans and tools', itemListElement: [
+    { '@type': 'Offer', name: 'SEO & AI Search Visibility plan', price: '199.99', priceCurrency: 'USD', url: `${SITE}/ai-seo-agency`,
+      priceSpecification: { '@type': 'UnitPriceSpecification', price: '199.99', priceCurrency: 'USD', unitText: 'MONTH' } },
+    { '@type': 'Offer', name: 'Free SEO & AI visibility report', price: '0', priceCurrency: 'USD', url: `${SITE}/free-seo-report` },
+    { '@type': 'Offer', name: 'Keyword research (10 keywords)', price: '9.99', priceCurrency: 'USD', url: `${SITE}/services/keyword-research` },
+    { '@type': 'Offer', name: 'Content pack (5 ads or posts)', price: '24.99', priceCurrency: 'USD', url: `${SITE}/services/content-marketing` },
+  ] },
   description: 'Digital marketing company helping SMBs, SMEs and enterprises across the US and Canada get more customers from Google, Maps and AI search: SEO, AEO, GEO, Google Ads management, content marketing and web design.',
   address: [{ '@type': 'PostalAddress', addressLocality: 'Houston', addressRegion: 'TX', addressCountry: 'US' },
     { '@type': 'PostalAddress', addressLocality: 'Murfreesboro', addressRegion: 'TN', addressCountry: 'US' }],

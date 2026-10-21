@@ -23,7 +23,7 @@ import unsubscribe from './pages/unsubscribe.html';
 import privacy from '../content/legal/privacy-policy.md';
 import terms from '../content/legal/terms-and-conditions.md';
 import cookies from '../content/legal/cookies-policy.md';
-import { ORG, SITE, crumbs, esc } from './layout.js';
+import { ORG, SITE, crumbs, esc, toolCards, TOOLS } from './layout.js';
 import { mdToHtml, parseFrontmatter } from './md.js';
 
 const svc = (name, path, description, serviceType) => ({
@@ -62,6 +62,33 @@ const GEO_FAQ = faq('GEO questions', [
   ['How much do GEO services cost?', 'GEO is included in the SEO &amp; AI Search Visibility plan at $199.99 a month, together with SEO, AI SEO and AEO. No contract.'],
 ]);
 
+const TOOLS_FAQ = faq('Tool questions', [
+  ['Are the tools really free to try?', 'Yes. The SEO report is completely free. Keyword research shows your top 3 keywords free and the content generator writes your first piece free, with no sign-up and no card.'],
+  ['How much do the paid versions cost?', 'All 10 keywords cost $9.99 and a pack of 5 ads or posts costs $24.99. Both are one-time payments through Stripe, with no subscription.'],
+  ['How many free tries do I get?', 'One free preview per website for each tool. If you run the same website again, we show you the result you already have and offer the full version.'],
+  ['What formats do I get?', 'Paid results download as PDF, Excel or Word, and we also email them to you.'],
+  ['What if I want you to do the work?', 'The <a href="/ai-seo-agency">SEO &amp; AI Search Visibility plan</a> is $199.99 a month with no contract and includes keyword research, content and fixes done for you.'],
+]);
+const TOOLS_BODY = `<section style="background:#fff;border-bottom:1px solid #DCE5EF"><div class="wrap" style="padding-top:64px;padding-bottom:56px">
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> / Free tools</nav>
+<div class="eyebrow" style="margin-top:14px">Free SEO tools</div>
+<h1 class="h hero-h" style="font-size:52px;line-height:1.08;margin-top:14px;max-width:900px">Free SEO tools with <span style="color:#0D5EC7">simple, one-time prices.</span></h1>
+<p style="font-size:19px;line-height:1.6;color:#33445A;margin:20px 0 0;max-width:760px">Check your website, find the keywords you can win and get ready-to-post content, all from real Google data. Every tool has a free version; pay only if you want the full result.</p>
+</div></section>
+<section class="sec"><div class="wrap">
+<h2 class="h" style="font-size:30px">Pick a tool</h2>
+<div class="grid3" style="margin-top:20px">${toolCards()}</div>
+</div></section>
+<section class="sec"><div class="wrap" style="max-width:880px">
+<h2 class="h" style="font-size:30px">Prices at a glance</h2>
+<div style="margin-top:20px;overflow-x:auto;border:1px solid #DCE5EF;border-radius:16px"><table class="cmp"><thead><tr><th scope="col">Tool or plan</th><th scope="col">Free</th><th scope="col">Full version</th></tr></thead><tbody>
+<tr><th scope="row"><a href="/free-seo-report">SEO &amp; AI visibility report</a></th><td>Full report</td><td>Free</td></tr>
+<tr><th scope="row"><a href="/services/keyword-research">Keyword research</a></th><td>Top 3 keywords</td><td>All 10 for $9.99, one time</td></tr>
+<tr><th scope="row"><a href="/services/content-marketing">Content pack</a></th><td>1 ad or post</td><td>5 for $24.99, one time</td></tr>
+<tr><th scope="row"><a href="/ai-seo-agency">SEO &amp; AI Search Visibility plan</a></th><td>Strategy call</td><td>$199.99 a month, no contract</td></tr>
+</tbody></table></div>
+</div></section>
+${TOOLS_FAQ.html}`;
 const CHECKER_FAQ = faq('SEO checker questions', [
   ['What does this SEO checker test?', 'It checks on-page SEO (titles, descriptions, headings, schema), mobile speed with Google Lighthouse, where you rank on Google, your backlinks, and whether AI assistants cite your site, then lists your top fixes.'],
   ['Is the SEO audit really free?', 'Yes. Enter your website and you get the report in about a minute, with no credit card.'],
@@ -78,7 +105,7 @@ function legal(md, path) {
 <div class="eyebrow" style="margin-top:14px">Legal</div><h1 class="h" style="font-size:44px;margin-top:10px">${esc(meta.title)}</h1>
 <p class="muted">Last updated: ${esc(meta.updated)}</p></div></section>
 <section class="sec" style="padding-top:40px"><div class="wrap prose" style="max-width:860px">${mdToHtml(body)}</div></section>`,
-    cta: false, schema: [crumbs([['Home', '/'], [meta.title, path]])], sitemap: { priority: '0.3', changefreq: 'yearly' },
+    cta: false, tools: false, schema: [crumbs([['Home', '/'], [meta.title, path]])], sitemap: { priority: '0.3', changefreq: 'yearly' },
   };
 }
 
@@ -145,6 +172,13 @@ export const PAGES = {
     description: 'Multi-location SEO and franchise SEO for brands with many locations: location pages, Google Business Profiles, AI search and Google Ads, priced per location.',
     schema: [svc('Multi-location marketing', '/enterprise', 'Local SEO, AI search and Google Ads across many locations.', 'Multi-location SEO'),
       crumbs([['Home', '/'], ['Multi-location', '/enterprise']])], sitemap: { priority: '0.5' } },
+  '/tools': { keywords: 'free seo tools, free keyword research tool, ai content generator, free seo checker, seo tools for small business', body: TOOLS_BODY, tools: false,
+    title: 'Free SEO Tools: Audit, Keywords & Content | WorldDigital.ai',
+    description: 'Free SEO tools for small businesses: a free SEO and AI visibility report, keyword research (3 free, 10 for $9.99) and a content generator (1 free, 5 for $24.99).',
+    schema: [{ '@context': 'https://schema.org', '@type': 'ItemList', name: 'WorldDigital.ai SEO tools', itemListElement: TOOLS.map((t, i) => ({ '@type': 'ListItem', position: i + 1, url: SITE + t.path, name: t.name })) },
+      ...TOOLS.map((t) => ({ '@context': 'https://schema.org', '@type': 'WebApplication', name: t.name, url: SITE + t.path, applicationCategory: 'BusinessApplication', operatingSystem: 'Any',
+        offers: { '@type': 'Offer', price: t.price === 'Free' ? '0' : t.price.slice(1), priceCurrency: 'USD' }, provider: { '@id': `${SITE}/#org` } })),
+      crumbs([['Home', '/'], ['Free tools', '/tools']])], sitemap: { priority: '0.8', changefreq: 'monthly' } },
   '/free-seo-report': { keywords: 'free seo audit, free seo report, website seo checker, seo checker, free website audit, seo audit, ai visibility checker', body: report + CHECKER_FAQ.html, title: 'Free SEO Audit & Website SEO Checker | WorldDigital.ai',
     description: 'Free SEO audit and website SEO checker: on-page SEO, mobile speed, Google rankings, backlinks and ChatGPT citations, with your top fixes in 60 seconds.',
     schema: [{ '@context': 'https://schema.org', '@type': 'WebApplication', name: 'Free SEO & AI Visibility Report', url: `${SITE}/free-seo-report`, applicationCategory: 'BusinessApplication', operatingSystem: 'Any', offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' }, provider: { '@id': `${SITE}/#org` } },

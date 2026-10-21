@@ -2,7 +2,7 @@
 // Same format as worlddigital.us, written for the company. Social-platform pages are left out on purpose
 // (they come back later as the Social & Email Autopilot service).
 
-export const UPDATED = '2026-10-20';
+export const UPDATED = '2026-10-21';
 const SITE = 'https://worlddigital.ai';
 
 // One group only: crawlers that find a group naming them ignore the "*" group,
@@ -28,8 +28,7 @@ User-agent: PerplexityBot
 User-agent: Perplexity-User
 User-agent: DuckAssistBot
 User-agent: MistralAI-User
-# Content Signals (contentsignals.org): search engines, AI answers and AI training may all use this public content.
-Content-Signal: search=yes, ai-input=yes, ai-train=yes
+# Content Signals (contentsignals.org): search=yes, ai-input=yes, ai-train=yes. Search engines, AI answers and AI training may all use this public content.
 Allow: /
 Disallow: /admin/
 Disallow: /dashboard/
@@ -91,6 +90,7 @@ Clients include Murfreesboro Kabob, RPM Auto Group and Bean Loft Coffee Company 
 
 ## Free tools
 - [Free SEO & AI visibility report](${SITE}/free-seo-report) — Scores for on-page SEO, mobile speed, Google rankings, backlinks and AI-answer citations in about 60 seconds
+- [All free tools and prices](${SITE}/tools) — Free SEO report (free), keyword research (3 free, 10 for $9.99) and content generator (1 free, 5 for $24.99) on one page
 - [Keyword research tool](${SITE}/services/keyword-research) — Enter a website, get its top 3 keywords free with Google search volume, CPC and competition; all 10 for $9.99 one-time (PDF, Excel or Word)
 - [Content generator](${SITE}/services/content-marketing) — Ads or posts for Google Search Ads, Facebook, Instagram, LinkedIn, X, TikTok, YouTube Shorts or Snapchat; 1 free, 5 for $24.99 one-time
 

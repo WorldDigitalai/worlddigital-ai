@@ -78,8 +78,11 @@ export const socialSchema = [
       itemListElement: sorted.slice(0, 50).map((p, i) => ({
         '@type': 'ListItem', position: i + 1,
         item: {
-          '@type': 'SocialMediaPosting', headline: p.text.slice(0, 110), datePublished: p.date, url: p.link || undefined,
-          ...(p.thumb ? { image: p.thumb } : {}), author: { '@id': `${SITE}/#org` }, publisher: { '@id': `${SITE}/#org` },
+          // Google's discussion-forum rules: author needs a name and the post needs text, an image or a video.
+          '@type': 'SocialMediaPosting', headline: p.text.slice(0, 110), text: p.text.slice(0, 1000), datePublished: p.date, url: p.link || undefined,
+          ...(p.thumb ? { image: p.thumb } : {}),
+          author: { '@type': 'Organization', '@id': `${SITE}/#org`, name: 'WorldDigital.ai', url: `${SITE}/` },
+          publisher: { '@type': 'Organization', '@id': `${SITE}/#org`, name: 'WorldDigital.ai', url: `${SITE}/` },
         },
       })),
     },

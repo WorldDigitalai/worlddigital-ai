@@ -8,6 +8,7 @@ on:
 permissions:
   contents: read
   id-token: write
+  issues: write
 jobs:
   audit:
     runs-on: ubuntu-latest
@@ -39,7 +40,22 @@ jobs:
           md += [f"| {r['page'] or '/'} | {r['impressions']} | {r['clicks']} | {r['avg_pos']} | {r['last_seen']} |" for r in rows]
           s = "\n".join(md); print(s)
           open(os.environ['GITHUB_STEP_SUMMARY'], 'a').write(s)
+          open('gsc-pages.md', 'w').write(s)
           EOF
+      - name: Post the report to the "Site audit report" issue (one issue, updated every run)
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ -f site-audit.md ] || exit 0
+          { echo "Last run: $(date -u '+%Y-%m-%d %H:%M UTC') · [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"; echo; cat site-audit.md; [ -f gsc-pages.md ] && cat gsc-pages.md; } | head -c 60000 > body.md
+          n=$(gh api "repos/${{ github.repository }}/issues?state=open&labels=site-audit" -q '.[0].number')
+          if [ -z "$n" ]; then
+            gh api "repos/${{ github.repository }}/labels" -f name=site-audit -f color=0B4FA8 >/dev/null 2>&1 || true
+            gh api "repos/${{ github.repository }}/issues" -f title="Site audit report" -F body=@body.md -f 'labels[]=site-audit' -q .html_url
+          else
+            gh api -X PATCH "repos/${{ github.repository }}/issues/$n" -F body=@body.md -q .html_url
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:

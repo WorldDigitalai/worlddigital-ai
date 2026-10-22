@@ -1,0 +1,51 @@
+name: Site audit (both sites)
+# Crawls worlddigital.ai and worlddigital.us like a search engine: every sitemap page, every internal link,
+# crawler access, plus which pages Google showed in search (Search Console bulk export in BigQuery).
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "41 13 * * 1"   # Mondays ~8:40am Chicago
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Crawl both sites
+        run: python3 tools/site_audit.py
+      - uses: google-github-actions/auth@v2
+        id: gcp
+        continue-on-error: true
+        with:
+          workload_identity_provider: projects/250920469327/locations/global/workloadIdentityPools/github/providers/github
+          service_account: github-deploy@cs-poc-0zqkvyxapah85tnxz2byzqa.iam.gserviceaccount.com
+      - uses: google-github-actions/setup-gcloud@v2
+        if: steps.gcp.outcome == 'success'
+        continue-on-error: true
+      - name: Pages Google showed in search, last 28 days (Search Console export)
+        if: steps.gcp.outcome == 'success'
+        continue-on-error: true
+        run: |
+          q='SELECT REGEXP_REPLACE(url, r"^https://worlddigital\.ai", "") AS page, SUM(impressions) AS impressions, SUM(clicks) AS clicks, ROUND(SUM(sum_position)/SUM(impressions)+1,1) AS avg_pos, MAX(data_date) AS last_seen
+             FROM `cs-poc-0zqkvyxapah85tnxz2byzqa.searchconsole_worlddigitalai.searchdata_url_impression`
+             WHERE data_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY) GROUP BY page ORDER BY impressions DESC LIMIT 200'
+          bq --project_id=cs-poc-0zqkvyxapah85tnxz2byzqa query --nouse_legacy_sql --format=json --max_rows=200 "$q" > gsc-pages.json
+          python3 - <<'EOF'
+          import json, os
+          rows = json.load(open('gsc-pages.json'))
+          md = [f"\n## Google Search (last 28 days): {len(rows)} worlddigital.ai pages had impressions\n", "| Page | Impressions | Clicks | Avg position | Last seen |", "|---|---|---|---|---|"]
+          md += [f"| {r['page'] or '/'} | {r['impressions']} | {r['clicks']} | {r['avg_pos']} | {r['last_seen']} |" for r in rows]
+          s = "\n".join(md); print(s)
+          open(os.environ['GITHUB_STEP_SUMMARY'], 'a').write(s)
+          EOF
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: site-audit
+          path: |
+            site-audit.md
+            site-audit.json
+            gsc-pages.json
+          if-no-files-found: ignore

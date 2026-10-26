@@ -1,16 +1,16 @@
 {
- "updated": "2026-10-15T04:10Z",
+ "updated": "2026-10-26T21:43Z",
  "count": 100,
  "posts": [
   {
-   "id": "6acc3855a9411fbcc5663bb6",
+   "id": "6ad04fdd0d0df6a75bc262d3",
    "platform": "linkedin",
    "platformLabel": "LinkedIn",
    "account": "WorldDigital.ai",
-   "date": "2026-10-14",
-   "text": "Weeks to launch. Long contracts. Big retainers. Sound familiar? 😮‍💨 There's a smarter way: SEO from $199.99/month, and a custom quote for ads and websites where our experts take care of everything. No long-term contract. Same goal. Smarter way. 👉 worlddigital.ai #DigitalMarketing #AIMarketing #SmallBusinessOwner",
-   "link": "https://www.linkedin.com/feed/update/urn:li:share:7516167035215626240",
-   "thumb": "https://worlddigital-media.ahmad-awwad-7a0.workers.dev/wd-oct-post3-v2.jpg",
+   "date": "2026-10-26",
+   "text": "Thanksgiving, Black Friday, Christmas, New Year's… are your holiday hours on Google? 🗓️ Wrong hours mean wasted trips and bad reviews. Set special hours in your Google Business Profile now, before the rush. #GoogleBusinessProfile #HolidayHours #SmallBusiness",
+   "link": "https://www.linkedin.com/feed/update/urn:li:share:7520516231922278400",
+   "thumb": "https://worlddigital-media.ahmad-awwad-7a0.workers.dev/wd-n03.jpg",
    "type": "image",
    "metrics": {
     "reach": 0,
@@ -23,35 +23,124 @@
    "score": 0.0
   },
   {
-   "id": "6acc3853a9411fbcc5663af0",
-   "platform": "instagram",
-   "platformLabel": "Instagram",
-   "account": "worlddigitalai",
-   "date": "2026-10-14",
-   "text": "Weeks to launch. Long contracts. Big retainers. Sound familiar? 😮‍💨 There's a smarter way: SEO from $199.99/month, and a custom quote for ads and websites where our experts take care of everything. No long-term contract. Same goal. Smarter way. 👉 worlddigital.ai #DigitalMarketing #AIMarketing #SmallBusinessOwner",
-   "link": "https://www.instagram.com/p/DeexWy2l2G5/",
-   "thumb": "https://worlddigital-media.ahmad-awwad-7a0.workers.dev/wd-oct-post3-v2.jpg",
-   "type": "image",
-   "metrics": {
-    "views": 1,
-    "reach": 1,
-    "reactions": 1,
-    "comments": 2,
-    "shares": 0,
-    "saves": 0,
-    "engagementRate": 300
-   },
-   "score": 7.01
-  },
-  {
-   "id": "6acc3850fa026cfb81205355",
+   "id": "6ad04fda7b2b6a2866e1d49d",
    "platform": "facebook",
    "platformLabel": "Facebook",
    "account": "World Digital.ai",
-   "date": "2026-10-14",
-   "text": "Weeks to launch. Long contracts. Big retainers. Sound familiar? 😮‍💨 There's a smarter way: SEO from $199.99/month, and a custom quote for ads and websites where our experts take care of everything. No long-term contract. Same goal. Smarter way. 👉 worlddigital.ai #DigitalMarketing #AIMarketing #SmallBusinessOwner",
-   "link": "https://www.facebook.com/122222186444334560/posts/122222457230334560",
-   "thumb": "https://worlddigital-media.ahmad-awwad-7a0.workers.dev/wd-oct-post3-v2.jpg",
+   "date": "2026-10-26",
+   "text": "Thanksgiving, Black Friday, Christmas, New Year's… are your holiday hours on Google? 🗓️ Wrong hours mean wasted trips and bad reviews. Set special hours now. 👉 worlddigital.ai #GoogleBusinessProfile #HolidayHours #SmallBusiness",
+   "link": "https://facebook.com/270977466108280_122223531014334560",
+   "thumb": "https://worlddigital-media.ahmad-awwad-7a0.workers.dev/wd-n03.jpg",
+   "type": "image",
+   "metrics": {
+    "impressions": 0,
+    "reactions": 0,
+    "comments": 0,
+    "shares": 0,
+    "clicks": 0,
+    "engagementRate": 0
+   },
+   "score": 0.0
+  },
+  {
+   "id": "6ad04fd77b2b6a2866e1d2d3",
+   "platform": "instagram",
+   "platformLabel": "Instagram",
+   "account": "worlddigitalai",
+   "date": "2026-10-26",
+   "text": "Thanksgiving, Black Friday, Christmas, New Year's… are your holiday hours on Google? 🗓️ Wrong hours mean wasted trips and bad reviews. Set special hours now. Link in bio. #GoogleBusinessProfile #HolidayHours #SmallBusiness",
+   "link": "https://www.instagram.com/p/De9rTTVly_-/",
+   "thumb": "https://worlddigital-media.ahmad-awwad-7a0.workers.dev/wd-n03.jpg",
+   "type": "image",
+   "metrics": {},
+   "score": 0.0
+  },
+  {
+   "id": "6ad04fe06ff8a3fe7b36ba56",
+   "platform": "twitter",
+   "platformLabel": "X",
+   "account": "Worlddigitalai",
+   "date": "2026-10-26",
+   "text": "Thanksgiving, Black Friday, Christmas, New Year's… are your holiday hours on Google? 🗓️ Wrong hours = wasted trips and bad reviews. Set them now. 👉 https://worlddigital.ai/ #GoogleBusinessProfile #HolidayHours #SmallBusiness",
+   "link": "https://x.com/2010480259586727936/status/2114726598289002573",
+   "thumb": "https://worlddigital-media.ahmad-awwad-7a0.workers.dev/wd-n03.jpg",
+   "type": "image",
+   "metrics": {
+    "impressions": 3,
+    "reactions": 0,
+    "comments": 0,
+    "clicks": 0,
+    "engagementRate": 0
+   },
+   "score": 0.03
+  },
+  {
+   "id": "6ad0458b7b2b6a2866e020e8",
+   "platform": "tiktok",
+   "platformLabel": "TikTok",
+   "account": "worlddigitalai",
+   "date": "2026-10-25",
+   "text": "Upload your logo → AI creates your content → publish everywhere. 🚀 From logo to live campaign in minutes. No agency, no briefs. Link in bio. #AIMarketing #MarketingAutomation #EntrepreneurLife",
+   "link": "https://tiktok.com/@worlddigitalai/video/7700744575526112525",
+   "thumb": "https://images.buffer.com/thumbnail/i3fhHMHOYSnPgFAD-2h2qMAyW3R7ddce10xjtFGL1zo?url=https%3A%2F%2Fworlddigital-media.ahmad-awwad-7a0.workers.dev%2Fwd-oct-reel6.mp4",
+   "type": "video",
+   "metrics": {
+    "views": 112,
+    "reach": 0,
+    "reactions": 1,
+    "comments": 0,
+    "shares": 0,
+    "engagementRate": 0.89
+   },
+   "score": 2.12
+  },
+  {
+   "id": "6ad044f10d0df6a75bc0981e",
+   "platform": "youtube",
+   "platformLabel": "YouTube",
+   "account": "WorldDigitalai",
+   "date": "2026-10-25",
+   "text": "Upload your logo, content gets created, publish everywhere. From logo to live campaign in minutes. https://worlddigital.ai/ #Shorts #AIMarketing #SmallBusiness",
+   "link": "https://www.youtube.com/shorts/X5pNeJ5h7Go",
+   "thumb": "https://images.buffer.com/thumbnail/iQLFI5YGjln3Cs5Rjo7KnwXXcDFch4ldN10xsrjRef0?url=https%3A%2F%2Fworlddigital-media.ahmad-awwad-7a0.workers.dev%2Fwd-oct-reel6.mp4&offset=3500",
+   "type": "video",
+   "metrics": {
+    "views": 0,
+    "reactions": 0,
+    "comments": 0,
+    "engagementRate": 0
+   },
+   "score": 0.0
+  },
+  {
+   "id": "6ad04fce7b2b6a2866e1cd25",
+   "platform": "linkedin",
+   "platformLabel": "LinkedIn",
+   "account": "WorldDigital.ai",
+   "date": "2026-10-25",
+   "text": "Ask ChatGPT for the best business like yours near you. Are you on the list? 🤖 AI assistants pull from your Google Business Profile, your reviews and your website. If those are thin, you're invisible in AI answers. #AISearch #SEO #SmallBusiness",
+   "link": "https://www.linkedin.com/feed/update/urn:li:share:7520153158858326016",
+   "thumb": "https://worlddigital-media.ahmad-awwad-7a0.workers.dev/wd-n02.jpg",
+   "type": "image",
+   "metrics": {
+    "reach": 7,
+    "impressions": 10,
+    "reactions": 1,
+    "comments": 1,
+    "shares": 0,
+    "engagementRate": 20
+   },
+   "score": 4.1
+  },
+  {
+   "id": "6ad04fcbe09e6bdb27e14254",
+   "platform": "facebook",
+   "platformLabel": "Facebook",
+   "account": "World Digital.ai",
+   "date": "2026-10-25",
+   "text": "Ask ChatGPT for the best business like yours near you. Are you on the list? 🤖 AI assistants pull from your Google profile, reviews and website. Get found in AI answers. 👉 worlddigital.ai #AISearch #SEO #SmallBusiness",
+   "link": "https://facebook.com/270977466108280_122223428858334560",
+   "thumb": "https://worlddigital-media.ahmad-awwad-7a0.workers.dev/wd-n02.jpg",
    "type": "image",
    "metrics": {
     "impressions": 3,
@@ -64,6 +153,1174 @@
    "score": 1.03
   },
   {
+   "id": "6ad04fc86ff8a3fe7b36addc",
+   "platform": "instagram",
+   "platformLabel": "Instagram",
+   "account": "worlddigitalai",
+   "date": "2026-10-25",
+   "text": "Ask ChatGPT for the best business like yours near you. Are you on the list? 🤖 AI assistants pull from your Google profile, reviews and website. Get found in AI answers. Link in bio. #AISearch #SEO #SmallBusiness",
+   "link": "https://www.instagram.com/p/De7GAL5l77O/",
+   "thumb": "https://worlddigital-media.ahmad-awwad-7a0.workers.dev/wd-n02.jpg",
+   "type": "image",
+   "metrics": {
+    "views": 3,
+    "reach": 3,
+    "reactions": 1,
+    "comments": 0,
+    "shares": 0,
+    "saves": 0,
+    "engagementRate": 33.33
+   },
+   "score": 1.03
+  },
+  {
+   "id": "6ad04fd478f377d888af432a",
+   "platform": "googlebusiness",
+   "platformLabel": "Google Business",
+   "account": "WorldDigital.ai Corporation LLC",
+   "date": "2026-10-25",
+   "text": "Does ChatGPT recommend your business? 🤖 AI assistants pull from your Google profile, reviews and website to decide who to suggest. We help small businesses across the US and Canada get found in Google, Maps and AI answers. SEO from $199.99/month, tax included.",
+   "link": "https://local.google.com/place?id=13604454099683898961&use=posts&lpsid=CIHM0ogKEOXmqtDf48v4Cg",
+   "thumb": "https://worlddigital-media.ahmad-awwad-7a0.workers.dev/wd-n02.jpg",
+   "type": "image",
+   "metrics": {},
+   "score": 0.0
+  },
+  {
+   "id": "6ad04fd0e09e6bdb27e14497",
+   "platform": "twitter",
+   "platformLabel": "X",
+   "account": "Worlddigitalai",
+   "date": "2026-10-25",
+   "text": "Ask ChatGPT for the best business like yours near you. Are you on the list? 🤖 AI assistants pull from your Google profile, reviews and website. 👉 https://worlddigital.ai/ #AISearch #SEO #SmallBusiness",
+   "link": "https://x.com/2010480259586727936/status/2114363985889792474",
+   "thumb": "https://worlddigital-media.ahmad-awwad-7a0.workers.dev/wd-n02.jpg",
+   "type": "image",
+   "metrics": {
+    "impressions": 9,
+    "reactions": 0,
+    "comments": 0,
+    "clicks": 0,
+    "engagementRate": 0
+   },
+   "score": 0.09
+  },
+  {
+   "id": "6ad04fc37b2b6a2866e1befe",
+   "platform": "linkedin",
+   "platformLabel": "LinkedIn",
+   "account": "WorldDigital.ai",
+   "date": "2026-10-24",
+   "text": "Your reviews are your new storefront. ⭐ Ask every happy customer, reply to every review within 24 hours, and make it one tap with a QR code at checkout. A steady trickle of reviews beats a one-time burst. #CustomerReviews #LocalSEO #SmallBusiness",
+   "link": "https://www.linkedin.com/feed/update/urn:li:share:7519791010143715328",
+   "thumb": "https://worlddigital-media.ahmad-awwad-7a0.workers.dev/wd-n01.jpg",
+   "type": "image",
+   "metrics": {
+    "reach": 2,
+    "impressions": 2,
+    "reactions": 1,
+    "comments": 1,
+    "shares": 0,
+    "engagementRate": 100
+   },
+   "score": 4.02
+  },
+  {
+   "id": "6ad04fbe0d0df6a75bc245d2",
+   "platform": "facebook",
+   "platformLabel": "Facebook",
+   "account": "World Digital.ai",
+   "date": "2026-10-24",
+   "text": "Your reviews are your new storefront. ⭐ Ask every happy customer, reply to every review within 24 hours, and make it one tap with a QR code at checkout. More reviews. More calls. 👉 worlddigital.ai #CustomerReviews #LocalSEO #SmallBusiness",
+   "link": "https://facebook.com/270977466108280_122223332300334560",
+   "thumb": "https://worlddigital-media.ahmad-awwad-7a0.workers.dev/wd-n01.jpg",
+   "type": "image",
+   "metrics": {
+    "impressions": 6,
+    "reactions": 1,
+    "comments": 0,
+    "shares": 0,
+    "clicks": 2,
+    "engagementRate": 50
+   },
+   "score": 5.06
+  },
+  {
+   "id": "6ad04fbcc183410f741f5a06",
+   "platform": "instagram",
+   "platformLabel": "Instagram",
+   "account": "worlddigitalai",
+   "date": "2026-10-24",
+   "text": "Your reviews are your new storefront. ⭐ Ask every happy customer, reply to every review within 24 hours, and make it one tap with a QR code at checkout. More reviews. More calls. Link in bio. #CustomerReviews #LocalSEO #SmallBusiness",
+   "link": "https://www.instagram.com/p/De4hZ3nFzyR/",
+   "thumb": "https://worlddigital-media.ahmad-awwad-7a0.workers.dev/wd-n01.jpg",
+   "type": "image",
+   "metrics": {
+    "views": 3,
+    "reach": 2,
+    "reactions": 2,
+    "comments": 0,
+    "shares": 0,
+    "saves": 0,
+    "engagementRate": 100
+   },
+   "score": 2.03
+  },
+  {
+   "id": "6ad04fc5e09e6bdb27e13bab",
+   "platform": "twitter",
+   "platformLabel": "X",
+   "account": "Worlddigitalai",
+   "date": "2026-10-24",
+   "text": "Your reviews are your new storefront. ⭐ Ask every happy customer, reply within 24 hours, and make it one tap with a QR code at checkout. 👉 https://worlddigital.ai/ #CustomerReviews #LocalSEO #SmallBusiness",
+   "link": "https://x.com/2010480259586727936/status/2114001561177190794",
+   "thumb": "https://worlddigital-media.ahmad-awwad-7a0.workers.dev/wd-n01.jpg",
+   "type": "image",
+   "metrics": {
+    "impressions": 5,
+    "reactions": 0,
+    "comments": 0,
+    "clicks": 0,
+    "engagementRate": 0
+   },
+   "score": 0.05
+  },
+  {
+   "id": "6ad04588c183410f741dbeee",
+   "platform": "tiktok",
+   "platformLabel": "TikTok",
+   "account": "worlddigitalai",
+   "date": "2026-10-23",
+   "text": "They messaged at 9:02. You replied at… next Tuesday? 😬 3 in 4 customers expect a reply within 24 hours. Be the one who answers. Link in bio. #CustomerService #SmallBusiness #CustomerExperience",
+   "link": "https://tiktok.com/@worlddigitalai/video/7700002392556702990",
+   "thumb": "https://images.buffer.com/thumbnail/izSleGLTBChICciFjGG3exN877bk33VdoMMINK6sIOw?url=https%3A%2F%2Fworlddigital-media.ahmad-awwad-7a0.workers.dev%2Fwd-oct-reel5.mp4",
+   "type": "video",
+   "metrics": {
+    "views": 128,
+    "reach": 111,
+    "reactions": 1,
+    "comments": 0,
+    "shares": 0,
+    "engagementRate": 0.78
+   },
+   "score": 2.28
+  },
+  {
+   "id": "6ad044ee7b2b6a2866e005f8",
+   "platform": "youtube",
+   "platformLabel": "YouTube",
+   "account": "WorldDigitalai",
+   "date": "2026-10-23",
+   "text": "They messaged at 9:02. You replied next Tuesday? 3 in 4 customers expect a reply within 24 hours. Be the one who answers. https://worlddigital.us/ #Shorts #CustomerService #SmallBusiness",
+   "link": "https://www.youtube.com/shorts/dal0nRzX4t8",
+   "thumb": "https://images.buffer.com/thumbnail/IVGN3VMe6tu8S2nS21UqbrDJDRUBMHBLKZVNgCv4Ww8?url=https%3A%2F%2Fworlddigital-media.ahmad-awwad-7a0.workers.dev%2Fwd-oct-reel5.mp4&offset=3500",
+   "type": "video",
+   "metrics": {
+    "views": 0,
+    "reactions": 0,
+    "comments": 0,
+    "engagementRate": 0
+   },
+   "score": 0.0
+  },
+  {
+   "id": "6ad0450f7b2b6a2866e00a37",
+   "platform": "linkedin",
+   "platformLabel": "LinkedIn",
+   "account": "WorldDigital.ai",
+   "date": "2026-10-23",
+   "text": "Black Friday is coming fast. 🛍️ Here are 5 moves to make before the rush, each with a fix you can do today. Save this so you can tick them off, and share it with a fellow owner. ✅ #BlackFriday #SmallBusiness #HolidayMarketing",
+   "link": "https://www.linkedin.com/feed/update/urn:li:ugcPost:7519428855770636288",
+   "thumb": "https://worlddigital-media.ahmad-awwad-7a0.workers.dev/wd-car-bf-1.jpg",
+   "type": "document",
+   "metrics": {
+    "reach": 8,
+    "impressions": 13,
+    "reactions": 2,
+    "comments": 1,
+    "shares": 1,
+    "engagementRate": 123.07692307692308
+   },
+   "score": 9.13
+  },
+  {
+   "id": "6ad0450b6ff8a3fe7b34f54a",
+   "platform": "facebook",
+   "platformLabel": "Facebook",
+   "account": "World Digital.ai",
+   "date": "2026-10-23",
+   "text": "Black Friday is coming fast. 🛍️ Here are 5 moves to make before the rush, each with a fix you can do today. Save this so you can tick them off, and share it with a fellow owner. ✅ #BlackFriday #SmallBusiness #HolidayMarketing",
+   "link": "https://facebook.com/270977466108280_122223240344334560",
+   "thumb": "https://worlddigital-media.ahmad-awwad-7a0.workers.dev/wd-car-bf-1.jpg",
+   "type": "image",
+   "metrics": {
+    "impressions": 5,
+    "reactions": 1,
+    "comments": 0,
+    "shares": 0,
+    "clicks": 1,
+    "engagementRate": 40
+   },
+   "score": 3.05
+  },
+  {
+   "id": "6ad0450578f377d888ad7b21",
+   "platform": "instagram",
+   "platformLabel": "Instagram",
+   "account": "worlddigitalai",
+   "date": "2026-10-23",
+   "text": "Black Friday is coming fast. 🛍️ Here are 5 moves to make before the rush, each with a fix you can do today. Save this so you can tick them off, and share it with a fellow owner. ✅ #BlackFriday #SmallBusiness #HolidayMarketing",
+   "link": "https://www.instagram.com/p/De18rdRl0N1/",
+   "thumb": "https://worlddigital-media.ahmad-awwad-7a0.workers.dev/wd-car-bf-1.jpg",
+   "type": "image",
+   "metrics": {
+    "views": 2,
+    "reach": 2,
+    "reactions": 0,
+    "comments": 0,
+    "shares": 0,
+    "saves": 0,
+    "engagementRate": 0
+   },
+   "score": 0.02
+  },
+  {
+   "id": "6ad045196ff8a3fe7b34f672",
+   "platform": "twitter",
+   "platformLabel": "X",
+   "account": "Worlddigitalai",
+   "date": "2026-10-23",
+   "text": "Your Black Friday marketing checklist 🛍️ 5 moves to make before the rush 🧵",
+   "link": "https://x.com/2010480259586727936/status/2113639354769789172",
+   "thumb": "https://worlddigital-media.ahmad-awwad-7a0.workers.dev/wd-car-bf-1.jpg",
+   "type": "image",
+   "metrics": {
+    "impressions": 2,
+    "reactions": 0,
+    "comments": 1,
+    "clicks": 0,
+    "engagementRate": 50
+   },
+   "score": 3.02
+  },
+  {
+   "id": "6acc395bea568e911a49ead2",
+   "platform": "linkedin",
+   "platformLabel": "LinkedIn",
+   "account": "WorldDigital.ai",
+   "date": "2026-10-22",
+   "text": "They messaged at 9:02. You replied at… next Tuesday? 😬 3 in 4 customers expect a reply within 24 hours. Be the one who answers. 👉 worlddigital.ai #CustomerService #SmallBusiness #CustomerExperience",
+   "link": "https://www.linkedin.com/feed/update/urn:li:ugcPost:7519081730671079424",
+   "thumb": "https://images.buffer.com/thumbnail/IVGN3VMe6tu8S2nS21UqbrDJDRUBMHBLKZVNgCv4Ww8?url=https%3A%2F%2Fworlddigital-media.ahmad-awwad-7a0.workers.dev%2Fwd-oct-reel5.mp4&offset=3500",
+   "type": "video",
+   "metrics": {
+    "views": 6,
+    "reach": 17,
+    "impressions": 26,
+    "reactions": 2,
+    "comments": 0,
+    "shares": 0,
+    "engagementRate": 7.6923076923076925
+   },
+   "score": 2.06
+  },
+  {
+   "id": "6acc3958ea568e911a49ea9a",
+   "platform": "instagram",
+   "platformLabel": "Instagram",
+   "account": "worlddigitalai",
+   "date": "2026-10-22",
+   "text": "They messaged at 9:02. You replied at… next Tuesday? 😬 3 in 4 customers expect a reply within 24 hours. Be the one who answers. 👉 worlddigital.ai #CustomerService #SmallBusiness #CustomerExperience",
+   "link": "https://www.instagram.com/reel/Deze2rHDIor/",
+   "thumb": "https://images.buffer.com/thumbnail/IVGN3VMe6tu8S2nS21UqbrDJDRUBMHBLKZVNgCv4Ww8?url=https%3A%2F%2Fworlddigital-media.ahmad-awwad-7a0.workers.dev%2Fwd-oct-reel5.mp4&offset=3500",
+   "type": "video",
+   "metrics": {
+    "views": 5,
+    "reach": 5,
+    "reactions": 1,
+    "comments": 0,
+    "shares": 0,
+    "saves": 0,
+    "engagementRate": 20
+   },
+   "score": 1.05
+  },
+  {
+   "id": "6acc3955ea568e911a49ea51",
+   "platform": "facebook",
+   "platformLabel": "Facebook",
+   "account": "World Digital.ai",
+   "date": "2026-10-22",
+   "text": "They messaged at 9:02. You replied at… next Tuesday? 😬 3 in 4 customers expect a reply within 24 hours. Be the one who answers. 👉 worlddigital.ai #CustomerService #SmallBusiness #CustomerExperience",
+   "link": "https://facebook.com/270977466108280_122223156872334560",
+   "thumb": "https://images.buffer.com/thumbnail/IVGN3VMe6tu8S2nS21UqbrDJDRUBMHBLKZVNgCv4Ww8?url=https%3A%2F%2Fworlddigital-media.ahmad-awwad-7a0.workers.dev%2Fwd-oct-reel5.mp4&offset=3500",
+   "type": "video",
+   "metrics": {
+    "impressions": 9,
+    "reactions": 1,
+    "comments": 0,
+    "shares": 0,
+    "clicks": 0,
+    "engagementRate": 11.11
+   },
+   "score": 1.09
+  },
+  {
+   "id": "6ad044de0d0df6a75bc09138",
+   "platform": "twitter",
+   "platformLabel": "X",
+   "account": "Worlddigitalai",
+   "date": "2026-10-22",
+   "text": "They messaged at 9:02. You replied at… next Tuesday? 😬 3 in 4 customers expect a reply within 24 hours. Be the one who answers. 👉 https://worlddigital.us/ #CustomerService #SmallBusiness #CustomerExperience",
+   "link": "https://x.com/2010480259586727936/status/2113276935027454407",
+   "thumb": "https://images.buffer.com/thumbnail/izSleGLTBChICciFjGG3exN877bk33VdoMMINK6sIOw?url=https%3A%2F%2Fworlddigital-media.ahmad-awwad-7a0.workers.dev%2Fwd-oct-reel5.mp4",
+   "type": "video",
+   "metrics": {
+    "impressions": 12,
+    "reactions": 1,
+    "comments": 0,
+    "clicks": 0,
+    "engagementRate": 8.33
+   },
+   "score": 1.12
+  },
+  {
+   "id": "6ad04586e09e6bdb27dfae2d",
+   "platform": "tiktok",
+   "platformLabel": "TikTok",
+   "account": "worlddigitalai",
+   "date": "2026-10-21",
+   "text": "Still paying agency prices? 💸 SEO from $199.99/month. For ads and websites, get a custom quote and our experts take care of everything. Link in bio. #DigitalMarketing #SmallBusinessOwner #AIMarketing",
+   "link": "https://www.tiktok.com/@worlddigitalai/video/7699260232400211214?utm_campaign=tt4d_open_api&utm_source=7103819247981182978",
+   "thumb": "https://images.buffer.com/thumbnail/HAZCePUnWfHGFJJwHohvLGO7ouOcQ22WRXF6MqKj6ys?url=https%3A%2F%2Fworlddigital-media.ahmad-awwad-7a0.workers.dev%2Fwd-oct-reel3-v2.mp4",
+   "type": "video",
+   "metrics": {
+    "views": 73,
+    "reach": 69,
+    "reactions": 2,
+    "comments": 0,
+    "shares": 0,
+    "engagementRate": 2.74
+   },
+   "score": 2.73
+  },
+  {
+   "id": "6ad044eb78f377d888ad7917",
+   "platform": "youtube",
+   "platformLabel": "YouTube",
+   "account": "WorldDigitalai",
+   "date": "2026-10-21",
+   "text": "Still paying agency prices? SEO from $199.99/month. For ads and websites, get a custom quote and our experts take care of everything. https://worlddigital.us/ #Shorts #SEO #SmallBusiness",
+   "link": "https://www.youtube.com/shorts/niYE4a91XSg",
+   "thumb": "https://images.buffer.com/thumbnail/kMUvgOaabD9dENf5B5xRtjY9hiBBGNYHs80soeiVs6w?url=https%3A%2F%2Fworlddigital-media.ahmad-awwad-7a0.workers.dev%2Fwd-oct-reel3-v2.mp4&offset=3500",
+   "type": "video",
+   "metrics": {
+    "views": 1,
+    "reactions": 0,
+    "comments": 0,
+    "engagementRate": 0
+   },
+   "score": 0.01
+  },
+  {
+   "id": "6acc3953ea568e911a49ea0d",
+   "platform": "linkedin",
+   "platformLabel": "LinkedIn",
+   "account": "WorldDigital.ai",
+   "date": "2026-10-21",
+   "text": "Still paying agency prices? 💸 SEO from $199.99/month. For ads and websites, get a custom quote and our experts take care of everything. 👉 worlddigital.ai #DigitalMarketing #SmallBusinessOwner #AIMarketing",
+   "link": "https://www.linkedin.com/feed/update/urn:li:ugcPost:7518719230146539520",
+   "thumb": "https://images.buffer.com/thumbnail/kMUvgOaabD9dENf5B5xRtjY9hiBBGNYHs80soeiVs6w?url=https%3A%2F%2Fworlddigital-media.ahmad-awwad-7a0.workers.dev%2Fwd-oct-reel3-v2.mp4&offset=3500",
+   "type": "video",
+   "metrics": {
+    "views": 4,
+    "reach": 6,
+    "impressions": 10,
+    "reactions": 2,
+    "comments": 0,
+    "shares": 1,
+    "engagementRate": 30
+   },
+   "score": 6.04
+  },
+  {
+   "id": "6acc3950fa026cfb8120781e",
+   "platform": "instagram",
+   "platformLabel": "Instagram",
+   "account": "worlddigitalai",
+   "date": "2026-10-21",
+   "text": "Still paying agency prices? 💸 SEO from $199.99/month. For ads and websites, get a custom quote and our experts take care of everything. 👉 worlddigital.ai #DigitalMarketing #SmallBusinessOwner #AIMarketing",
+   "link": "https://www.instagram.com/reel/Dew6B9bClL3/",
+   "thumb": "https://images.buffer.com/thumbnail/kMUvgOaabD9dENf5B5xRtjY9hiBBGNYHs80soeiVs6w?url=https%3A%2F%2Fworlddigital-media.ahmad-awwad-7a0.workers.dev%2Fwd-oct-reel3-v2.mp4&offset=3500",
+   "type": "video",
+   "metrics": {
+    "views": 7,
+    "reach": 2,
+    "reactions": 1,
+    "comments": 0,
+    "shares": 0,
+    "saves": 0,
+    "engagementRate": 50
+   },
+   "score": 1.07
+  },
+  {
+   "id": "6acc394e8e8dd50ffc617c2a",
+   "platform": "facebook",
+   "platformLabel": "Facebook",
+   "account": "World Digital.ai",
+   "date": "2026-10-21",
+   "text": "Still paying agency prices? 💸 SEO from $199.99/month. For ads and websites, get a custom quote and our experts take care of everything. 👉 worlddigital.ai #DigitalMarketing #SmallBusinessOwner #AIMarketing",
+   "link": "https://facebook.com/270977466108280_122223069134334560",
+   "thumb": "https://images.buffer.com/thumbnail/kMUvgOaabD9dENf5B5xRtjY9hiBBGNYHs80soeiVs6w?url=https%3A%2F%2Fworlddigital-media.ahmad-awwad-7a0.workers.dev%2Fwd-oct-reel3-v2.mp4&offset=3500",
+   "type": "video",
+   "metrics": {
+    "impressions": 16,
+    "reactions": 0,
+    "comments": 0,
+    "shares": 0,
+    "clicks": 1,
+    "engagementRate": 6.25
+   },
+   "score": 2.16
+  },
+  {
+   "id": "6ad044fa7b2b6a2866e006fb",
+   "platform": "googlebusiness",
+   "platformLabel": "Google Business",
+   "account": "WorldDigital.ai Corporation LLC",
+   "date": "2026-10-21",
+   "text": "More customers now search for local businesses inside social apps and AI assistants, not just Google. We make sure your Google profile, website, reviews and listings all tell the same story, so you show up wherever they look. Start with a free SEO report.",
+   "link": "https://local.google.com/place?id=13604454099683898961&use=posts&lpsid=CIHM0ogKEPGDh-2EoNbsZg",
+   "thumb": "https://worlddigital-media.ahmad-awwad-7a0.workers.dev/wd-oct-post4.jpg",
+   "type": "image",
+   "metrics": {},
+   "score": 0.0
+  },
+  {
+   "id": "6ad044dcc183410f741d9f40",
+   "platform": "twitter",
+   "platformLabel": "X",
+   "account": "Worlddigitalai",
+   "date": "2026-10-21",
+   "text": "Still paying agency prices? 💸 SEO from $199.99/month. For ads and websites, get a custom quote and our experts take care of everything. 👉 https://worlddigital.us/ #DigitalMarketing #SEO #SmallBusiness",
+   "link": "https://x.com/2010480259586727936/status/2112914539717026301",
+   "thumb": "https://images.buffer.com/thumbnail/HAZCePUnWfHGFJJwHohvLGO7ouOcQ22WRXF6MqKj6ys?url=https%3A%2F%2Fworlddigital-media.ahmad-awwad-7a0.workers.dev%2Fwd-oct-reel3-v2.mp4",
+   "type": "video",
+   "metrics": {
+    "impressions": 5,
+    "reactions": 1,
+    "comments": 0,
+    "clicks": 0,
+    "engagementRate": 20
+   },
+   "score": 1.05
+  },
+  {
+   "id": "6ad04595c183410f741dc179",
+   "platform": "tiktok",
+   "platformLabel": "TikTok",
+   "account": "worlddigitalai",
+   "date": "2026-10-20",
+   "text": "5 signs your business is invisible online 👀 Swipe to check yours. Free SEO report, link in bio. #SEOTips #LocalSEO #SmallBusiness",
+   "link": "https://www.tiktok.com/@worlddigitalai/video/7698889220596796686?utm_campaign=tt4d_open_api&utm_source=7103819247981182978",
+   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6ad04526778b240e2f12ad54/6ad04595c183410f741dc179_thumbnail.jpg",
+   "type": "image",
+   "metrics": {
+    "views": 107,
+    "reach": 98,
+    "reactions": 2,
+    "comments": 0,
+    "shares": 0,
+    "engagementRate": 1.87
+   },
+   "score": 3.07
+  },
+  {
+   "id": "6acc394bea568e911a49e7e1",
+   "platform": "linkedin",
+   "platformLabel": "LinkedIn",
+   "account": "WorldDigital.ai",
+   "date": "2026-10-20",
+   "text": "3 out of 4 customers expect a reply within 24 hours. ⏱️ Every unanswered DM is a customer walking to your competitor. Fast, friendly replies turn questions into bookings. Never leave a customer on read 👉 worlddigital.ai #CustomerExperience #SmallBusiness #AIMarketing",
+   "link": "https://www.linkedin.com/feed/update/urn:li:share:7518341595826540547",
+   "thumb": "https://worlddigital-media.ahmad-awwad-7a0.workers.dev/wd-oct-post5.jpg",
+   "type": "image",
+   "metrics": {
+    "reach": 0,
+    "impressions": 0,
+    "reactions": 0,
+    "comments": 0,
+    "shares": 0,
+    "engagementRate": 0
+   },
+   "score": 0.0
+  },
+  {
+   "id": "6acc3948fa026cfb81207553",
+   "platform": "instagram",
+   "platformLabel": "Instagram",
+   "account": "worlddigitalai",
+   "date": "2026-10-20",
+   "text": "3 out of 4 customers expect a reply within 24 hours. ⏱️ Every unanswered DM is a customer walking to your competitor. Fast, friendly replies turn questions into bookings. Never leave a customer on read 👉 worlddigital.ai #CustomerExperience #SmallBusiness #AIMarketing",
+   "link": "https://www.instagram.com/p/DeuOPcal3LK/",
+   "thumb": "https://worlddigital-media.ahmad-awwad-7a0.workers.dev/wd-oct-post5.jpg",
+   "type": "image",
+   "metrics": {
+    "views": 5,
+    "reach": 3,
+    "reactions": 1,
+    "comments": 0,
+    "shares": 0,
+    "saves": 0,
+    "engagementRate": 33.33
+   },
+   "score": 1.05
+  },
+  {
+   "id": "6acc3945ea568e911a49e6ed",
+   "platform": "facebook",
+   "platformLabel": "Facebook",
+   "account": "World Digital.ai",
+   "date": "2026-10-20",
+   "text": "3 out of 4 customers expect a reply within 24 hours. ⏱️ Every unanswered DM is a customer walking to your competitor. Fast, friendly replies turn questions into bookings. Never leave a customer on read 👉 worlddigital.ai #CustomerExperience #SmallBusiness #AIMarketing",
+   "link": "https://facebook.com/270977466108280_122222979056334560",
+   "thumb": "https://worlddigital-media.ahmad-awwad-7a0.workers.dev/wd-oct-post5.jpg",
+   "type": "image",
+   "metrics": {
+    "impressions": 5,
+    "reactions": 1,
+    "comments": 0,
+    "shares": 0,
+    "clicks": 0,
+    "engagementRate": 20
+   },
+   "score": 1.05
+  },
+  {
+   "id": "6ad044d90d0df6a75bc09091",
+   "platform": "twitter",
+   "platformLabel": "X",
+   "account": "Worlddigitalai",
+   "date": "2026-10-20",
+   "text": "3 out of 4 customers expect a reply within 24 hours. ⏱️ Every unanswered DM is a customer walking to your competitor. Fast, friendly replies turn questions into bookings. 👉 https://worlddigital.us/ #CustomerExperience #SmallBusiness #CustomerService",
+   "link": "https://x.com/2010480259586727936/status/2112552192880038269",
+   "thumb": "https://worlddigital-media.ahmad-awwad-7a0.workers.dev/wd-oct-post5.jpg",
+   "type": "image",
+   "metrics": {
+    "impressions": 7,
+    "reactions": 0,
+    "comments": 0,
+    "clicks": 0,
+    "engagementRate": 0
+   },
+   "score": 0.07
+  },
+  {
+   "id": "6ad045846ff8a3fe7b350945",
+   "platform": "tiktok",
+   "platformLabel": "TikTok",
+   "account": "worlddigitalai",
+   "date": "2026-10-19",
+   "text": "The countdown is ON. ⏳ 39 days to Black Friday. Plan it. Create it. Launch it, in minutes, not weeks. Link in bio. #BlackFriday #HolidayMarketing #Q4Marketing",
+   "link": "https://www.tiktok.com/@worlddigitalai/video/7698517961878932749?utm_campaign=tt4d_open_api&utm_source=7103819247981182978",
+   "thumb": "https://images.buffer.com/thumbnail/pJ_xsCoHN2vwXOhWoP7P3CJxAskiqnVTQFf8K9Vx8GU?url=https%3A%2F%2Fworlddigital-media.ahmad-awwad-7a0.workers.dev%2Fwd-oct-reel2-39.mp4",
+   "type": "video",
+   "metrics": {
+    "views": 45,
+    "reach": 42,
+    "reactions": 1,
+    "comments": 0,
+    "shares": 0,
+    "engagementRate": 2.22
+   },
+   "score": 1.45
+  },
+  {
+   "id": "6ad044e878f377d888ad78b2",
+   "platform": "youtube",
+   "platformLabel": "YouTube",
+   "account": "WorldDigitalai",
+   "date": "2026-10-19",
+   "text": "39 days to Black Friday. Plan it, create it, launch it in minutes, not weeks. https://worlddigital.ai/ #Shorts #BlackFriday #SmallBusiness",
+   "link": "https://www.youtube.com/shorts/a8xK0pMpYUc",
+   "thumb": "https://images.buffer.com/thumbnail/guwi-K_ERNhmwIO4GA61noAWNiAYQZhpp5o-UWSYrjE?url=https%3A%2F%2Fworlddigital-media.ahmad-awwad-7a0.workers.dev%2Fwd-oct-reel2-39.mp4&offset=2500",
+   "type": "video",
+   "metrics": {
+    "views": 5,
+    "reactions": 0,
+    "comments": 0,
+    "engagementRate": 0
+   },
+   "score": 0.05
+  },
+  {
+   "id": "6acc3be0fa026cfb8120c308",
+   "platform": "linkedin",
+   "platformLabel": "LinkedIn",
+   "account": "WorldDigital.ai",
+   "date": "2026-10-19",
+   "text": "The countdown is ON. ⏳ 39 days to Black Friday. Plan it. Create it. Launch it, in minutes, not weeks. 👉 worlddigital.ai #BlackFriday #HolidayMarketing #Q4Marketing",
+   "link": "https://www.linkedin.com/feed/update/urn:li:ugcPost:7517994088265060352",
+   "thumb": "https://images.buffer.com/thumbnail/guwi-K_ERNhmwIO4GA61noAWNiAYQZhpp5o-UWSYrjE?url=https%3A%2F%2Fworlddigital-media.ahmad-awwad-7a0.workers.dev%2Fwd-oct-reel2-39.mp4&offset=2500",
+   "type": "video",
+   "metrics": {
+    "views": 3,
+    "reach": 4,
+    "impressions": 9,
+    "reactions": 1,
+    "comments": 0,
+    "shares": 0,
+    "engagementRate": 11.11111111111111
+   },
+   "score": 1.03
+  },
+  {
+   "id": "6acc3bdd8e8dd50ffc61d1f1",
+   "platform": "instagram",
+   "platformLabel": "Instagram",
+   "account": "worlddigitalai",
+   "date": "2026-10-19",
+   "text": "The countdown is ON. ⏳ 39 days to Black Friday. Plan it. Create it. Launch it, in minutes, not weeks. 👉 worlddigital.ai #BlackFriday #HolidayMarketing #Q4Marketing",
+   "link": "https://www.instagram.com/reel/DerwZUfjsKk/",
+   "thumb": "https://images.buffer.com/thumbnail/guwi-K_ERNhmwIO4GA61noAWNiAYQZhpp5o-UWSYrjE?url=https%3A%2F%2Fworlddigital-media.ahmad-awwad-7a0.workers.dev%2Fwd-oct-reel2-39.mp4&offset=2500",
+   "type": "video",
+   "metrics": {
+    "views": 5,
+    "reach": 3,
+    "reactions": 1,
+    "comments": 0,
+    "shares": 0,
+    "saves": 0,
+    "engagementRate": 33.33
+   },
+   "score": 1.05
+  },
+  {
+   "id": "6acc3bdbfa026cfb8120c20d",
+   "platform": "facebook",
+   "platformLabel": "Facebook",
+   "account": "World Digital.ai",
+   "date": "2026-10-19",
+   "text": "The countdown is ON. ⏳ 39 days to Black Friday. Plan it. Create it. Launch it, in minutes, not weeks. 👉 worlddigital.ai #BlackFriday #HolidayMarketing #Q4Marketing",
+   "link": "https://facebook.com/270977466108280_122222900852334560",
+   "thumb": "https://images.buffer.com/thumbnail/guwi-K_ERNhmwIO4GA61noAWNiAYQZhpp5o-UWSYrjE?url=https%3A%2F%2Fworlddigital-media.ahmad-awwad-7a0.workers.dev%2Fwd-oct-reel2-39.mp4&offset=2500",
+   "type": "video",
+   "metrics": {
+    "impressions": 16,
+    "reactions": 0,
+    "comments": 0,
+    "shares": 0,
+    "clicks": 0,
+    "engagementRate": 0
+   },
+   "score": 0.16
+  },
+  {
+   "id": "6ad044d70d0df6a75bc08e8d",
+   "platform": "twitter",
+   "platformLabel": "X",
+   "account": "Worlddigitalai",
+   "date": "2026-10-19",
+   "text": "The countdown is ON. ⏳ 39 days to Black Friday. Plan it. Create it. Launch it, in minutes, not weeks. 👉 https://worlddigital.ai/ #BlackFriday #HolidayMarketing #SmallBusiness",
+   "link": "https://x.com/2010480259586727936/status/2112189690489008176",
+   "thumb": "https://images.buffer.com/thumbnail/pJ_xsCoHN2vwXOhWoP7P3CJxAskiqnVTQFf8K9Vx8GU?url=https%3A%2F%2Fworlddigital-media.ahmad-awwad-7a0.workers.dev%2Fwd-oct-reel2-39.mp4",
+   "type": "video",
+   "metrics": {
+    "impressions": 6,
+    "reactions": 0,
+    "comments": 0,
+    "clicks": 0,
+    "engagementRate": 0
+   },
+   "score": 0.06
+  },
+  {
+   "id": "6acc4621fa026cfb812266e7",
+   "platform": "linkedin",
+   "platformLabel": "LinkedIn",
+   "account": "WorldDigital.ai",
+   "date": "2026-10-18",
+   "text": "Upload your logo → AI creates your content → publish everywhere. 🚀 From logo to live campaign in minutes. No agency, no briefs. 👉 worlddigital.ai #AIMarketing #MarketingAutomation #EntrepreneurLife",
+   "link": "https://www.linkedin.com/feed/update/urn:li:ugcPost:7517600948849131520",
+   "thumb": "https://images.buffer.com/thumbnail/iQLFI5YGjln3Cs5Rjo7KnwXXcDFch4ldN10xsrjRef0?url=https%3A%2F%2Fworlddigital-media.ahmad-awwad-7a0.workers.dev%2Fwd-oct-reel6.mp4&offset=3500",
+   "type": "video",
+   "metrics": {
+    "views": 5,
+    "reach": 1,
+    "impressions": 1,
+    "reactions": 0,
+    "comments": 0,
+    "shares": 0,
+    "engagementRate": 0
+   },
+   "score": 0.05
+  },
+  {
+   "id": "6acc461e7db619a291560d00",
+   "platform": "instagram",
+   "platformLabel": "Instagram",
+   "account": "worlddigitalai",
+   "date": "2026-10-18",
+   "text": "Upload your logo → AI creates your content → publish everywhere. 🚀 From logo to live campaign in minutes. No agency, no briefs. 👉 worlddigital.ai #AIMarketing #MarketingAutomation #EntrepreneurLife",
+   "link": "https://www.instagram.com/reel/Deo9auJDHj6/",
+   "thumb": "https://images.buffer.com/thumbnail/iQLFI5YGjln3Cs5Rjo7KnwXXcDFch4ldN10xsrjRef0?url=https%3A%2F%2Fworlddigital-media.ahmad-awwad-7a0.workers.dev%2Fwd-oct-reel6.mp4&offset=3500",
+   "type": "video",
+   "metrics": {
+    "views": 41,
+    "reach": 38,
+    "reactions": 1,
+    "comments": 0,
+    "shares": 0,
+    "saves": 0,
+    "engagementRate": 2.63
+   },
+   "score": 1.41
+  },
+  {
+   "id": "6acc461d63ff33d8c9a355b0",
+   "platform": "facebook",
+   "platformLabel": "Facebook",
+   "account": "World Digital.ai",
+   "date": "2026-10-18",
+   "text": "Upload your logo → AI creates your content → publish everywhere. 🚀 From logo to live campaign in minutes. No agency, no briefs. 👉 worlddigital.ai #AIMarketing #MarketingAutomation #EntrepreneurLife",
+   "link": "https://facebook.com/270977466108280_122222807456334560",
+   "thumb": "https://images.buffer.com/thumbnail/iQLFI5YGjln3Cs5Rjo7KnwXXcDFch4ldN10xsrjRef0?url=https%3A%2F%2Fworlddigital-media.ahmad-awwad-7a0.workers.dev%2Fwd-oct-reel6.mp4&offset=3500",
+   "type": "video",
+   "metrics": {
+    "impressions": 10,
+    "reactions": 1,
+    "comments": 0,
+    "shares": 0,
+    "clicks": 0,
+    "engagementRate": 10
+   },
+   "score": 1.1
+  },
+  {
+   "id": "6ad044d46ff8a3fe7b34ee89",
+   "platform": "twitter",
+   "platformLabel": "X",
+   "account": "Worlddigitalai",
+   "date": "2026-10-18",
+   "text": "Upload your logo → content gets created → publish everywhere. 🚀 From logo to live campaign in minutes 👉 https://worlddigital.ai/ #AIMarketing #MarketingAutomation #SmallBusiness",
+   "link": "https://x.com/2010480259586727936/status/2111827239155224592",
+   "thumb": "https://images.buffer.com/thumbnail/i3fhHMHOYSnPgFAD-2h2qMAyW3R7ddce10xjtFGL1zo?url=https%3A%2F%2Fworlddigital-media.ahmad-awwad-7a0.workers.dev%2Fwd-oct-reel6.mp4",
+   "type": "video",
+   "metrics": {
+    "impressions": 5,
+    "reactions": 0,
+    "comments": 0,
+    "clicks": 0,
+    "engagementRate": 0
+   },
+   "score": 0.05
+  },
+  {
+   "id": "6ad04582c183410f741dbe3e",
+   "platform": "tiktok",
+   "platformLabel": "TikTok",
+   "account": "worlddigitalai",
+   "date": "2026-10-17",
+   "text": "They typed \"best coffee near me\"… into social, not Google. 👀 Would they find YOU? Link in bio. #SocialSearch #LocalBusiness #SocialMediaMarketing",
+   "link": "https://www.tiktok.com/@worlddigitalai/video/7697775680024579341?utm_campaign=tt4d_open_api&utm_source=7103819247981182978",
+   "thumb": "https://images.buffer.com/thumbnail/GesEWpVgQQ0QB9tBMvmuSNPZ9wzi76uX_pNVncoz_Hg?url=https%3A%2F%2Fworlddigital-media.ahmad-awwad-7a0.workers.dev%2Fwd-oct-reel4.mp4",
+   "type": "video",
+   "metrics": {
+    "views": 86,
+    "reach": 80,
+    "reactions": 1,
+    "comments": 0,
+    "shares": 0,
+    "engagementRate": 1.16
+   },
+   "score": 1.86
+  },
+  {
+   "id": "6ad044e50d0df6a75bc09215",
+   "platform": "youtube",
+   "platformLabel": "YouTube",
+   "account": "WorldDigitalai",
+   "date": "2026-10-17",
+   "text": "They typed \"best coffee near me\" into social, not Google. Would they find you? Get found on Google, Maps, social and AI search: https://worlddigital.us/ #Shorts #LocalSEO #SmallBusiness",
+   "link": "https://www.youtube.com/shorts/Hiw0c6uY1jE",
+   "thumb": "https://images.buffer.com/thumbnail/ZMp3k_a5nt2XD_wJkhLvpKsxvOws4dMUn3rTToGcG8M?url=https%3A%2F%2Fworlddigital-media.ahmad-awwad-7a0.workers.dev%2Fwd-oct-reel4.mp4&offset=3500",
+   "type": "video",
+   "metrics": {
+    "views": 2,
+    "reactions": 0,
+    "comments": 0,
+    "engagementRate": 0
+   },
+   "score": 0.02
+  },
+  {
+   "id": "6ad044f7c183410f741da204",
+   "platform": "googlebusiness",
+   "platformLabel": "Google Business",
+   "account": "WorldDigital.ai Corporation LLC",
+   "date": "2026-10-17",
+   "text": "Agency prices without the agency hassle. SEO and AI search visibility from $199.99/month, tax included, with no long-term contract. Need Google Ads or a new website? Get a custom quote and our experts take care of everything. Serving small businesses across the US and Canada.",
+   "link": "https://local.google.com/place?id=13604454099683898961&use=posts&lpsid=CIHM0ogKEOrM_8G_wbiSmAE",
+   "thumb": "https://worlddigital-media.ahmad-awwad-7a0.workers.dev/wd-oct-post3-v2.jpg",
+   "type": "image",
+   "metrics": {},
+   "score": 0.0
+  },
+  {
+   "id": "6acc39318e8dd50ffc6177ee",
+   "platform": "linkedin",
+   "platformLabel": "LinkedIn",
+   "account": "WorldDigital.ai",
+   "date": "2026-10-17",
+   "text": "They typed \"best coffee near me\"… into social, not Google. 👀 Would they find YOU? 👉 worlddigital.ai #SocialSearch #LocalBusiness #SocialMediaMarketing",
+   "link": "https://www.linkedin.com/feed/update/urn:li:ugcPost:7517238590167465984",
+   "thumb": "https://images.buffer.com/thumbnail/ZMp3k_a5nt2XD_wJkhLvpKsxvOws4dMUn3rTToGcG8M?url=https%3A%2F%2Fworlddigital-media.ahmad-awwad-7a0.workers.dev%2Fwd-oct-reel4.mp4&offset=3500",
+   "type": "video",
+   "metrics": {
+    "views": 16,
+    "reach": 2,
+    "impressions": 5,
+    "reactions": 1,
+    "comments": 0,
+    "shares": 0,
+    "engagementRate": 20
+   },
+   "score": 1.16
+  },
+  {
+   "id": "6acc392f8e8dd50ffc617793",
+   "platform": "instagram",
+   "platformLabel": "Instagram",
+   "account": "worlddigitalai",
+   "date": "2026-10-17",
+   "text": "They typed \"best coffee near me\"… into social, not Google. 👀 Would they find YOU? 👉 worlddigital.ai #SocialSearch #LocalBusiness #SocialMediaMarketing",
+   "link": "https://www.instagram.com/reel/DemYrjIDBnG/",
+   "thumb": "https://images.buffer.com/thumbnail/ZMp3k_a5nt2XD_wJkhLvpKsxvOws4dMUn3rTToGcG8M?url=https%3A%2F%2Fworlddigital-media.ahmad-awwad-7a0.workers.dev%2Fwd-oct-reel4.mp4&offset=3500",
+   "type": "video",
+   "metrics": {
+    "views": 14,
+    "reach": 13,
+    "reactions": 0,
+    "comments": 0,
+    "shares": 0,
+    "saves": 0,
+    "engagementRate": 0
+   },
+   "score": 0.14
+  },
+  {
+   "id": "6acc392cea568e911a49e3f2",
+   "platform": "facebook",
+   "platformLabel": "Facebook",
+   "account": "World Digital.ai",
+   "date": "2026-10-17",
+   "text": "They typed \"best coffee near me\"… into social, not Google. 👀 Would they find YOU? 👉 worlddigital.ai #SocialSearch #LocalBusiness #SocialMediaMarketing",
+   "link": "https://facebook.com/270977466108280_122222718938334560",
+   "thumb": "https://images.buffer.com/thumbnail/ZMp3k_a5nt2XD_wJkhLvpKsxvOws4dMUn3rTToGcG8M?url=https%3A%2F%2Fworlddigital-media.ahmad-awwad-7a0.workers.dev%2Fwd-oct-reel4.mp4&offset=3500",
+   "type": "video",
+   "metrics": {
+    "impressions": 13,
+    "reactions": 1,
+    "comments": 0,
+    "shares": 0,
+    "clicks": 1,
+    "engagementRate": 15.38
+   },
+   "score": 3.13
+  },
+  {
+   "id": "6ad044d278f377d888ad763e",
+   "platform": "twitter",
+   "platformLabel": "X",
+   "account": "Worlddigitalai",
+   "date": "2026-10-17",
+   "text": "They typed \"best coffee near me\"… into social, not Google. 👀 Would they find YOU? 👉 https://worlddigital.us/ #SocialSearch #LocalBusiness #SmallBusiness",
+   "link": "https://x.com/2010480259586727936/status/2111464874186358932",
+   "thumb": "https://images.buffer.com/thumbnail/GesEWpVgQQ0QB9tBMvmuSNPZ9wzi76uX_pNVncoz_Hg?url=https%3A%2F%2Fworlddigital-media.ahmad-awwad-7a0.workers.dev%2Fwd-oct-reel4.mp4",
+   "type": "video",
+   "metrics": {
+    "impressions": 10,
+    "reactions": 1,
+    "comments": 0,
+    "clicks": 0,
+    "engagementRate": 20
+   },
+   "score": 1.1
+  },
+  {
+   "id": "6acc39298e8dd50ffc6176da",
+   "platform": "linkedin",
+   "platformLabel": "LinkedIn",
+   "account": "WorldDigital.ai",
+   "date": "2026-10-16",
+   "text": "Your next customer isn't Googling you. They're searching social. 🔍 More people now search \"best coffee near me\" right inside Instagram and TikTok. If your page isn't active, you're invisible. Show up where they look 👉 worlddigital.ai #SocialMediaMarketing #LocalBusiness #SocialSearch",
+   "link": "https://www.linkedin.com/feed/update/urn:li:share:7516891763253370880",
+   "thumb": "https://worlddigital-media.ahmad-awwad-7a0.workers.dev/wd-oct-post4.jpg",
+   "type": "image",
+   "metrics": {
+    "reach": 6,
+    "impressions": 10,
+    "reactions": 2,
+    "comments": 0,
+    "shares": 0,
+    "engagementRate": 20
+   },
+   "score": 2.1
+  },
+  {
+   "id": "6acc38d963ff33d8c9a152b4",
+   "platform": "instagram",
+   "platformLabel": "Instagram",
+   "account": "worlddigitalai",
+   "date": "2026-10-16",
+   "text": "Your next customer isn't Googling you. They're searching social. 🔍 More people now search \"best coffee near me\" right inside Instagram and TikTok. If your page isn't active, you're invisible. Show up where they look 👉 worlddigital.ai #SocialMediaMarketing #LocalBusiness #SocialSearch",
+   "link": "https://www.instagram.com/p/Dej7EOtl2Au/",
+   "thumb": "https://worlddigital-media.ahmad-awwad-7a0.workers.dev/wd-oct-post4.jpg",
+   "type": "image",
+   "metrics": {
+    "views": 3,
+    "reach": 2,
+    "reactions": 2,
+    "comments": 2,
+    "shares": 0,
+    "saves": 0,
+    "engagementRate": 200
+   },
+   "score": 8.03
+  },
+  {
+   "id": "6acc38d6fa026cfb812065ca",
+   "platform": "facebook",
+   "platformLabel": "Facebook",
+   "account": "World Digital.ai",
+   "date": "2026-10-16",
+   "text": "Your next customer isn't Googling you. They're searching social. 🔍 More people now search \"best coffee near me\" right inside Instagram and TikTok. If your page isn't active, you're invisible. Show up where they look 👉 worlddigital.ai #SocialMediaMarketing #LocalBusiness #SocialSearch",
+   "link": "https://facebook.com/270977466108280_122222633408334560",
+   "thumb": "https://worlddigital-media.ahmad-awwad-7a0.workers.dev/wd-oct-post4.jpg",
+   "type": "image",
+   "metrics": {
+    "impressions": 9,
+    "reactions": 1,
+    "comments": 0,
+    "shares": 0,
+    "clicks": 0,
+    "engagementRate": 11.11
+   },
+   "score": 1.09
+  },
+  {
+   "id": "6ad044cf0d0df6a75bc08708",
+   "platform": "twitter",
+   "platformLabel": "X",
+   "account": "Worlddigitalai",
+   "date": "2026-10-16",
+   "text": "Your next customer isn't Googling you. They're searching social. 🔍 More people search \"best coffee near me\" right inside Instagram and TikTok. If your page is quiet, you're invisible. Show up where they look 👉 https://worlddigital.us/ #SocialSearch #LocalBusiness #SmallBusiness",
+   "link": "https://x.com/2010480259586727936/status/2111102560970932526",
+   "thumb": "https://worlddigital-media.ahmad-awwad-7a0.workers.dev/wd-oct-post4.jpg",
+   "type": "image",
+   "metrics": {
+    "impressions": 8,
+    "reactions": 0,
+    "comments": 0,
+    "clicks": 0,
+    "engagementRate": 0
+   },
+   "score": 0.08
+  },
+  {
+   "id": "6ad0457de09e6bdb27dfad48",
+   "platform": "tiktok",
+   "platformLabel": "TikTok",
+   "account": "worlddigitalai",
+   "date": "2026-10-15",
+   "text": "POV: your Facebook, Instagram and LinkedIn are all posted before your first coffee. ☕✅ That's marketing on autopilot. Link in bio. #MarketingAutomation #AIMarketing #SmallBusiness",
+   "link": "https://www.tiktok.com/@worlddigitalai/video/7697033443191950606?utm_campaign=tt4d_open_api&utm_source=7103819247981182978",
+   "thumb": "https://images.buffer.com/thumbnail/26YIcXsBUrnYpx0N7BgRmMg6Gn2npniTsYt56XX3s3w?url=https%3A%2F%2Fworlddigital-media.ahmad-awwad-7a0.workers.dev%2Fwd-oct-reel1.mp4",
+   "type": "video",
+   "metrics": {
+    "views": 89,
+    "reach": 80,
+    "reactions": 1,
+    "comments": 0,
+    "shares": 0,
+    "engagementRate": 1.12
+   },
+   "score": 1.89
+  },
+  {
+   "id": "6ad044b878f377d888ad720c",
+   "platform": "youtube",
+   "platformLabel": "YouTube",
+   "account": "WorldDigitalai",
+   "date": "2026-10-15",
+   "text": "POV: your Facebook, Instagram and LinkedIn are all posted before your first coffee. That's marketing on autopilot. SEO from $199.99/mo, and a custom quote for ads and websites: https://worlddigital.us/ #Shorts #SmallBusiness #MarketingAutomation",
+   "link": "https://www.youtube.com/shorts/QBrHfPtYVGQ",
+   "thumb": "https://images.buffer.com/thumbnail/Fg9jZHHpa7Ok7JFj2YZLBB1ZxMuxLwr1cLiif_Cjcdg?url=https%3A%2F%2Fworlddigital-media.ahmad-awwad-7a0.workers.dev%2Fwd-oct-reel1.mp4&offset=3500",
+   "type": "video",
+   "metrics": {
+    "views": 4,
+    "reactions": 0,
+    "comments": 0,
+    "engagementRate": 0
+   },
+   "score": 0.04
+  },
+  {
+   "id": "6ad044b5c183410f741d8f77",
+   "platform": "linkedin",
+   "platformLabel": "LinkedIn",
+   "account": "WorldDigital.ai",
+   "date": "2026-10-15",
+   "text": "Is your business invisible online? 👀 Flip through these 5 signs and count how many apply to you. Each one comes with a simple fix you can start this week. Send this to a business owner who needs it. 📩 #LocalBusiness #SmallBusinessTips #LocalSEO",
+   "link": "https://www.linkedin.com/feed/update/urn:li:ugcPost:7516528824277295106",
+   "thumb": "https://worlddigital-media.ahmad-awwad-7a0.workers.dev/wd-car-signs-1.jpg",
+   "type": "document",
+   "metrics": {
+    "reach": 5,
+    "impressions": 5,
+    "reactions": 2,
+    "comments": 1,
+    "shares": 0,
+    "engagementRate": 160
+   },
+   "score": 5.05
+  },
+  {
+   "id": "6ad044b26ff8a3fe7b34e002",
+   "platform": "facebook",
+   "platformLabel": "Facebook",
+   "account": "World Digital.ai",
+   "date": "2026-10-15",
+   "text": "Is your business invisible online? 👀 Here are 5 signs, and how many apply to you? Each one comes with a simple fix you can start this week. Share this with a business owner who needs it. 📩 #LocalBusiness #SmallBusinessTips #LocalSEO",
+   "link": "https://facebook.com/270977466108280_122222546408334560",
+   "thumb": "https://worlddigital-media.ahmad-awwad-7a0.workers.dev/wd-car-signs-1.jpg",
+   "type": "image",
+   "metrics": {
+    "impressions": 8,
+    "reactions": 1,
+    "comments": 1,
+    "shares": 0,
+    "clicks": 4,
+    "engagementRate": 75
+   },
+   "score": 12.08
+  },
+  {
+   "id": "6ad044a978f377d888ad7021",
+   "platform": "instagram",
+   "platformLabel": "Instagram",
+   "account": "worlddigitalai",
+   "date": "2026-10-15",
+   "text": "Is your business invisible online? 👀 Swipe through these 5 signs and count how many apply to you. Each one comes with a simple fix you can start this week. Send this to a business owner who needs it. 📩 Free SEO report: link in bio. #LocalBusiness #SmallBusinessTips #LocalSEO",
+   "link": "https://www.instagram.com/p/DehV60il0A9/",
+   "thumb": "https://worlddigital-media.ahmad-awwad-7a0.workers.dev/wd-car-signs-1.jpg",
+   "type": "image",
+   "metrics": {
+    "views": 5,
+    "reach": 2,
+    "reactions": 1,
+    "comments": 1,
+    "shares": 0,
+    "saves": 0,
+    "engagementRate": 100
+   },
+   "score": 4.05
+  },
+  {
+   "id": "6ad044bb6ff8a3fe7b34e0d0",
+   "platform": "googlebusiness",
+   "platformLabel": "Google Business",
+   "account": "WorldDigital.ai Corporation LLC",
+   "date": "2026-10-15",
+   "text": "5 signs customers can't find your business online: under 10 Google reviews, no recent posts, a slow mobile site, AI assistants that don't know you, and slow replies to messages. Each one has a simple fix. See where you stand with a free SEO report that takes about a minute. SEO plans start at $199.99/month, tax included, with no long-term contract.",
+   "link": "https://local.google.com/place?id=13604454099683898961&use=posts&lpsid=CIHM0ogKEIKSw5TS7cao9AE",
+   "thumb": "https://worlddigital-media.ahmad-awwad-7a0.workers.dev/wd-car-signs-1.jpg",
+   "type": "image",
+   "metrics": {},
+   "score": 0.0
+  },
+  {
+   "id": "6ad044c77b2b6a2866dffcd6",
+   "platform": "twitter",
+   "platformLabel": "X",
+   "account": "Worlddigitalai",
+   "date": "2026-10-15",
+   "text": "5 signs customers can't find your business online 👀 How many apply to you? 🧵",
+   "link": "https://x.com/2010480259586727936/status/2110740067303952771",
+   "thumb": "https://worlddigital-media.ahmad-awwad-7a0.workers.dev/wd-car-signs-1.jpg",
+   "type": "image",
+   "metrics": {
+    "impressions": 8,
+    "reactions": 0,
+    "comments": 1,
+    "clicks": 0,
+    "engagementRate": 12.5
+   },
+   "score": 3.08
+  },
+  {
+   "id": "6acc3855a9411fbcc5663bb6",
+   "platform": "linkedin",
+   "platformLabel": "LinkedIn",
+   "account": "WorldDigital.ai",
+   "date": "2026-10-14",
+   "text": "Weeks to launch. Long contracts. Big retainers. Sound familiar? 😮‍💨 There's a smarter way: SEO from $199.99/month, and a custom quote for ads and websites where our experts take care of everything. No long-term contract. Same goal. Smarter way. 👉 worlddigital.ai #DigitalMarketing #AIMarketing #SmallBusinessOwner",
+   "link": "https://www.linkedin.com/feed/update/urn:li:share:7516167035215626240",
+   "thumb": "https://worlddigital-media.ahmad-awwad-7a0.workers.dev/wd-oct-post3-v2.jpg",
+   "type": "image",
+   "metrics": {
+    "reach": 2,
+    "impressions": 2,
+    "reactions": 1,
+    "comments": 0,
+    "shares": 0,
+    "engagementRate": 50
+   },
+   "score": 1.02
+  },
+  {
+   "id": "6acc3853a9411fbcc5663af0",
+   "platform": "instagram",
+   "platformLabel": "Instagram",
+   "account": "worlddigitalai",
+   "date": "2026-10-14",
+   "text": "Weeks to launch. Long contracts. Big retainers. Sound familiar? 😮‍💨 There's a smarter way: SEO from $199.99/month, and a custom quote for ads and websites where our experts take care of everything. No long-term contract. Same goal. Smarter way. 👉 worlddigital.ai #DigitalMarketing #AIMarketing #SmallBusinessOwner",
+   "link": "https://www.instagram.com/p/DeexWy2l2G5/",
+   "thumb": "https://worlddigital-media.ahmad-awwad-7a0.workers.dev/wd-oct-post3-v2.jpg",
+   "type": "image",
+   "metrics": {
+    "views": 3,
+    "reach": 2,
+    "reactions": 2,
+    "comments": 2,
+    "shares": 0,
+    "saves": 0,
+    "engagementRate": 200
+   },
+   "score": 8.03
+  },
+  {
+   "id": "6acc3850fa026cfb81205355",
+   "platform": "facebook",
+   "platformLabel": "Facebook",
+   "account": "World Digital.ai",
+   "date": "2026-10-14",
+   "text": "Weeks to launch. Long contracts. Big retainers. Sound familiar? 😮‍💨 There's a smarter way: SEO from $199.99/month, and a custom quote for ads and websites where our experts take care of everything. No long-term contract. Same goal. Smarter way. 👉 worlddigital.ai #DigitalMarketing #AIMarketing #SmallBusinessOwner",
+   "link": "https://www.facebook.com/122222186444334560/posts/122222457230334560",
+   "thumb": "https://worlddigital-media.ahmad-awwad-7a0.workers.dev/wd-oct-post3-v2.jpg",
+   "type": "image",
+   "metrics": {
+    "impressions": 5,
+    "reactions": 1,
+    "comments": 0,
+    "shares": 0,
+    "clicks": 0,
+    "engagementRate": 20
+   },
+   "score": 1.05
+  },
+  {
    "id": "6acc38438e8dd50ffc615664",
    "platform": "linkedin",
    "platformLabel": "LinkedIn",
@@ -74,15 +1331,15 @@
    "thumb": "https://images.buffer.com/thumbnail/Fg9jZHHpa7Ok7JFj2YZLBB1ZxMuxLwr1cLiif_Cjcdg?url=https%3A%2F%2Fworlddigital-media.ahmad-awwad-7a0.workers.dev%2Fwd-oct-reel1.mp4&offset=3500",
    "type": "video",
    "metrics": {
-    "views": 3,
-    "reach": 12,
-    "impressions": 17,
+    "views": 4,
+    "reach": 13,
+    "impressions": 21,
     "reactions": 2,
     "comments": 0,
     "shares": 0,
-    "engagementRate": 17.647058823529413
+    "engagementRate": 14.285714285714285
    },
-   "score": 2.03
+   "score": 2.04
   },
   {
    "id": "6acc3840a9411fbcc56636ee",
@@ -95,7 +1352,7 @@
    "thumb": "https://images.buffer.com/thumbnail/Fg9jZHHpa7Ok7JFj2YZLBB1ZxMuxLwr1cLiif_Cjcdg?url=https%3A%2F%2Fworlddigital-media.ahmad-awwad-7a0.workers.dev%2Fwd-oct-reel1.mp4&offset=3500",
    "type": "video",
    "metrics": {
-    "views": 4,
+    "views": 5,
     "reach": 2,
     "reactions": 1,
     "comments": 0,
@@ -103,7 +1360,7 @@
     "saves": 0,
     "engagementRate": 50
    },
-   "score": 1.04
+   "score": 1.05
   },
   {
    "id": "6acc3835ea568e911a49c192",
@@ -136,14 +1393,14 @@
    "thumb": "https://worlddigital-media.ahmad-awwad-7a0.workers.dev/wd-oct-post1.jpg",
    "type": "image",
    "metrics": {
-    "reach": 4,
-    "impressions": 7,
+    "reach": 7,
+    "impressions": 15,
     "reactions": 1,
     "comments": 0,
     "shares": 1,
-    "engagementRate": 28.57142857142857
+    "engagementRate": 13.333333333333334
    },
-   "score": 5.07
+   "score": 5.15
   },
   {
    "id": "6acc3828a9411fbcc56630bf",
@@ -236,14 +1493,14 @@
    "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6acc2f87778b240e2fdfccfb/6acc2f8b15bcfac73dacff7d_thumbnail.jpg",
    "type": "image",
    "metrics": {
-    "reach": 41,
-    "impressions": 56,
+    "reach": 42,
+    "impressions": 58,
     "reactions": 3,
     "comments": 0,
     "shares": 0,
-    "engagementRate": 5.357142857142857
+    "engagementRate": 5.172413793103448
    },
-   "score": 3.56
+   "score": 3.58
   },
   {
    "id": "6acc30116725206617e3982e",
@@ -276,14 +1533,14 @@
    "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6ad04526778b240e2f12ad54/6ad0452749dda663a4c8a43f_thumbnail.jpg",
    "type": "video",
    "metrics": {
-    "views": 107,
-    "reach": 105,
-    "reactions": 1,
+    "views": 111,
+    "reach": 107,
+    "reactions": 2,
     "comments": 0,
     "shares": 0,
-    "engagementRate": 0.93
+    "engagementRate": 1.8
    },
-   "score": 2.07
+   "score": 3.11
   },
   {
    "id": "6acc2fe359d334840a70dc19",
@@ -375,14 +1632,14 @@
    "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6ad04526778b240e2f12ad54/6ad0452749dda663a4c8a449_thumbnail.jpg",
    "type": "video",
    "metrics": {
-    "views": 145,
+    "views": 147,
     "reach": 132,
     "reactions": 1,
     "comments": 0,
     "shares": 0,
-    "engagementRate": 0.69
+    "engagementRate": 0.68
    },
-   "score": 2.45
+   "score": 2.47
   },
   {
    "id": "6acc30116725206617e3981c",
@@ -436,14 +1693,14 @@
    "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6acc2f87778b240e2fdfccfb/6acc2f8b15bcfac73dacff69_thumbnail.jpg",
    "type": "image",
    "metrics": {
-    "reach": 4,
-    "impressions": 9,
+    "reach": 5,
+    "impressions": 11,
     "reactions": 1,
     "comments": 0,
     "shares": 0,
-    "engagementRate": 11.11111111111111
+    "engagementRate": 9.090909090909092
    },
-   "score": 1.09
+   "score": 1.11
   },
   {
    "id": "6ad04305fdd9d552811a250c",
@@ -474,14 +1731,14 @@
    "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6ad04526778b240e2f12ad54/6ad0452749dda663a4c8a443_thumbnail.jpg",
    "type": "video",
    "metrics": {
-    "views": 149,
+    "views": 150,
     "reach": 129,
-    "reactions": 0,
+    "reactions": 1,
     "comments": 0,
     "shares": 0,
-    "engagementRate": 0
+    "engagementRate": 0.67
    },
-   "score": 1.49
+   "score": 2.5
   },
   {
    "id": "6ad04305fdd9d552811a2514",
@@ -573,14 +1830,14 @@
    "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6ad04526778b240e2f12ad54/6ad0452849dda663a4c8a46f_thumbnail.jpg",
    "type": "video",
    "metrics": {
-    "views": 114,
-    "reach": 107,
+    "views": 115,
+    "reach": 108,
     "reactions": 0,
     "comments": 0,
     "shares": 0,
     "engagementRate": 0
    },
-   "score": 1.14
+   "score": 1.15
   },
   {
    "id": "6acc2fe359d334840a70dc1b",
@@ -614,14 +1871,14 @@
    "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6acc2f87778b240e2fdfccfb/6acc2f8b15bcfac73dacff8f_thumbnail.jpg",
    "type": "image",
    "metrics": {
-    "reach": 7,
-    "impressions": 10,
+    "reach": 8,
+    "impressions": 12,
     "reactions": 1,
     "comments": 0,
     "shares": 0,
-    "engagementRate": 10
+    "engagementRate": 8.333333333333332
    },
-   "score": 1.1
+   "score": 1.12
   },
   {
    "id": "6acc30116725206617e397ee",
@@ -692,1289 +1949,13 @@
    "thumb": null,
    "type": "text",
    "metrics": {
-    "impressions": 7,
+    "impressions": 14,
     "reactions": 1,
     "comments": 0,
-    "clicks": 0,
-    "engagementRate": 14.29
+    "clicks": 1,
+    "engagementRate": 21.43
    },
-   "score": 1.07
-  },
-  {
-   "id": "6ad04305fdd9d552811a251c",
-   "platform": "youtube",
-   "platformLabel": "YouTube",
-   "account": "WorldDigitalai",
-   "date": "2026-10-06",
-   "text": "Weather-Based Marketing: How Small Businesses Win Local Demand. Use weather trends, forecasts, and AI automation to launch timely local marketing campaigns that convert. Read more: https://worlddigital.ai/blog/weather-based-marketing-how-small-businesses-win-local-demand",
-   "link": "https://www.youtube.com/shorts/sYro_NJkpmQ",
-   "thumb": "https://i.ytimg.com/vi/sYro_NJkpmQ/hqdefault.jpg",
-   "type": "video",
-   "metrics": {
-    "views": 1,
-    "reactions": 0,
-    "comments": 0,
-    "engagementRate": 0
-   },
-   "score": 0.01
-  },
-  {
-   "id": "6acc2fe359d334840a70dc2c",
-   "platform": "instagram",
-   "platformLabel": "Instagram",
-   "account": "worlddigitalai",
-   "date": "2026-10-06",
-   "text": "Weather-Based Marketing: How Small Businesses Win Local Demand. Use weather trends, forecasts, and AI automation to launch timely local marketing campaigns that convert. Read more: https://worlddigital.ai/blog/weather-based-marketing-how-small-businesses-win-local-demand",
-   "link": "https://www.instagram.com/p/DeKfCyhCPpa/",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6acc2fdf778b240e2fdfcea3/6acc2fe359d334840a70dc2c_thumbnail.jpg",
-   "type": "image",
-   "metrics": {
-    "views": 6,
-    "reach": 1,
-    "reactions": 1,
-    "comments": 0,
-    "shares": 0,
-    "saves": 0,
-    "engagementRate": 100
-   },
-   "score": 1.06
-  },
-  {
-   "id": "6acc30116725206617e39834",
-   "platform": "facebook",
-   "platformLabel": "Facebook",
-   "account": "World Digital.ai",
-   "date": "2026-10-06",
-   "text": "Weather-Based Marketing: How Small Businesses Win Local Demand. Use weather trends, forecasts, and AI automation to launch timely local marketing campaigns that convert. Read more: https://worlddigital.ai/blog/weather-based-marketing-how-small-businesses-win-local-demand",
-   "link": "https://www.facebook.com/122222186444334560/posts/122221601780334560",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6acc2ffb778b240e2fdfcf19/6acc30116725206617e39834_thumbnail.jpg",
-   "type": "image",
-   "metrics": {
-    "impressions": 9,
-    "reactions": 1,
-    "comments": 0,
-    "shares": 0,
-    "clicks": 0,
-    "engagementRate": 11.11
-   },
-   "score": 1.09
-  },
-  {
-   "id": "6acc2f8b15bcfac73dacff5d",
-   "platform": "linkedin",
-   "platformLabel": "LinkedIn",
-   "account": "WorldDigital.ai",
-   "date": "2026-10-06",
-   "text": "Weather-Based Marketing: How Small Businesses Win Local Demand. Use weather trends, forecasts, and AI automation to launch timely local marketing campaigns that convert. Read more: https://lnkd.in/eXNQkBhF",
-   "link": "https://www.linkedin.com/feed/update/urn:li:share:7510081354915635201",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6acc2f87778b240e2fdfccfb/6acc2f8b15bcfac73dacff5d_thumbnail.jpg",
-   "type": "image",
-   "metrics": {
-    "reach": 40,
-    "impressions": 53,
-    "reactions": 2,
-    "comments": 2,
-    "shares": 0,
-    "engagementRate": 9.433962264150944
-   },
-   "score": 8.53
-  },
-  {
-   "id": "6ad0452749dda663a4c8a441",
-   "platform": "tiktok",
-   "platformLabel": "TikTok",
-   "account": "worlddigitalai",
-   "date": "2026-10-06",
-   "text": "Weather-Based Marketing: How Small Businesses Win Local Demand. Use weather trends, forecasts, and AI automation to launch timely local marketing campaigns that convert. Read more: https://worlddigital.ai/blog/weather-based-marketing-how-small-businesses-win-local-demand #worlddigitalai #fyp #SEOtips",
-   "link": "https://www.tiktok.com/@worlddigitalai/video/7690323479081520397?utm_campaign=tt4d_open_api&utm_source=7103819247981182978",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6ad04526778b240e2f12ad54/6ad0452749dda663a4c8a441_thumbnail.jpg",
-   "type": "video",
-   "metrics": {
-    "views": 179,
-    "reach": 166,
-    "reactions": 0,
-    "comments": 0,
-    "shares": 0,
-    "engagementRate": 0
-   },
-   "score": 1.79
-  },
-  {
-   "id": "6ad04305fdd9d552811a256e",
-   "platform": "youtube",
-   "platformLabel": "YouTube",
-   "account": "WorldDigitalai",
-   "date": "2026-10-05",
-   "text": "Nolan Wells Trend Update: AI Marketing Plays for SMBs. Use fast-rising trends like Nolan Wells, Coyote vs. Acme, and auto searches to plan timely AI marketing campaigns. Read more: https://worlddigital.ai/blog/nolan-wells-trend-update-ai-marketing-plays-for-smb",
-   "link": "https://www.youtube.com/shorts/6_krERyTO40",
-   "thumb": "https://i.ytimg.com/vi/6_krERyTO40/hqdefault.jpg",
-   "type": "video",
-   "metrics": {
-    "views": 23,
-    "reactions": 0,
-    "comments": 0,
-    "engagementRate": 0
-   },
-   "score": 0.23
-  },
-  {
-   "id": "6acc2fe359d334840a70dc2e",
-   "platform": "instagram",
-   "platformLabel": "Instagram",
-   "account": "worlddigitalai",
-   "date": "2026-10-05",
-   "text": "Nolan Wells Trend Update: AI Marketing Plays for SMBs. Use fast-rising trends like Nolan Wells, Coyote vs. Acme, and auto searches to plan timely AI marketing campaigns. Read more: https://worlddigital.ai/blog/nolan-wells-trend-update-ai-marketing-plays-for-smb",
-   "link": "https://www.instagram.com/p/DeH6PlriJP0/",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6acc2fdf778b240e2fdfcea3/6acc2fe359d334840a70dc2e_thumbnail.jpg",
-   "type": "image",
-   "metrics": {
-    "views": 3,
-    "reach": 1,
-    "reactions": 1,
-    "comments": 0,
-    "shares": 0,
-    "saves": 0,
-    "engagementRate": 100
-   },
-   "score": 1.03
-  },
-  {
-   "id": "6acc30116725206617e39828",
-   "platform": "facebook",
-   "platformLabel": "Facebook",
-   "account": "World Digital.ai",
-   "date": "2026-10-05",
-   "text": "Nolan Wells Trend Update: AI Marketing Plays for SMBs. Use fast-rising trends like Nolan Wells, Coyote vs. Acme, and auto searches to plan timely AI marketing campaigns. Read more: https://worlddigital.ai/blog/nolan-wells-trend-update-ai-marketing-plays-for-smb",
-   "link": "https://www.facebook.com/122222186444334560/posts/122221493096334560",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6acc2ffb778b240e2fdfcf19/6acc30116725206617e39828_thumbnail.jpg",
-   "type": "image",
-   "metrics": {
-    "impressions": 7,
-    "reactions": 1,
-    "comments": 0,
-    "shares": 0,
-    "clicks": 0,
-    "engagementRate": 14.29
-   },
-   "score": 1.07
-  },
-  {
-   "id": "6acc2f8b15bcfac73dacff81",
-   "platform": "linkedin",
-   "platformLabel": "LinkedIn",
-   "account": "WorldDigital.ai",
-   "date": "2026-10-05",
-   "text": "Nolan Wells Trend Update: AI Marketing Plays for SMBs. Use fast-rising trends like Nolan Wells, Coyote vs. Acme, and auto searches to plan timely AI marketing campaigns. Read more: https://lnkd.in/eZyK-ngz",
-   "link": "https://www.linkedin.com/feed/update/urn:li:share:7510078598180065280",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6acc2f87778b240e2fdfccfb/6acc2f8b15bcfac73dacff81_thumbnail.jpg",
-   "type": "image",
-   "metrics": {
-    "reach": 18,
-    "impressions": 26,
-    "reactions": 2,
-    "comments": 0,
-    "shares": 0,
-    "engagementRate": 7.6923076923076925
-   },
-   "score": 2.26
-  },
-  {
-   "id": "6ad0452849dda663a4c8a473",
-   "platform": "tiktok",
-   "platformLabel": "TikTok",
-   "account": "worlddigitalai",
-   "date": "2026-10-05",
-   "text": "Nolan Wells Trend Update: AI Marketing Plays for SMBs. Use fast-rising trends like Nolan Wells, Coyote vs. Acme, and auto searches to plan timely AI marketing campaigns. Read more: https://worlddigital.ai/blog/nolan-wells-trend-update-ai-marketing-plays-for-smb #worlddigitalai #fyp #LeadGeneration",
-   "link": "https://www.tiktok.com/@worlddigitalai/video/7690320690766941453?utm_campaign=tt4d_open_api&utm_source=7103819247981182978",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6ad04526778b240e2f12ad54/6ad0452849dda663a4c8a473_thumbnail.jpg",
-   "type": "video",
-   "metrics": {
-    "views": 90,
-    "reach": 86,
-    "reactions": 0,
-    "comments": 0,
-    "shares": 0,
-    "engagementRate": 0
-   },
-   "score": 0.9
-  },
-  {
-   "id": "6acc2f8b15bcfac73dacff79",
-   "platform": "linkedin",
-   "platformLabel": "LinkedIn",
-   "account": "WorldDigital.ai",
-   "date": "2026-10-05",
-   "text": "Your customers are not just searching on Google anymore. They’re asking ChatGPT, Gemini, TikTok, Instagram, and AI search tools who to trust. If your business is not showing up there, your competitors are. At WorldDigital.us, we help brands grow with SEO, Google Ads, Meta Ads, TikTok, websites, CRM, analytics, and AI-powered marketing strategies built for real results. #DigitalMarketing #AISEO #Bu",
-   "link": "https://www.linkedin.com/feed/update/urn:li:share:7512693159403896832",
-   "thumb": null,
-   "type": "text",
-   "metrics": {
-    "reach": 2,
-    "impressions": 2,
-    "reactions": 0,
-    "comments": 0,
-    "shares": 0,
-    "engagementRate": 0
-   },
-   "score": 0.02
-  },
-  {
-   "id": "6ad042d3df978a95ba19a768",
-   "platform": "twitter",
-   "platformLabel": "X",
-   "account": "Worlddigitalai",
-   "date": "2026-10-05",
-   "text": "Your customers are not just searching on Google anymore. They’re asking ChatGPT, Gemini, TikTok, Instagram, and AI search tools who to trust. If your business is not showing up there, your competitors are. At https://t.co/vysJVR8nqu, we help brands grow with SEO, Google Ads, Meta",
-   "link": "https://x.com/2010480259586727936/status/2107138757787070671",
-   "thumb": null,
-   "type": "text",
-   "metrics": {
-    "impressions": 30,
-    "reactions": 0,
-    "comments": 0,
-    "clicks": 0,
-    "engagementRate": 0
-   },
-   "score": 0.3
-  },
-  {
-   "id": "6ad042d3df978a95ba19a762",
-   "platform": "twitter",
-   "platformLabel": "X",
-   "account": "Worlddigitalai",
-   "date": "2026-10-05",
-   "text": "Check out my new site, everyone please let me know your opinion. https://t.co/0QYXIpLUjC",
-   "link": "https://x.com/2010480259586727936/status/2106925391814492164",
-   "thumb": null,
-   "type": "text",
-   "metrics": {
-    "impressions": 55,
-    "reactions": 1,
-    "comments": 0,
-    "clicks": 0,
-    "engagementRate": 1.82
-   },
-   "score": 1.55
-  },
-  {
-   "id": "6ad042d3df978a95ba19a766",
-   "platform": "twitter",
-   "platformLabel": "X",
-   "account": "Worlddigitalai",
-   "date": "2026-10-04",
-   "text": "https://t.co/Os41bX9yCO",
-   "link": "https://x.com/2010480259586727936/status/2106831952942661663",
-   "thumb": null,
-   "type": "text",
-   "metrics": {
-    "impressions": 71,
-    "reactions": 2,
-    "comments": 0,
-    "clicks": 0,
-    "engagementRate": 4.23
-   },
-   "score": 2.71
-  },
-  {
-   "id": "6acc2f8b15bcfac73dacff8b",
-   "platform": "linkedin",
-   "platformLabel": "LinkedIn",
-   "account": "WorldDigital.ai",
-   "date": "2026-10-04",
-   "text": "Car Search Trends 2026: AI Marketing Guide for SMBs. Discover the top car search trends for 2026 and how small businesses can use AI marketing to capture local automotive demand. Read more: https://lnkd.in/eEyui-tn",
-   "link": "https://www.linkedin.com/feed/update/urn:li:share:7510076175629643777",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6acc2f87778b240e2fdfccfb/6acc2f8b15bcfac73dacff8b_thumbnail.jpg",
-   "type": "image",
-   "metrics": {
-    "reach": 8,
-    "impressions": 15,
-    "reactions": 2,
-    "comments": 0,
-    "shares": 0,
-    "engagementRate": 13.333333333333334
-   },
-   "score": 2.15
-  },
-  {
-   "id": "6ad04305fdd9d552811a2538",
-   "platform": "youtube",
-   "platformLabel": "YouTube",
-   "account": "WorldDigitalai",
-   "date": "2026-10-04",
-   "text": "Car Search Trends 2026: AI Marketing Guide for SMBs. Discover the top car search trends for 2026 and how small businesses can use AI marketing to capture local automotive demand. Read more: https://worlddigital.ai/blog/car-search-trends-2026-ai-marketing-guide-for-smbs",
-   "link": "https://www.youtube.com/shorts/BJyeDvyjFpQ",
-   "thumb": "https://i.ytimg.com/vi/BJyeDvyjFpQ/hqdefault.jpg",
-   "type": "video",
-   "metrics": {
-    "views": 0,
-    "reactions": 0,
-    "comments": 0,
-    "engagementRate": 0
-   },
-   "score": 0.0
-  },
-  {
-   "id": "6ad0452749dda663a4c8a445",
-   "platform": "tiktok",
-   "platformLabel": "TikTok",
-   "account": "worlddigitalai",
-   "date": "2026-10-04",
-   "text": "Car Search Trends 2026: AI Marketing Guide for SMBs. Discover the top car search trends for 2026 and how small businesses can use AI marketing to capture local automotive demand. Read more: https://worlddigital.ai/blog/car-search-trends-2026-ai-marketing-guide-for-smbs #worlddigitalai #fyp #SEOtips",
-   "link": "https://www.tiktok.com/@worlddigitalai/video/7690318298872827149?utm_campaign=tt4d_open_api&utm_source=7103819247981182978",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6ad04526778b240e2f12ad54/6ad0452749dda663a4c8a445_thumbnail.jpg",
-   "type": "video",
-   "metrics": {
-    "views": 79,
-    "reach": 74,
-    "reactions": 1,
-    "comments": 0,
-    "shares": 0,
-    "engagementRate": 1.27
-   },
-   "score": 1.79
-  },
-  {
-   "id": "6acc2fe359d334840a70dc36",
-   "platform": "instagram",
-   "platformLabel": "Instagram",
-   "account": "worlddigitalai",
-   "date": "2026-10-03",
-   "text": "Trending Keywords in 2026: AI SEO Guide for Small Businesses. Learn how small businesses can turn 2026 trending keywords into smarter SEO, content, and ad campaigns with AI. Read more: https://worlddigital.ai/blog/trending-keywords-in-2026-ai-seo-guide-for-small-businesses",
-   "link": "https://www.instagram.com/p/DeCwr79gZIl/",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6acc2fdf778b240e2fdfcea3/6acc2fe359d334840a70dc36_thumbnail.jpg",
-   "type": "image",
-   "metrics": {
-    "views": 2,
-    "reach": 1,
-    "reactions": 1,
-    "comments": 0,
-    "shares": 0,
-    "saves": 0,
-    "engagementRate": 100
-   },
-   "score": 1.02
-  },
-  {
-   "id": "6ad04305fdd9d552811a2512",
-   "platform": "youtube",
-   "platformLabel": "YouTube",
-   "account": "WorldDigitalai",
-   "date": "2026-10-03",
-   "text": "Trending Keywords in 2026: AI SEO Guide for Small Businesses. Learn how small businesses can turn 2026 trending keywords into smarter SEO, content, and ad campaigns with AI. Read more: https://worlddigital.ai/blog/trending-keywords-in-2026-ai-seo-guide-for-small-businesses",
-   "link": "https://www.youtube.com/shorts/tSEksdD5284",
-   "thumb": "https://i.ytimg.com/vi/tSEksdD5284/hqdefault.jpg",
-   "type": "video",
-   "metrics": {
-    "views": 1,
-    "reactions": 0,
-    "comments": 0,
-    "engagementRate": 0
-   },
-   "score": 0.01
-  },
-  {
-   "id": "6acc30116725206617e39816",
-   "platform": "facebook",
-   "platformLabel": "Facebook",
-   "account": "World Digital.ai",
-   "date": "2026-10-03",
-   "text": "Trending Keywords in 2026: AI SEO Guide for Small Businesses. Learn how small businesses can turn 2026 trending keywords into smarter SEO, content, and ad campaigns with AI. Read more: https://worlddigital.ai/blog/trending-keywords-in-2026-ai-seo-guide-for-small-businesses",
-   "link": "https://www.facebook.com/122222186444334560/posts/122221278446334560",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6acc2ffb778b240e2fdfcf19/6acc30116725206617e39816_thumbnail.jpg",
-   "type": "image",
-   "metrics": {
-    "impressions": 17,
-    "reactions": 1,
-    "comments": 0,
-    "shares": 0,
-    "clicks": 4,
-    "engagementRate": 29.41
-   },
-   "score": 9.17
-  },
-  {
-   "id": "6acc2f8b15bcfac73dacffcf",
-   "platform": "linkedin",
-   "platformLabel": "LinkedIn",
-   "account": "WorldDigital.ai",
-   "date": "2026-10-03",
-   "text": "Trending Keywords in 2026: AI SEO Guide for Small Businesses. Learn how small businesses can turn 2026 trending keywords into smarter SEO, content, and ad campaigns with AI. Read more: https://lnkd.in/eBMjQXQj",
-   "link": "https://www.linkedin.com/feed/update/urn:li:share:7510074286578208768",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6acc2f87778b240e2fdfccfb/6acc2f8b15bcfac73dacffcf_thumbnail.jpg",
-   "type": "image",
-   "metrics": {
-    "reach": 12,
-    "impressions": 19,
-    "reactions": 1,
-    "comments": 0,
-    "shares": 0,
-    "engagementRate": 5.263157894736842
-   },
-   "score": 1.19
-  },
-  {
-   "id": "6ad0452849dda663a4c8a469",
-   "platform": "tiktok",
-   "platformLabel": "TikTok",
-   "account": "worlddigitalai",
-   "date": "2026-10-03",
-   "text": "Trending Keywords in 2026: AI SEO Guide for Small Businesses. Learn how small businesses can turn 2026 trending keywords into smarter SEO, content, and ad campaigns with AI. Read more: https://worlddigital.ai/blog/trending-keywords-in-2026-ai-seo-guide-for-small-businesses #worlddigitalai #fyp #LeadGeneration",
-   "link": "https://www.tiktok.com/@worlddigitalai/video/7690316172872420622?utm_campaign=tt4d_open_api&utm_source=7103819247981182978",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6ad04526778b240e2f12ad54/6ad0452849dda663a4c8a469_thumbnail.jpg",
-   "type": "video",
-   "metrics": {
-    "views": 93,
-    "reach": 89,
-    "reactions": 1,
-    "comments": 0,
-    "shares": 0,
-    "engagementRate": 1.08
-   },
-   "score": 1.93
-  },
-  {
-   "id": "6acc2fe359d334840a70dc8e",
-   "platform": "instagram",
-   "platformLabel": "Instagram",
-   "account": "worlddigitalai",
-   "date": "2026-10-02",
-   "text": "How Small Businesses Can Use Trending Keywords to Win Online. Learn how to turn trending searches into smarter content, ads, and social campaigns with AI-powered marketing. Read more: https://worlddigital.ai/blog/how-small-businesses-can-use-trending-keywords-to-win-online",
-   "link": "https://www.instagram.com/p/DeAL4mxAWCE/",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6acc2fdf778b240e2fdfcea3/6acc2fe359d334840a70dc8e_thumbnail.jpg",
-   "type": "image",
-   "metrics": {
-    "views": 5,
-    "reach": 2,
-    "reactions": 1,
-    "comments": 0,
-    "shares": 0,
-    "saves": 0,
-    "engagementRate": 50
-   },
-   "score": 1.05
-  },
-  {
-   "id": "6acc2f8b15bcfac73dacff59",
-   "platform": "linkedin",
-   "platformLabel": "LinkedIn",
-   "account": "WorldDigital.ai",
-   "date": "2026-10-02",
-   "text": "How Small Businesses Can Use Trending Keywords to Win Online. Learn how to turn trending searches into smarter content, ads, and social campaigns with AI-powered marketing. Read more: https://lnkd.in/ebX2mSZw",
-   "link": "https://www.linkedin.com/feed/update/urn:li:share:7510072126004080642",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6acc2f87778b240e2fdfccfb/6acc2f8b15bcfac73dacff59_thumbnail.jpg",
-   "type": "image",
-   "metrics": {
-    "reach": 7,
-    "impressions": 8,
-    "reactions": 1,
-    "comments": 0,
-    "shares": 0,
-    "engagementRate": 12.5
-   },
-   "score": 1.08
-  },
-  {
-   "id": "6acc30116725206617e397f6",
-   "platform": "facebook",
-   "platformLabel": "Facebook",
-   "account": "World Digital.ai",
-   "date": "2026-10-02",
-   "text": "How Small Businesses Can Use Trending Keywords to Win Online. Learn how to turn trending searches into smarter content, ads, and social campaigns with AI-powered marketing. Read more: https://worlddigital.ai/blog/how-small-businesses-can-use-trending-keywords-to-win-online",
-   "link": "https://www.facebook.com/122222186444334560/posts/122221162790334560",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6acc2ffb778b240e2fdfcf19/6acc30116725206617e397f6_thumbnail.jpg",
-   "type": "image",
-   "metrics": {
-    "impressions": 10,
-    "reactions": 1,
-    "comments": 0,
-    "shares": 0,
-    "clicks": 0,
-    "engagementRate": 10
-   },
-   "score": 1.1
-  },
-  {
-   "id": "6ad04305fdd9d552811a2530",
-   "platform": "youtube",
-   "platformLabel": "YouTube",
-   "account": "WorldDigitalai",
-   "date": "2026-10-02",
-   "text": "How Small Businesses Can Use Trending Keywords to Win Online. Learn how to turn trending searches into smarter content, ads, and social campaigns with AI-powered marketing. Read more: https://worlddigital.ai/blog/how-small-businesses-can-use-trending-keywords-to-win-online",
-   "link": "https://www.youtube.com/shorts/LT8u6-yYUgw",
-   "thumb": "https://i.ytimg.com/vi/LT8u6-yYUgw/hqdefault.jpg",
-   "type": "video",
-   "metrics": {
-    "views": 6,
-    "reactions": 0,
-    "comments": 0,
-    "engagementRate": 0
-   },
-   "score": 0.06
-  },
-  {
-   "id": "6ad0452849dda663a4c8a4e0",
-   "platform": "tiktok",
-   "platformLabel": "TikTok",
-   "account": "worlddigitalai",
-   "date": "2026-10-02",
-   "text": "How Small Businesses Can Use Trending Keywords to Win Online. Learn how to turn trending searches into smarter content, ads, and social campaigns with AI-powered marketing. Read more: https://worlddigital.ai/blog/how-small-businesses-can-use-trending-keywords-to-win-online #worlddigitalai #fyp #LeadGeneration",
-   "link": "https://www.tiktok.com/@worlddigitalai/video/7690314012311031053?utm_campaign=tt4d_open_api&utm_source=7103819247981182978",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6ad04526778b240e2f12ad54/6ad0452849dda663a4c8a4e0_thumbnail.jpg",
-   "type": "video",
-   "metrics": {
-    "views": 81,
-    "reach": 74,
-    "reactions": 0,
-    "comments": 0,
-    "shares": 0,
-    "engagementRate": 0
-   },
-   "score": 0.81
-  },
-  {
-   "id": "6ad04305fdd9d552811a2536",
-   "platform": "youtube",
-   "platformLabel": "YouTube",
-   "account": "WorldDigitalai",
-   "date": "2026-10-01",
-   "text": "World Cup Bracket 2026: Marketing Ideas for Small Business. Use FIFA World Cup 2026 bracket buzz to create timely campaigns, local offers, and AI-powered content that converts. Read more: https://worlddigital.ai/blog/world-cup-bracket-2026-marketing-ideas-for-small-business",
-   "link": "https://www.youtube.com/shorts/wlx415h8vZ0",
-   "thumb": "https://i.ytimg.com/vi/wlx415h8vZ0/hqdefault.jpg",
-   "type": "video",
-   "metrics": {
-    "views": 9,
-    "reactions": 0,
-    "comments": 0,
-    "engagementRate": 0
-   },
-   "score": 0.09
-  },
-  {
-   "id": "6acc2fe359d334840a70dc38",
-   "platform": "instagram",
-   "platformLabel": "Instagram",
-   "account": "worlddigitalai",
-   "date": "2026-10-01",
-   "text": "World Cup Bracket 2026: Marketing Ideas for Small Business. Use FIFA World Cup 2026 bracket buzz to create timely campaigns, local offers, and AI-powered content that converts. Read more: https://worlddigital.ai/blog/world-cup-bracket-2026-marketing-ideas-for-small-business",
-   "link": "https://www.instagram.com/p/Dd9nETcFnUd/",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6acc2fdf778b240e2fdfcea3/6acc2fe359d334840a70dc38_thumbnail.jpg",
-   "type": "image",
-   "metrics": {
-    "views": 3,
-    "reach": 2,
-    "reactions": 1,
-    "comments": 0,
-    "shares": 0,
-    "saves": 0,
-    "engagementRate": 50
-   },
-   "score": 1.03
-  },
-  {
-   "id": "6acc30116725206617e3982c",
-   "platform": "facebook",
-   "platformLabel": "Facebook",
-   "account": "World Digital.ai",
-   "date": "2026-10-01",
-   "text": "World Cup Bracket 2026: Marketing Ideas for Small Business. Use FIFA World Cup 2026 bracket buzz to create timely campaigns, local offers, and AI-powered content that converts. Read more: https://worlddigital.ai/blog/world-cup-bracket-2026-marketing-ideas-for-small-business",
-   "link": "https://www.facebook.com/122222186444334560/posts/122221048064334560",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6acc2ffb778b240e2fdfcf19/6acc30116725206617e3982c_thumbnail.jpg",
-   "type": "image",
-   "metrics": {
-    "impressions": 6,
-    "reactions": 1,
-    "comments": 0,
-    "shares": 0,
-    "clicks": 0,
-    "engagementRate": 16.67
-   },
-   "score": 1.06
-  },
-  {
-   "id": "6ad0452849dda663a4c8a471",
-   "platform": "tiktok",
-   "platformLabel": "TikTok",
-   "account": "worlddigitalai",
-   "date": "2026-10-01",
-   "text": "World Cup Bracket 2026: Marketing Ideas for Small Business. Use FIFA World Cup 2026 bracket buzz to create timely campaigns, local offers, and AI-powered content that converts. Read more: https://worlddigital.ai/blog/world-cup-bracket-2026-marketing-ideas-for-small-business #worlddigitalai #fyp #LeadGeneration",
-   "link": "https://www.tiktok.com/@worlddigitalai/video/7690309422492486926?utm_campaign=tt4d_open_api&utm_source=7103819247981182978",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6ad04526778b240e2f12ad54/6ad0452849dda663a4c8a471_thumbnail.jpg",
-   "type": "video",
-   "metrics": {
-    "views": 76,
-    "reach": 69,
-    "reactions": 0,
-    "comments": 0,
-    "shares": 0,
-    "engagementRate": 0
-   },
-   "score": 0.76
-  },
-  {
-   "id": "6ad04305fdd9d552811a2532",
-   "platform": "youtube",
-   "platformLabel": "YouTube",
-   "account": "WorldDigitalai",
-   "date": "2026-09-30",
-   "text": "From USPS to TikTok: AI Marketing Trends for Small Businesses. Learn how small businesses can turn search trends like USPS, TikTok, UPS, and Google into smarter AI-powered marketing campaigns. Read more: https://worlddigital.ai/blog/from-usps-to-tiktok-ai-marketing-trends-for-small-businesses",
-   "link": "https://www.youtube.com/shorts/5120TW8b0qQ",
-   "thumb": "https://i.ytimg.com/vi/5120TW8b0qQ/hqdefault.jpg",
-   "type": "video",
-   "metrics": {
-    "views": 7,
-    "reactions": 0,
-    "comments": 0,
-    "engagementRate": 0
-   },
-   "score": 0.07
-  },
-  {
-   "id": "6acc2f8b15bcfac73dacffd2",
-   "platform": "linkedin",
-   "platformLabel": "LinkedIn",
-   "account": "WorldDigital.ai",
-   "date": "2026-09-30",
-   "text": "From USPS to TikTok: AI Marketing Trends for Small Businesses. Learn how small businesses can turn search trends like USPS, TikTok, UPS, and Google into smarter AI-powered marketing campaigns. Read more: https://lnkd.in/e64MnPxK",
-   "link": "https://www.linkedin.com/feed/update/urn:li:share:7510065238512332802",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6acc2f87778b240e2fdfccfb/6acc2f8b15bcfac73dacffd2_thumbnail.jpg",
-   "type": "image",
-   "metrics": {
-    "reach": 6,
-    "impressions": 9,
-    "reactions": 1,
-    "comments": 0,
-    "shares": 0,
-    "engagementRate": 11.11111111111111
-   },
-   "score": 1.09
-  },
-  {
-   "id": "6acc30116725206617e39838",
-   "platform": "facebook",
-   "platformLabel": "Facebook",
-   "account": "World Digital.ai",
-   "date": "2026-09-30",
-   "text": "From USPS to TikTok: AI Marketing Trends for Small Businesses. Learn how small businesses can turn search trends like USPS, TikTok, UPS, and Google into smarter AI-powered marketing campaigns. Read more: https://worlddigital.ai/blog/from-usps-to-tiktok-ai-marketing-trends-for-small-businesses",
-   "link": "https://www.facebook.com/122222186444334560/posts/122220940490334560",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6acc2ffb778b240e2fdfcf19/6acc30116725206617e39838_thumbnail.jpg",
-   "type": "image",
-   "metrics": {
-    "impressions": 12,
-    "reactions": 1,
-    "comments": 0,
-    "shares": 0,
-    "clicks": 0,
-    "engagementRate": 8.33
-   },
-   "score": 1.12
-  },
-  {
-   "id": "6acc2fe359d334840a70dc15",
-   "platform": "instagram",
-   "platformLabel": "Instagram",
-   "account": "worlddigitalai",
-   "date": "2026-09-30",
-   "text": "From USPS to TikTok: AI Marketing Trends for Small Businesses. Learn how small businesses can turn search trends like USPS, TikTok, UPS, and Google into smarter AI-powered marketing campaigns. Read more: https://worlddigital.ai/blog/from-usps-to-tiktok-ai-marketing-trends-for-small-businesses",
-   "link": "https://www.instagram.com/p/Dd7CRNWj_m_/",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6acc2fdf778b240e2fdfcea3/6acc2fe359d334840a70dc15_thumbnail.jpg",
-   "type": "image",
-   "metrics": {
-    "views": 3,
-    "reach": 1,
-    "reactions": 1,
-    "comments": 0,
-    "shares": 0,
-    "saves": 0,
-    "engagementRate": 100
-   },
-   "score": 1.03
-  },
-  {
-   "id": "6ad0452849dda663a4c8a4da",
-   "platform": "tiktok",
-   "platformLabel": "TikTok",
-   "account": "worlddigitalai",
-   "date": "2026-09-30",
-   "text": "From USPS to TikTok: AI Marketing Trends for Small Businesses. Learn how small businesses can turn search trends like USPS, TikTok, UPS, and Google into smarter AI-powered marketing campaigns. Read more: https://worlddigital.ai/blog/from-usps-to-tiktok-ai-marketing-trends-for-small-businesses #worlddigitalai #fyp #LeadGeneration",
-   "link": "https://www.tiktok.com/@worlddigitalai/video/7690307187930860814?utm_campaign=tt4d_open_api&utm_source=7103819247981182978",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6ad04526778b240e2f12ad54/6ad0452849dda663a4c8a4da_thumbnail.jpg",
-   "type": "video",
-   "metrics": {
-    "views": 93,
-    "reach": 88,
-    "reactions": 0,
-    "comments": 0,
-    "shares": 0,
-    "engagementRate": 0
-   },
-   "score": 0.93
-  },
-  {
-   "id": "6acc2f8b15bcfac73dacff87",
-   "platform": "linkedin",
-   "platformLabel": "LinkedIn",
-   "account": "WorldDigital.ai",
-   "date": "2026-09-29",
-   "text": "Voicemails for Isabelle: AI Trend Marketing for SMBs. Learn how small businesses can turn viral searches like voicemails for Isabelle into timely AI-powered marketing campaigns. Read more: https://lnkd.in/eiRBqdQU",
-   "link": "https://www.linkedin.com/feed/update/urn:li:share:7510063317185396737",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6acc2f87778b240e2fdfccfb/6acc2f8b15bcfac73dacff87_thumbnail.jpg",
-   "type": "image",
-   "metrics": {
-    "reach": 5,
-    "impressions": 10,
-    "reactions": 1,
-    "comments": 0,
-    "shares": 0,
-    "engagementRate": 10
-   },
-   "score": 1.1
-  },
-  {
-   "id": "6ad04305fdd9d552811a257b",
-   "platform": "youtube",
-   "platformLabel": "YouTube",
-   "account": "WorldDigitalai",
-   "date": "2026-09-29",
-   "text": "Voicemails for Isabelle: AI Trend Marketing for SMBs. Learn how small businesses can turn viral searches like voicemails for Isabelle into timely AI-powered marketing campaigns. Read more: https://worlddigital.ai/blog/voicemails-for-isabelle-ai-trend-marketing-for-smbs",
-   "link": "https://www.youtube.com/shorts/YA-8V2bmHuQ",
-   "thumb": "https://i.ytimg.com/vi/YA-8V2bmHuQ/hqdefault.jpg",
-   "type": "video",
-   "metrics": {
-    "views": 35,
-    "reactions": 0,
-    "comments": 0,
-    "engagementRate": 0
-   },
-   "score": 0.35
-  },
-  {
-   "id": "6acc2fe359d334840a70dc3a",
-   "platform": "instagram",
-   "platformLabel": "Instagram",
-   "account": "worlddigitalai",
-   "date": "2026-09-29",
-   "text": "Voicemails for Isabelle: AI Trend Marketing for SMBs. Learn how small businesses can turn viral searches like voicemails for Isabelle into timely AI-powered marketing campaigns. Read more: https://worlddigital.ai/blog/voicemails-for-isabelle-ai-trend-marketing-for-smbs",
-   "link": "https://www.instagram.com/p/Dd4depKiFC6/",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6acc2fdf778b240e2fdfcea3/6acc2fe359d334840a70dc3a_thumbnail.jpg",
-   "type": "image",
-   "metrics": {
-    "views": 3,
-    "reach": 1,
-    "reactions": 1,
-    "comments": 0,
-    "shares": 0,
-    "saves": 0,
-    "engagementRate": 100
-   },
-   "score": 1.03
-  },
-  {
-   "id": "6acc30116725206617e39832",
-   "platform": "facebook",
-   "platformLabel": "Facebook",
-   "account": "World Digital.ai",
-   "date": "2026-09-29",
-   "text": "Voicemails for Isabelle: AI Trend Marketing for SMBs. Learn how small businesses can turn viral searches like voicemails for Isabelle into timely AI-powered marketing campaigns. Read more: https://worlddigital.ai/blog/voicemails-for-isabelle-ai-trend-marketing-for-smbs",
-   "link": "https://www.facebook.com/122222186444334560/posts/122220825296334560",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6acc2ffb778b240e2fdfcf19/6acc30116725206617e39832_thumbnail.jpg",
-   "type": "image",
-   "metrics": {
-    "impressions": 8,
-    "reactions": 1,
-    "comments": 0,
-    "shares": 0,
-    "clicks": 0,
-    "engagementRate": 12.5
-   },
-   "score": 1.08
-  },
-  {
-   "id": "6ad0452849dda663a4c8a4dc",
-   "platform": "tiktok",
-   "platformLabel": "TikTok",
-   "account": "worlddigitalai",
-   "date": "2026-09-29",
-   "text": "Voicemails for Isabelle: AI Trend Marketing for SMBs. Learn how small businesses can turn viral searches like voicemails for Isabelle into timely AI-powered marketing campaigns. Read more: https://worlddigital.ai/blog/voicemails-for-isabelle-ai-trend-marketing-for-smbs #worlddigitalai #fyp #SEOtips",
-   "link": "https://www.tiktok.com/@worlddigitalai/video/7690304936688618766?utm_campaign=tt4d_open_api&utm_source=7103819247981182978",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6ad04526778b240e2f12ad54/6ad0452849dda663a4c8a4dc_thumbnail.jpg",
-   "type": "video",
-   "metrics": {
-    "views": 93,
-    "reach": 85,
-    "reactions": 0,
-    "comments": 0,
-    "shares": 0,
-    "engagementRate": 0
-   },
-   "score": 0.93
-  },
-  {
-   "id": "6ad04305fdd9d552811a258d",
-   "platform": "youtube",
-   "platformLabel": "YouTube",
-   "account": "WorldDigitalai",
-   "date": "2026-09-28",
-   "text": "Google, iPhone & Email Trends: AI Marketing for SMBs. Learn how small businesses can turn Google, iPhone, email, and app search trends into smarter AI-powered marketing campaigns. Read more: https://worlddigital.ai/blog/google-iphone-email-trends-ai-marketing-for-smbs",
-   "link": "https://www.youtube.com/shorts/-uQTEh6KrdY",
-   "thumb": "https://i.ytimg.com/vi/-uQTEh6KrdY/hqdefault.jpg",
-   "type": "video",
-   "metrics": {
-    "views": 0,
-    "reactions": 0,
-    "comments": 0,
-    "engagementRate": 0
-   },
-   "score": 0.0
-  },
-  {
-   "id": "6acc2f8b15bcfac73dacff67",
-   "platform": "linkedin",
-   "platformLabel": "LinkedIn",
-   "account": "WorldDigital.ai",
-   "date": "2026-09-28",
-   "text": "Google, iPhone & Email Trends: AI Marketing for SMBs. Learn how small businesses can turn Google, iPhone, email, and app search trends into smarter AI-powered marketing campaigns. Read more: https://lnkd.in/eGVSVypt",
-   "link": "https://www.linkedin.com/feed/update/urn:li:share:7510061107902857217",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6acc2f87778b240e2fdfccfb/6acc2f8b15bcfac73dacff67_thumbnail.jpg",
-   "type": "image",
-   "metrics": {
-    "reach": 7,
-    "impressions": 15,
-    "reactions": 0,
-    "comments": 0,
-    "shares": 0,
-    "engagementRate": 0
-   },
-   "score": 0.15
-  },
-  {
-   "id": "6acc2fe359d334840a70dc32",
-   "platform": "instagram",
-   "platformLabel": "Instagram",
-   "account": "worlddigitalai",
-   "date": "2026-09-28",
-   "text": "Google, iPhone & Email Trends: AI Marketing for SMBs. Learn how small businesses can turn Google, iPhone, email, and app search trends into smarter AI-powered marketing campaigns. Read more: https://worlddigital.ai/blog/google-iphone-email-trends-ai-marketing-for-smbs",
-   "link": "https://www.instagram.com/p/Dd14ru3AWQC/",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6acc2fdf778b240e2fdfcea3/6acc2fe359d334840a70dc32_thumbnail.jpg",
-   "type": "image",
-   "metrics": {
-    "views": 2,
-    "reach": 1,
-    "reactions": 1,
-    "comments": 0,
-    "shares": 0,
-    "saves": 0,
-    "engagementRate": 100
-   },
-   "score": 1.02
-  },
-  {
-   "id": "6acc30116725206617e39812",
-   "platform": "facebook",
-   "platformLabel": "Facebook",
-   "account": "World Digital.ai",
-   "date": "2026-09-28",
-   "text": "Google, iPhone & Email Trends: AI Marketing for SMBs. Learn how small businesses can turn Google, iPhone, email, and app search trends into smarter AI-powered marketing campaigns. Read more: https://worlddigital.ai/blog/google-iphone-email-trends-ai-marketing-for-smbs",
-   "link": "https://www.facebook.com/122222186444334560/posts/122220712892334560",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6acc2ffb778b240e2fdfcf19/6acc30116725206617e39812_thumbnail.jpg",
-   "type": "image",
-   "metrics": {
-    "impressions": 9,
-    "reactions": 0,
-    "comments": 0,
-    "shares": 0,
-    "clicks": 0,
-    "engagementRate": 0
-   },
-   "score": 0.09
-  },
-  {
-   "id": "6ad0452849dda663a4c8a46d",
-   "platform": "tiktok",
-   "platformLabel": "TikTok",
-   "account": "worlddigitalai",
-   "date": "2026-09-28",
-   "text": "Google, iPhone & Email Trends: AI Marketing for SMBs. Learn how small businesses can turn Google, iPhone, email, and app search trends into smarter AI-powered marketing campaigns. Read more: https://worlddigital.ai/blog/google-iphone-email-trends-ai-marketing-for-smbs #worlddigitalai #fyp #LeadGeneration",
-   "link": "https://www.tiktok.com/@worlddigitalai/video/7690302731633888525?utm_campaign=tt4d_open_api&utm_source=7103819247981182978",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6ad04526778b240e2f12ad54/6ad0452849dda663a4c8a46d_thumbnail.jpg",
-   "type": "video",
-   "metrics": {
-    "views": 72,
-    "reach": 65,
-    "reactions": 0,
-    "comments": 0,
-    "shares": 0,
-    "engagementRate": 0
-   },
-   "score": 0.72
-  },
-  {
-   "id": "6ad042d3df978a95ba19a76a",
-   "platform": "twitter",
-   "platformLabel": "X",
-   "account": "Worlddigitalai",
-   "date": "2026-09-28",
-   "text": "Google, iPhone & Email Trends: AI Marketing for SMBs. Learn how small businesses can turn Google, iPhone, email, and app search trends into smarter AI-powered marketing campaigns. Read more: https://t.co/EzI6StnVPn",
-   "link": "https://x.com/2010480259586727936/status/2104647328363921830",
-   "thumb": "https://pbs.twimg.com/media/HTP0yMEXcAASYz3.jpg",
-   "type": "image",
-   "metrics": {
-    "impressions": 39,
-    "reactions": 2,
-    "comments": 0,
-    "clicks": 0,
-    "engagementRate": 5.13
-   },
-   "score": 2.39
-  },
-  {
-   "id": "6ad042d4df978a95ba19a781",
-   "platform": "twitter",
-   "platformLabel": "X",
-   "account": "Worlddigitalai",
-   "date": "2026-09-27",
-   "text": "Book Marketing Trends: How Small Businesses Win Search. Use rising book search trends to create timely content, smarter campaigns, and more sales with AI-powered marketing. Read more: https://t.co/dZsK2LCTRu",
-   "link": "https://x.com/2010480259586727936/status/2104330285261443553",
-   "thumb": "https://pbs.twimg.com/media/HTQVJ66WYAAovzV.jpg",
-   "type": "image",
-   "metrics": {
-    "impressions": 22,
-    "reactions": 0,
-    "comments": 0,
-    "clicks": 0,
-    "engagementRate": 0
-   },
-   "score": 0.22
-  },
-  {
-   "id": "6ad042d3df978a95ba19a76c",
-   "platform": "twitter",
-   "platformLabel": "X",
-   "account": "Worlddigitalai",
-   "date": "2026-09-27",
-   "text": "Insurance Marketing With AI: More Local Leads. Learn how small insurance agencies use AI to rank for high-intent searches, personalize campaigns, and convert more local leads. Read more: https://t.co/HKFw9Skckk",
-   "link": "https://x.com/2010480259586727936/status/2104320377035837907",
-   "thumb": "https://pbs.twimg.com/media/HTQMKpZWEAAjyBI.jpg",
-   "type": "image",
-   "metrics": {
-    "impressions": 16,
-    "reactions": 0,
-    "comments": 1,
-    "clicks": 0,
-    "engagementRate": 6.25
-   },
-   "score": 3.16
-  },
-  {
-   "id": "6ad042d3df978a95ba19a764",
-   "platform": "twitter",
-   "platformLabel": "X",
-   "account": "Worlddigitalai",
-   "date": "2026-09-27",
-   "text": "Weather-Based Marketing: How Small Businesses Win Local Demand. Use weather trends, forecasts, and AI automation to launch timely local marketing campaigns that convert. Read more: https://t.co/zHMxSFdVdE",
-   "link": "https://x.com/2010480259586727936/status/2104314608723095707",
-   "thumb": "https://pbs.twimg.com/media/HTQG5svWIAAJPXh.jpg",
-   "type": "image",
-   "metrics": {
-    "impressions": 10,
-    "reactions": 0,
-    "comments": 0,
-    "clicks": 0,
-    "engagementRate": 0
-   },
-   "score": 0.1
-  },
-  {
-   "id": "6ad042d4df978a95ba19a785",
-   "platform": "twitter",
-   "platformLabel": "X",
-   "account": "Worlddigitalai",
-   "date": "2026-09-27",
-   "text": "Nolan Wells Trend Update: AI Marketing Plays for SMBs. Use fast-rising trends like Nolan Wells, Coyote vs. Acme, and auto searches to plan timely AI marketing campaigns. Read more: https://t.co/CsKIZP2TTR",
-   "link": "https://x.com/2010480259586727936/status/2104312042928878056",
-   "thumb": "https://pbs.twimg.com/media/HTQEjR7XcAAkeQ1.jpg",
-   "type": "image",
-   "metrics": {
-    "impressions": 83,
-    "reactions": 0,
-    "comments": 0,
-    "clicks": 0,
-    "engagementRate": 0
-   },
-   "score": 0.83
-  },
-  {
-   "id": "6acc2f8b15bcfac73dacff77",
-   "platform": "linkedin",
-   "platformLabel": "LinkedIn",
-   "account": "WorldDigital.ai",
-   "date": "2026-09-27",
-   "text": "World Cup Bracket 2026: Marketing Ideas for Small Business. Use FIFA World Cup 2026 bracket buzz to create timely campaigns, local offers, and AI-powered content that converts. Read more: https://lnkd.in/eC-4ma6r",
-   "link": "https://www.linkedin.com/feed/update/urn:li:share:7510067161600647168",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6acc2f87778b240e2fdfccfb/6acc2f8b15bcfac73dacff77_thumbnail.jpg",
-   "type": "image",
-   "metrics": {
-    "reach": 4,
-    "impressions": 18,
-    "reactions": 1,
-    "comments": 0,
-    "shares": 0,
-    "engagementRate": 5.555555555555555
-   },
-   "score": 1.18
-  },
-  {
-   "id": "6acc2f8b15bcfac73dacff9c",
-   "platform": "linkedin",
-   "platformLabel": "LinkedIn",
-   "account": "WorldDigital.ai",
-   "date": "2026-09-25",
-   "text": "PayPal for Small Business: Payments, CRM & AI Marketing. Learn how small businesses can use PayPal, CRM data, and AI marketing to streamline payments, improve access, and grow revenue. Read more: https://lnkd.in/eGqPxEeV",
-   "link": "https://www.linkedin.com/feed/update/urn:li:share:7509265862076334080",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6acc2f87778b240e2fdfccfb/6acc2f8b15bcfac73dacff9c_thumbnail.jpg",
-   "type": "image",
-   "metrics": {
-    "reach": 7,
-    "impressions": 15,
-    "reactions": 1,
-    "comments": 0,
-    "shares": 0,
-    "engagementRate": 6.666666666666667
-   },
-   "score": 1.15
-  },
-  {
-   "id": "6ad04305fdd9d552811a2518",
-   "platform": "youtube",
-   "platformLabel": "YouTube",
-   "account": "WorldDigitalai",
-   "date": "2026-09-25",
-   "text": "PayPal for Small Business: Payments, CRM & AI Marketing. Learn how small businesses can use PayPal, CRM data, and AI marketing to streamline payments, improve access, and grow revenue. Read more: https://worlddigital.ai/blog/paypal-for-small-business-payments-crm-ai-marketing",
-   "link": "https://www.youtube.com/shorts/yxDJ3hwnloU",
-   "thumb": "https://i.ytimg.com/vi/yxDJ3hwnloU/hqdefault.jpg",
-   "type": "video",
-   "metrics": {
-    "views": 0,
-    "reactions": 0,
-    "comments": 0,
-    "engagementRate": 0
-   },
-   "score": 0.0
-  },
-  {
-   "id": "6ad0452749dda663a4c8a44d",
-   "platform": "tiktok",
-   "platformLabel": "TikTok",
-   "account": "worlddigitalai",
-   "date": "2026-09-25",
-   "text": "PayPal for Small Business: Payments, CRM & AI Marketing. Learn how small businesses can use PayPal, CRM data, and AI marketing to streamline payments, improve access, and grow revenue. Read more: https://worlddigital.ai/blog/paypal-for-small-business-payments-crm-ai-marketing #worlddigitalai #fyp #LeadGeneration",
-   "link": "https://www.tiktok.com/@worlddigitalai/video/7689487608526736654?utm_campaign=tt4d_open_api&utm_source=7103819247981182978",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6ad04526778b240e2f12ad54/6ad0452749dda663a4c8a44d_thumbnail.jpg",
-   "type": "video",
-   "metrics": {
-    "views": 89,
-    "reach": 83,
-    "reactions": 0,
-    "comments": 0,
-    "shares": 0,
-    "engagementRate": 0
-   },
-   "score": 0.89
-  },
-  {
-   "id": "6acc2fe359d334840a70dc7f",
-   "platform": "instagram",
-   "platformLabel": "Instagram",
-   "account": "worlddigitalai",
-   "date": "2026-09-25",
-   "text": "PayPal for Small Business: Payments, CRM & AI Marketing. Learn how small businesses can use PayPal, CRM data, and AI marketing to streamline payments, improve access, and grow revenue. Read more: https://worlddigital.ai/blog/paypal-for-small-business-payments-crm-ai-marketing",
-   "link": "https://www.instagram.com/p/Ddtuqzxju02/",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6acc2fdf778b240e2fdfcea3/6acc2fe359d334840a70dc7f_thumbnail.jpg",
-   "type": "image",
-   "metrics": {
-    "views": 2,
-    "reach": 1,
-    "reactions": 1,
-    "comments": 0,
-    "shares": 0,
-    "saves": 0,
-    "engagementRate": 100
-   },
-   "score": 1.02
-  },
-  {
-   "id": "6acc30116725206617e3981e",
-   "platform": "facebook",
-   "platformLabel": "Facebook",
-   "account": "World Digital.ai",
-   "date": "2026-09-25",
-   "text": "PayPal for Small Business: Payments, CRM & AI Marketing. Learn how small businesses can use PayPal, CRM data, and AI marketing to streamline payments, improve access, and grow revenue. Read more: https://worlddigital.ai/blog/paypal-for-small-business-payments-crm-ai-marketing",
-   "link": "https://www.facebook.com/122222186444334560/posts/122220362612334560",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6acc2ffb778b240e2fdfcf19/6acc30116725206617e3981e_thumbnail.jpg",
-   "type": "image",
-   "metrics": {
-    "impressions": 6,
-    "reactions": 1,
-    "comments": 0,
-    "shares": 0,
-    "clicks": 0,
-    "engagementRate": 16.67
-   },
-   "score": 1.06
-  },
-  {
-   "id": "6ad042d3df978a95ba19a772",
-   "platform": "twitter",
-   "platformLabel": "X",
-   "account": "Worlddigitalai",
-   "date": "2026-09-25",
-   "text": "PayPal for Small Business: Payments, CRM & AI Marketing. Learn how small businesses can use PayPal, CRM data, and AI marketing to streamline payments, improve access, and grow revenue. Read more: https://t.co/mZiv7L2PaR",
-   "link": "https://x.com/2010480259586727936/status/2103498865659846703",
-   "thumb": "https://pbs.twimg.com/media/HTEg9oOWgAAaBpS.jpg",
-   "type": "image",
-   "metrics": {
-    "impressions": 48,
-    "reactions": 1,
-    "comments": 0,
-    "clicks": 0,
-    "engagementRate": 2.08
-   },
-   "score": 1.48
-  },
-  {
-   "id": "6ad04305fdd9d552811a2570",
-   "platform": "youtube",
-   "platformLabel": "YouTube",
-   "account": "WorldDigitalai",
-   "date": "2026-09-24",
-   "text": "Payment Options for Small Business: PayPal, ACH, Apple Pay Learn how PayPal, ACH, Apple Pay, and Shopify payments can improve checkout, retention, and marketing performance for small businesses. Read more: https://worlddigital.ai/blog/payment-options-for-small-business-paypal-ach-apple-pay",
-   "link": "https://www.youtube.com/shorts/A5XxD_f_CRc",
-   "thumb": "https://i.ytimg.com/vi/A5XxD_f_CRc/hqdefault.jpg",
-   "type": "video",
-   "metrics": {
-    "views": 6,
-    "reactions": 0,
-    "comments": 0,
-    "engagementRate": 0
-   },
-   "score": 0.06
-  },
-  {
-   "id": "6ad0452749dda663a4c8a447",
-   "platform": "tiktok",
-   "platformLabel": "TikTok",
-   "account": "worlddigitalai",
-   "date": "2026-09-24",
-   "text": "Payment Options for Small Business: PayPal, ACH, Apple Pay Learn how PayPal, ACH, Apple Pay, and Shopify payments can improve checkout, retention, and marketing performance for small businesses. Read more: https://worlddigital.ai/blog/payment-options-for-small-business-paypal-ach-apple-pay #worlddigitalai #fyp #LeadGeneration",
-   "link": "https://www.tiktok.com/@worlddigitalai/video/7689144542410378510?utm_campaign=tt4d_open_api&utm_source=7103819247981182978",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6ad04526778b240e2f12ad54/6ad0452749dda663a4c8a447_thumbnail.jpg",
-   "type": "video",
-   "metrics": {
-    "views": 44,
-    "reach": 41,
-    "reactions": 0,
-    "comments": 0,
-    "shares": 0,
-    "engagementRate": 0
-   },
-   "score": 0.44
-  },
-  {
-   "id": "6acc2fe359d334840a70dc5a",
-   "platform": "instagram",
-   "platformLabel": "Instagram",
-   "account": "worlddigitalai",
-   "date": "2026-09-24",
-   "text": "Payment Options for Small Business: PayPal, ACH, Apple Pay. Learn how PayPal, ACH, Apple Pay, and Shopify payments can improve checkout, retention, and marketing performance for small businesses. Read more: https://worlddigital.ai/blog/payment-options-for-small-business-paypal-ach-apple-pay",
-   "link": "https://www.instagram.com/p/DdrWHPcoHxn/",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6acc2fdf778b240e2fdfcea3/6acc2fe359d334840a70dc5a_thumbnail.jpg",
-   "type": "image",
-   "metrics": {
-    "views": 4,
-    "reach": 2,
-    "reactions": 1,
-    "comments": 0,
-    "shares": 0,
-    "saves": 0,
-    "engagementRate": 50
-   },
-   "score": 1.04
-  },
-  {
-   "id": "6acc30116725206617e3982a",
-   "platform": "facebook",
-   "platformLabel": "Facebook",
-   "account": "World Digital.ai",
-   "date": "2026-09-24",
-   "text": "Payment Options for Small Business: PayPal, ACH, Apple Pay. Learn how PayPal, ACH, Apple Pay, and Shopify payments can improve checkout, retention, and marketing performance for small businesses. Read more: https://worlddigital.ai/blog/payment-options-for-small-business-paypal-ach-apple-pay",
-   "link": "https://www.facebook.com/122222186444334560/posts/122220261356334560",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6acc2ffb778b240e2fdfcf19/6acc30116725206617e3982a_thumbnail.jpg",
-   "type": "image",
-   "metrics": {
-    "impressions": 7,
-    "reactions": 1,
-    "comments": 0,
-    "shares": 0,
-    "clicks": 0,
-    "engagementRate": 14.29
-   },
-   "score": 1.07
-  },
-  {
-   "id": "6acc2f8b15bcfac73dacff63",
-   "platform": "linkedin",
-   "platformLabel": "LinkedIn",
-   "account": "WorldDigital.ai",
-   "date": "2026-09-24",
-   "text": "Payment Options for Small Business: PayPal, ACH, Apple Pay. Learn how PayPal, ACH, Apple Pay, and Shopify payments can improve checkout, retention, and marketing performance for small businesses. Read more: https://lnkd.in/e3C8BPpP",
-   "link": "https://www.linkedin.com/feed/update/urn:li:share:7508929348792426496",
-   "thumb": "https://buffer-updates-media-backfill-bucket.s3.amazonaws.com/6acbb429391fa20350685eb6/6acc2f87778b240e2fdfccfb/6acc2f8b15bcfac73dacff63_thumbnail.jpg",
-   "type": "image",
-   "metrics": {
-    "reach": 17,
-    "impressions": 21,
-    "reactions": 1,
-    "comments": 0,
-    "shares": 0,
-    "engagementRate": 4.761904761904762
-   },
-   "score": 1.21
-  },
-  {
-   "id": "6ad042d3df978a95ba19a770",
-   "platform": "twitter",
-   "platformLabel": "X",
-   "account": "Worlddigitalai",
-   "date": "2026-09-24",
-   "text": "Payment Options for Small Business: PayPal, ACH, Apple Pay. Learn how PayPal, ACH, Apple Pay, and Shopify payments can improve checkout, retention, and marketing performance for small businesses. Read more: https://t.co/WUdIukA70w",
-   "link": "https://x.com/2010480259586727936/status/2103163553813602738",
-   "thumb": "https://pbs.twimg.com/media/HS_wBpXWgAA42FW.jpg",
-   "type": "image",
-   "metrics": {
-    "impressions": 42,
-    "reactions": 0,
-    "comments": 0,
-    "clicks": 0,
-    "engagementRate": 0
-   },
-   "score": 0.42
-  },
-  {
-   "id": "6ad04305fdd9d552811a2591",
-   "platform": "youtube",
-   "platformLabel": "YouTube",
-   "account": "WorldDigitalai",
-   "date": "2026-09-23",
-   "text": "AI Marketing for Small Businesses: SEO, Ads & Leads. Learn how small businesses can use AI marketing to improve SEO, ads, email campaigns, and lead generation without a large agency. Read more: https://worlddigital.ai/blog/ai-marketing-for-small-businesses-seo-ads-leads",
-   "link": "https://www.youtube.com/shorts/F2mChCBo_bo",
-   "thumb": "https://i.ytimg.com/vi/F2mChCBo_bo/hqdefault.jpg",
-   "type": "video",
-   "metrics": {
-    "views": 1,
-    "reactions": 0,
-    "comments": 0,
-    "engagementRate": 0
-   },
-   "score": 0.01
+   "score": 3.14
   }
  ]
 }

@@ -6,7 +6,7 @@ const posts = (data.posts || []).filter((p) => p.text);
 const PER_PAGE = 24;
 const fmt = (d) => (d ? new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : '');
 const labels = [...new Set(posts.map((p) => p.platformLabel))].sort();
-const COLORS = { LinkedIn: '#0A66C2', Instagram: '#C13584', Facebook: '#1877F2', YouTube: '#D93025', TikTok: '#111111', X: '#0E1A2B', 'Google Business': '#1A73E8' };
+const COLORS = { LinkedIn: '#0A66C2', Instagram: '#C13584', Facebook: '#0F63D6', YouTube: '#D93025', TikTok: '#111111', X: '#0E1A2B', 'Google Business': '#1765CC' };
 
 // Top performing first (weighted engagement), newest first on ties, so the page opens on the best posts.
 const sorted = [...posts].sort((a, b) => (b.score - a.score) || (b.date > a.date ? 1 : -1));

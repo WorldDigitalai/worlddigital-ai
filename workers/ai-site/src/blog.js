@@ -48,7 +48,7 @@ export function blogIndex(posts, { category, prod }) {
   const catName = category ? cats.find((c) => catSlug(c) === category) : null;
   const filters = `<nav class="filters" aria-label="Topics"><a href="/blog"${!category ? ' aria-current="page"' : ''}>All</a>${cats.map((c) => `<a href="/blog?topic=${catSlug(c)}"${catSlug(c) === category ? ' aria-current="page"' : ''}>${esc(c)}</a>`).join('')}</nav>`;
   const body = `<section style="background:#fff;border-bottom:1px solid #DCE5EF"><div class="wrap" style="padding-top:60px;padding-bottom:44px">
-<nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> / Blog</nav>
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> / ${catName ? `<a href="/blog">Blog</a> / ${esc(catName)}` : 'Blog'}</nav>
 <div class="eyebrow" style="margin-top:14px">Blog &amp; guides</div>
 <h1 class="h hero-h" style="font-size:50px;line-height:1.08;margin-top:12px">${catName ? esc(catName) : 'Marketing guides for growing businesses'}</h1>
 <p style="font-size:18px;line-height:1.6;color:#33445A;margin:16px 0 0;max-width:720px">Plain-English guides on SEO, AI search, Google Ads and growing a local business online.</p>
@@ -58,11 +58,13 @@ ${filters}
   return page({
     path: '/blog', canonical: category ? `${SITE}/blog?topic=${category}` : `${SITE}/blog`, prod,
     title: catName ? `${catName} Guides | WorldDigital.ai Blog` : 'Blog: SEO, AI Search & Google Ads Guides | WorldDigital.ai',
-    description: 'Plain-English guides for local businesses on SEO, AI search visibility (AEO, GEO), Google Ads and digital marketing, from the WorldDigital.ai team.',
+    description: catName
+      ? clip(`${catName} guides for small and growing businesses: ${shown.length} plain-English article${shown.length === 1 ? '' : 's'} from the WorldDigital.ai team, with practical steps you can use today.`, 160)
+      : 'Plain-English guides for local businesses on SEO, AI search visibility (AEO, GEO), Google Ads and digital marketing, from the WorldDigital.ai team.',
     schema: [{ '@context': 'https://schema.org', '@type': 'Blog', name: 'WorldDigital.ai Blog', url: `${SITE}/blog`, publisher: { '@id': `${SITE}/#org` },
       blogPost: shown.slice(0, 20).map((p) => ({ '@type': 'BlogPosting', headline: p.title, url: `${SITE}/blog/${p.slug}`, datePublished: p.published_at,
         image: cover(p) ? SITE + cover(p) : `${SITE}/og.png`, author: { '@type': 'Organization', name: p.author || 'WorldDigital.ai Team', url: `${SITE}/about` } })) },
-    crumbs([['Home', '/'], ['Blog', '/blog']])],
+    crumbs(catName ? [['Home', '/'], ['Blog', '/blog'], [catName, `/blog?topic=${category}`]] : [['Home', '/'], ['Blog', '/blog']])],
     body,
   });
 }

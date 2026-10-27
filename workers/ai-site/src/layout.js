@@ -282,7 +282,7 @@ ${o.noindex ? '<meta name="robots" content="noindex, nofollow">' : '<meta name="
 <meta property="og:site_name" content="WorldDigital.ai">
 <meta property="og:title" content="${esc(o.ogTitle || o.title)}">
 <meta property="og:description" content="${esc(o.description)}">
-<meta property="og:url" content="${esc(url)}">
+<meta property="og:url" content="${esc(o.canonical || url)}">
 <meta property="og:image" content="${esc(og)}">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@worlddigitalai">

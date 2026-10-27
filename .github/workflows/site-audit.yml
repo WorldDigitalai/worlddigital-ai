@@ -16,6 +16,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: Crawl both sites
         run: python3 tools/site_audit.py
+      - name: Deep SEO check (canonical, breadcrumbs, metadata, structured data, internal links)
+        continue-on-error: true
+        run: python3 tools/seo_deep_audit.py
       - uses: google-github-actions/auth@v2
         id: gcp
         continue-on-error: true
@@ -48,7 +51,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           [ -f site-audit.md ] || exit 0
-          { echo "Last run: $(date -u '+%Y-%m-%d %H:%M UTC') · [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"; echo; cat site-audit.md; [ -f gsc-pages.md ] && cat gsc-pages.md; } | head -c 60000 > body.md
+          { echo "Last run: $(date -u '+%Y-%m-%d %H:%M UTC') · [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"; echo; cat site-audit.md; [ -f seo-deep.md ] && { echo; echo '# Deep SEO check'; cat seo-deep.md; }; [ -f gsc-pages.md ] && cat gsc-pages.md; } | head -c 60000 > body.md
           n=$(gh api "repos/${{ github.repository }}/issues?state=open&labels=site-audit" -q '.[0].number')
           if [ -z "$n" ]; then
             gh api "repos/${{ github.repository }}/labels" -f name=site-audit -f color=0B4FA8 >/dev/null 2>&1 || true
@@ -62,6 +65,7 @@ jobs:
           name: site-audit
           path: |
             site-audit.md
+            seo-deep.md
             site-audit.json
             gsc-pages.json
           if-no-files-found: ignore

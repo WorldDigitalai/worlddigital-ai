@@ -191,6 +191,8 @@ async function handle(req, env, ctx) {
     if (path === '/robots.txt') return text(prod ? ROBOTS : 'User-agent: *\nDisallow: /\n', 'text/plain; charset=utf-8');
     if (path === `/${INDEXNOW_KEY}.txt`) return text(INDEXNOW_KEY, 'text/plain; charset=utf-8');
     if (path === '/.well-known/security.txt' || path === '/security.txt') return text(SECURITY_TXT, 'text/plain; charset=utf-8');
+    // Merged blog topic: the old "AI & Marketing" topic page moves to "AI Marketing".
+    if (path === '/blog' && url.searchParams.get('topic') === 'ai-and-marketing') return redirect('/blog?topic=ai-marketing');
     if (['/sitemap.xml', '/sitemap.txt', '/llms.txt', '/llms-full.txt', '/blog', '/blog/feed.xml'].includes(path) || path.startsWith('/blog/')) {
       const st = store(env);
       await ensureSeed(st);

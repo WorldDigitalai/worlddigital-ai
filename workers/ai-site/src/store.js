@@ -25,7 +25,11 @@ export class Store extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
     this.sql = ctx.storage.sql;
-    ctx.blockConcurrencyWhile(async () => { for (const s of SCHEMA.split(';')) if (s.trim()) this.sql.exec(s); });
+    ctx.blockConcurrencyWhile(async () => {
+      for (const s of SCHEMA.split(';')) if (s.trim()) this.sql.exec(s);
+      // Merged blog topics: "AI & Marketing" is now "AI Marketing" (one topic page instead of two competing ones).
+      this.sql.exec(`UPDATE posts SET category = 'AI Marketing' WHERE category = 'AI & Marketing'`);
+    });
   }
 
   // ---- setup ----

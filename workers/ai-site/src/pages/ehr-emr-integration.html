@@ -1,0 +1,145 @@
+<style>.ehr-grid{grid-template-columns:repeat(3,1fr)}@media (max-width:960px){.ehr-grid{grid-template-columns:1fr 1fr}}@media (max-width:640px){.ehr-grid{grid-template-columns:1fr}}
+.two-col{display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:start}
+.prose{font-size:17.5px;line-height:1.75;color:#1F2D3D}
+.prose h3{font-size:21px;margin:28px 0 8px}
+.prose p{margin:0 0 18px}
+.checks{list-style:none;padding:0;margin:0;display:grid;gap:12px}
+.checks li{display:flex;gap:12px;align-items:flex-start;background:#fff;border:1px solid #DCE5EF;border-radius:14px;padding:14px 16px;font-size:15.5px;line-height:1.55;color:#33445A}
+.checks li b{color:#0E1A2B}
+.checks li svg{flex:none;margin-top:2px}
+.legal-note{font-size:13.5px;color:#4A5B70;margin:24px 0 0;max-width:860px;line-height:1.6}
+@media (max-width:900px){.two-col{grid-template-columns:1fr;gap:32px}}
+.flow{list-style:none;margin:30px 0 0;padding:0;display:grid;grid-template-columns:1.15fr repeat(4,1fr);gap:28px;counter-reset:fl}
+.flow li{position:relative;background:#fff;border:1px solid #DCE5EF;border-radius:14px;padding:16px 16px 14px;font-size:14.5px;line-height:1.45;color:#4A5B70}
+.flow li b{display:block;font-family:Sora,Inter,"Inter Fallback",system-ui,sans-serif;font-size:15.5px;color:#0E1A2B;margin-bottom:4px;letter-spacing:-.01em}
+.flow li.hl{border:2px solid #0B4FA8;background:#EEF4FC}
+.flow li:not(:last-child)::after{content:"";position:absolute;right:-22px;top:50%;width:16px;height:16px;margin-top:-8px;background:no-repeat center/16px url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237C8DA3' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14M13 6l6 6-6 6'/%3E%3C/svg%3E")}
+.flow .src{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.flow .src span{font-size:12.5px;font-weight:600;padding:3px 9px;border-radius:999px;background:#F1F6FD;color:#0B4FA8}
+.flow-note{display:flex;gap:10px;align-items:flex-start;margin:16px 0 0;font-size:14.5px;color:#33445A}
+.flow-note svg{flex:none;margin-top:2px;color:#146C3A}
+.hx-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:28px}
+.hx{background:#fff;border:1px solid #DCE5EF;border-radius:16px;padding:20px}
+.hx h3{font-size:17px;font-weight:800;margin:0 0 6px;letter-spacing:-.01em}
+.hx p{font-size:14.5px;color:#4A5B70;margin:0;line-height:1.55}
+.hx-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px 24px;margin-top:26px;padding:20px 22px;border-radius:16px;background:#0E1A2B;color:#fff}
+.hx-foot q{font-family:Sora,Inter,"Inter Fallback",system-ui,sans-serif;font-size:18px;font-weight:600;letter-spacing:-.01em;quotes:"\201C" "\201D";max-width:640px}
+.hx-who{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.hx-who span{font-size:13.5px;font-weight:600;padding:6px 12px;border-radius:8px;background:#fff;border:1px solid #DCE5EF;color:#33445A}
+@media (max-width:1040px){.flow{grid-template-columns:1fr;gap:26px;max-width:520px}.flow li:not(:last-child)::after{right:auto;left:50%;top:auto;bottom:-22px;margin:0 0 0 -8px;transform:rotate(90deg)}.hx-grid{grid-template-columns:1fr 1fr}}
+@media (max-width:640px){.hx-grid{grid-template-columns:1fr}.hx-foot q{font-size:16px}}
+.hero-link{margin:16px 0 0;font-size:15px;font-weight:600}</style>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="wa" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></symbol><symbol id="tick" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#15803D"/><path d="M7 12.5l3.2 3.2L17 9" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol></svg>
+<section class="hero-sky" style="border-bottom:1px solid #DCE5EF"><div class="wrap" style="padding-top:56px;padding-bottom:64px">
+<nav aria-label="Breadcrumb" style="font-size:14px" class="muted"><a href="/">Home</a> / <a href="/services">Services</a> / EHR &amp; EMR integration</nav>
+<div class="eyebrow" style="margin-top:18px">Healthcare · EHR &amp; EMR Integration</div>
+<h1 class="h hero-h" style="font-size:56px;line-height:1.06;margin-top:12px;max-width:900px">Epic, EHR &amp; EMR integration <span style="color:#0D5EC7">that connects your care.</span></h1>
+<p style="font-size:19px;line-height:1.6;color:#33445A;margin:18px 0 0;max-width:760px">Epic integration services and EHR and EMR integration for clinics, health systems and health tech teams across the US and Canada: websites, patient tools and AI assistants that connect through HL7 FHIR.</p>
+<div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:26px"><a class="btn red" href="https://calendar.app.google/X5ghVrBxfR8jTBdA7">Talk about your project</a><a class="btn ghost" href="#faq">Read the FAQ</a></div>
+<p class="hero-link"><a href="#booking">New: AI booking + attribution for Epic clinics &rarr;</a></p>
+</div></section>
+
+<section class="sec" style="background:#F4F8FC"><div class="wrap">
+<div class="eyebrow">What we build</div>
+<h2 class="h" style="font-size:40px;margin-top:10px">Healthcare tools that talk to your EHR.</h2>
+<p class="muted" style="font-size:17px;line-height:1.6;max-width:760px">Healthcare software development for practices and health tech teams that lose hours copying data between systems. Standards-based integrations let your website, apps and staff tools read and write the right data, securely.</p>
+<div class="grid3 ehr-grid" style="margin-top:28px">
+<div class="card"><div class="ic ic-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"></path><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"></path></svg></div><h3 class="h">Epic EHR integration</h3><p class="muted">Epic FHIR integration built on the Epic FHIR API, with SMART on FHIR sign-in for patients and clinicians, tested in Epic's developer sandbox before go-live.</p><ul class="tags"><li>Epic FHIR API</li><li>SMART on FHIR</li><li>Epic sandbox</li></ul></div>
+<div class="card"><div class="ic ic-mix"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="8" ry="3"></ellipse><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"></path><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"></path></svg></div><h3 class="h">EMR system integration</h3><p class="muted">The same approach for other certified EHR and EMR systems, through FHIR integration for modern apps or HL7 integration for older feeds.</p><ul class="tags"><li>FHIR integration</li><li>HL7 v2</li><li>Interoperability</li></ul></div>
+<div class="card"><div class="ic ic-red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path><path d="M8 9h8M8 13h5"></path></svg></div><h3 class="h">Patient-facing AI tools</h3><p class="muted">Healthcare AI chatbots that answer appointment, location and preparation questions and point patients to the right next step, without giving medical advice.</p><ul class="tags"><li>AI assistants</li><li>Patient education</li><li>Appointment requests</li></ul></div>
+<div class="card"><div class="ic ic-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="14" rx="2"></rect><path d="M3 9h18M8 21h8M12 12v3M10.5 13.5h3"></path></svg></div><h3 class="h">Medical website design</h3><p class="muted">Healthcare web design for clinics: a fast, accessible medical practice website with scheduling links, provider pages, local SEO and patient portal integration. <a href="/build">More on web design</a></p><ul class="tags"><li>Healthcare web design</li><li>Patient portal</li><li>Local SEO</li></ul></div>
+<div class="card"><div class="ic ic-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"></path></svg></div><h3 class="h">Workflow automation</h3><p class="muted">Fewer manual steps for staff: intake forms, referral routing and reminders that sync with the record instead of living in spreadsheets. <a href="/ai-marketing-automation">More on automation</a></p><ul class="tags"><li>Intake</li><li>Referrals</li><li>Reminders</li></ul></div>
+<div class="card"><div class="ic ic-red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="M9 12l2 2 4-4"></path></svg></div><h3 class="h">Security &amp; privacy</h3><p class="muted">HIPAA-aware design: minimum necessary data, encryption, access logging, a Business Associate Agreement before any patient data is touched, and a HIPAA-compliant website setup when forms collect patient information.</p><ul class="tags"><li>HIPAA</li><li>BAA</li><li>Least privilege</li></ul></div>
+</div>
+</div></section>
+
+<section class="sec" id="booking" style="background:#fff;border-top:1px solid #DCE5EF"><div class="wrap">
+<div class="eyebrow">WorldDigital Health</div>
+<h2 class="h" style="font-size:40px;margin-top:10px">AI booking + attribution for Epic clinics.</h2>
+<p class="muted" style="font-size:17px;line-height:1.6;max-width:760px">Link your Google Ads, Google Business Profile and website straight to open appointment slots in Epic, then see cost per booked visit instead of cost per click.</p>
+<ol class="flow" aria-label="How a booked visit is traced back to its source">
+<li><b>Patient finds you</b>Clicks an ad, your Google Business Profile or a button on your site.<span class="src"><span>Google Ads</span><span>Business Profile</span><span>Website</span></span></li>
+<li><b>Booking widget</b>AI chat and a slot picker show real open times.</li>
+<li><b>Epic (FHIR R4)</b>Finds the slot, matches the patient and books the visit in Epic.</li>
+<li><b>Booked visit</b>Status stays synced from Epic: attended, cancelled or no-show.</li>
+<li class="hl"><b>Attribution dashboard</b>Cost per booked visit by campaign, keyword and listing.</li>
+</ol>
+<p class="flow-note"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="M9 12l2 2 4-4"></path></svg><span>Google Ads only receives de-identified conversion counts. Patient details stay inside Epic and a HIPAA, BAA-covered environment.</span></p>
+<div class="hx-grid">
+<div class="hx"><h3>Real open slots</h3><p>Patients book from live Epic availability, so front-desk staff stop booking ad leads by hand.</p></div>
+<div class="hx"><h3>Cost per booked visit</h3><p>Every visit is credited to the ad, keyword or listing that drove it, so budget goes to what fills the schedule.</p></div>
+<div class="hx"><h3>Private by design</h3><p>No names, phone numbers, birth dates or visit reasons ever reach Google, Meta or any ad pixel.</p></div>
+<div class="hx"><h3>Live wait times</h3><p>For urgent care: show current wait times on your website, Business Profile and ads.</p></div>
+</div>
+<div class="hx-who" aria-label="Built for"><span>Urgent care &amp; walk-in clinics</span><span>Dermatology, orthopedics, ENT &amp; women&rsquo;s health</span><span>Primary care networks</span></div>
+<div class="hx-foot"><q>See the cost of every booked visit, by campaign and keyword, straight from Epic.</q><a class="btn red" href="https://calendar.app.google/X5ghVrBxfR8jTBdA7">Book a demo</a></div>
+</div></section>
+
+<section class="sec" style="background:#F4F8FC;border-top:1px solid #DCE5EF"><div class="wrap two-col">
+<div class="prose">
+<div class="eyebrow">How to integrate with Epic</div>
+<h2 class="h" style="font-size:38px;margin:10px 0 16px">How to integrate with Epic, step by step.</h2>
+<p>Epic publishes its developer resources on <b>open.epic</b>, including the <b>Epic FHIR API</b> and a sandbox with test patients. Building and testing there costs developers nothing, so you can prove an idea before any hospital is involved.</p>
+<p>Going live is different. Each hospital or clinic decides which apps run on its Epic system, so the integration needs their security review and approval. Planning for that step early is what keeps an Epic integration on schedule.</p>
+<h3 class="h">Optional Epic programs</h3>
+<p>Epic's <b>Vendor Services</b> program adds support and testing tools for a fee, and the <b>Epic Showroom</b>, which replaced App Orchard, is where connected apps can be listed. Neither is required to start.</p>
+</div>
+<ol class="checks">
+<li><svg width="22" height="22" aria-hidden="true"><use href="#tick"/></svg><span><b>Register the app.</b> Set it up on Epic's developer site to get client IDs and sandbox access.</span></li>
+<li><svg width="22" height="22" aria-hidden="true"><use href="#tick"/></svg><span><b>Pick the sign-in.</b> SMART on FHIR for patient or clinician launch, or Backend Services for system-to-system data.</span></li>
+<li><svg width="22" height="22" aria-hidden="true"><use href="#tick"/></svg><span><b>Build in the sandbox.</b> Test against the Epic FHIR API with fictional patients, asking only for the data you need.</span></li>
+<li><svg width="22" height="22" aria-hidden="true"><use href="#tick"/></svg><span><b>Pass the review.</b> Each health system checks security and privacy, then enables the app in its own Epic environment.</span></li>
+<li><svg width="22" height="22" aria-hidden="true"><use href="#tick"/></svg><span><b>Launch and measure.</b> Go live with their IT team and track time saved, no-shows and patient questions answered.</span></li>
+</ol>
+</div></section>
+
+<section class="sec" style="background:#fff;border-top:1px solid #DCE5EF"><div class="wrap two-col">
+<div class="prose">
+<div class="eyebrow">EHR vs. EMR</div>
+<h2 class="h" style="font-size:38px;margin:10px 0 16px">EHR vs. EMR: what&rsquo;s the difference?</h2>
+<p>An <b>EMR</b> (electronic medical record) is the digital chart a single practice keeps for its own patients. An <b>EHR</b> (electronic health record) is designed to travel: it shares information with other providers, labs, pharmacies and the patient.</p>
+<p>Most systems clinics use today, including Epic, work as EHRs. That matters for EHR interoperability, because modern EHRs expose standard APIs, so a website, app or AI tool can connect without custom one-off interfaces.</p>
+</div>
+<div class="prose">
+<div class="eyebrow">The standards behind it</div>
+<h3 class="h">HL7 FHIR</h3>
+<p>Defines how health data like patients, appointments and medications is structured and exchanged. Most new EHR integration software is built on FHIR R4.</p>
+<h3 class="h">SMART on FHIR</h3>
+<p>Handles secure sign-in, so patients and clinicians approve an app without sharing passwords, across Epic and other certified EHRs.</p>
+<h3 class="h">HL7 v2</h3>
+<p>The older message format many hospitals still use for feeds like admissions and lab results. HL7 integration is often part of the same project.</p>
+</div>
+</div></section>
+
+<section class="sec" style="background:#F4F8FC;border-top:1px solid #DCE5EF"><div class="wrap">
+<div class="eyebrow">Process</div>
+<h2 class="h" style="font-size:38px;margin-top:10px">EHR integration services, from idea to go-live.</h2>
+<ol class="steps">
+<li class="step"><b>01</b><h3>Discover</h3><p>Your workflow, the EHR you use, who needs the data and what success looks like.</p></li>
+<li class="step"><b>02</b><h3>Map the data</h3><p>FHIR resources, access scopes, privacy requirements and the approvals your health system needs.</p></li>
+<li class="step"><b>03</b><h3>Build &amp; test</h3><p>A working build in the vendor sandbox with test patients, reviewed with your team before go-live.</p></li>
+<li class="step"><b>04</b><h3>Launch &amp; support</h3><p>Go-live with your IT team, then monitoring, updates and improvements as needs grow.</p></li>
+</ol>
+</div></section>
+
+<section class="sec" id="faq" style="background:#fff;border-top:1px solid #DCE5EF"><div class="wrap" style="max-width:880px">
+<div class="eyebrow">FAQ</div>
+<h2 class="h" style="font-size:38px;margin-top:10px">Common questions.</h2>
+<div style="margin-top:20px">
+<details open><summary>What is the difference between EMR and EHR?</summary><p class="muted">An EMR (electronic medical record) is the digital chart one practice keeps for its own patients. An EHR (electronic health record) is built to share that record with other providers, labs, pharmacies and the patient. Most modern systems, including Epic, work as EHRs, and integration usually happens through the FHIR standard.</p></details>
+<details><summary>How do you integrate with Epic?</summary><p class="muted">Register the app on Epic's developer site, build and test it against the Epic FHIR API in Epic's sandbox with test patients, then have each hospital or clinic review and enable it in their own Epic system. We handle that whole path, including preparing for each health system's security review.</p></details>
+<details><summary>Is the Epic API free to use?</summary><p class="muted">Epic's standards-based FHIR APIs are free for developers to build and test against. Health systems can have their own costs to turn on API access, and Epic's Vendor Services program is an optional paid add-on for developers who want extra support and testing tools.</p></details>
+<details><summary>Can you track which ads book patient visits without sharing patient data?</summary><p class="muted">Yes. Each booking keeps the ad click ID and campaign tags inside a HIPAA, BAA-covered environment. Only de-identified counts per campaign go back to Google Ads, and names, contact details and visit reasons never reach ad platforms.</p></details>
+<details><summary>What is SMART on FHIR?</summary><p class="muted">SMART on FHIR is the open standard for how apps sign in to an EHR and request access to data. Patients and clinicians approve an app without sharing passwords, and the same approach works across Epic and other certified EHRs.</p></details>
+<details><summary>Which other EHR and EMR systems can you work with?</summary><p class="muted">Any system that offers standards-based APIs, which today includes most major certified EHRs. FHIR integration covers modern apps, HL7 v2 integration covers older feeds, and each vendor gets its own testing.</p></details>
+<details><summary>How do you handle HIPAA and patient data?</summary><p class="muted">Projects that touch patient data start with a Business Associate Agreement. We request only the data the use case needs, keep it encrypted in transit and at rest, log access, and avoid storing patient data when the app can read it live from the EHR instead.</p></details>
+<details><summary>How long does an EHR integration take?</summary><p class="muted">A working prototype against a vendor sandbox comes first and is the fastest part. Most of the timeline after that is set by the health system's security review, app approval and go-live scheduling, so we plan around it from the first call.</p></details>
+</div>
+</div></section>
+
+<section class="cta-sec" style="background:#F4F8FC;border-top:1px solid #DCE5EF"><div class="wrap"><div class="cta-band">
+<div><h2 class="h" style="font-size:36px;color:#fff">Have a healthcare project in mind?</h2><p style="margin:10px 0 0;color:#DBEAFE;font-size:17px">Tell us what you want to connect. We'll map out what's possible and what it takes.</p></div>
+<div style="display:flex;flex-wrap:wrap;gap:12px"><a class="btn red" href="https://calendar.app.google/X5ghVrBxfR8jTBdA7">Book a strategy call</a><a class="btn green" href="https://wa.me/18328340680?text=Hi%2C%20I%27m%20interested%20in%20EHR%20integration">WhatsApp us</a></div>
+</div>
+<p class="legal-note">Epic is a registered trademark of Epic Systems Corporation. HL7 and FHIR are registered trademarks of Health Level Seven International. Other product names are trademarks of their respective owners. WorldDigital.ai is not affiliated with or endorsed by these companies.</p>
+</div></section>

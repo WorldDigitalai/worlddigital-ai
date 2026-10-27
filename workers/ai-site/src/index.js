@@ -66,7 +66,7 @@ Canonical: https://worlddigital.ai/.well-known/security.txt
 function sitemap(posts) {
   const today = new Date().toISOString().slice(0, 10);
   // Real change dates: stamping every page with today teaches Google to ignore lastmod.
-  const mod = (p) => (p === '/social' && SOCIAL_UPDATED ? SOCIAL_UPDATED.slice(0, 10) : UPDATED);
+  const mod = (p) => (p === '/social' && SOCIAL_UPDATED ? SOCIAL_UPDATED.slice(0, 10) : PAGES[p]?.sitemap?.lastmod || UPDATED);
   const img = (u) => `<image:image><image:loc>${u}</image:loc></image:image>`;
   const urls = Object.entries(PAGES).filter(([, o]) => o.sitemap !== null && !o.noindex).map(([p, o]) => `<url><loc>${SITE}${p === '/' ? '/' : p}</loc><lastmod>${mod(p)}</lastmod><changefreq>${o.sitemap?.changefreq || 'monthly'}</changefreq><priority>${o.sitemap?.priority || '0.5'}</priority>${img(`${SITE}/og.png`)}</url>`);
   urls.push(`<url><loc>${SITE}/blog</loc><lastmod>${(posts[0]?.updated_at || today).slice(0, 10)}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>`);

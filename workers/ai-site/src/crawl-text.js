@@ -74,6 +74,7 @@ Clients include Murfreesboro Kabob, RPM Auto Group and Bean Loft Coffee Company 
 - [Google Ads Agency](${SITE}/google-ads-agency) — Google Search, Maps and Performance Max campaign management
 - [AI Marketing Automation](${SITE}/ai-marketing-automation) — Automated marketing workflows for growing businesses
 - [Website Build](${SITE}/build) — Website design, maintenance and management for SMBs, SMEs and enterprises
+- [EHR & EMR Integration](${SITE}/ehr-emr-integration) — Epic integration and EHR/EMR integration through HL7 FHIR and SMART on FHIR, AI booking + attribution for Epic clinics (cost per booked visit), patient-facing AI tools and medical website design
 - [Free SEO audit](${SITE}/free-seo-report) — Free SEO and AI visibility report (website SEO checker) in about 60 seconds
 - [Keyword research](${SITE}/services/keyword-research) — Keyword research tool and services: real Google search volume, CPC and competition (3 keywords free, all 10 for $9.99)
 - [SEO content](${SITE}/services/content-marketing) — Content marketing services and an AI content generator for ads and posts on 8 platforms (1 free, 5 for $24.99)
@@ -133,6 +134,9 @@ Search, Maps and Performance Max campaigns built around calls, bookings and cost
 
 ### Website design & management (custom quote)
 Planning, mobile-first design and development, domain/DNS/SSL/hosting (including Cloudflare), SEO-ready launch with schema, sitemap, GA4 and Search Console, conversion optimization and ongoing maintenance.
+
+### EHR & EMR integration (custom quote)
+Epic integration and EHR/EMR integration for clinics, health systems and health tech teams, built on the Epic FHIR API, SMART on FHIR and HL7. Includes AI booking + attribution for Epic clinics: patients book real open Epic slots from Google Ads, Google Business Profile or the clinic website, and each booked visit is credited to the campaign, keyword or listing that drove it (cost per booked visit). Only de-identified conversion counts go to ad platforms; patient data stays in Epic and a HIPAA, BAA-covered environment. ${SITE}/ehr-emr-integration
 
 ### Keyword research tool ($9.99 one-time)
 Enter a website and market (United States or Canada). The tool reads the site, pulls Google Ads keyword data (monthly search volume, cost per click, competition) and ranks the 10 keywords most likely to bring customers, with intent and target page. Top 3 are free; all 10 are $9.99, delivered as PDF, Excel or Word and by email. One free preview per website. ${SITE}/services/keyword-research

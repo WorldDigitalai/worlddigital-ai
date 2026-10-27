@@ -4,6 +4,7 @@ import services from './pages/services.html';
 import seo from './pages/ai-seo-agency.html';
 import ads from './pages/google-ads-agency.html';
 import build from './pages/build.html';
+import ehr from './pages/ehr-emr-integration.html';
 import about from './pages/about.html';
 import houston from './pages/houston.html';
 import murfreesboro from './pages/murfreesboro.html';
@@ -130,6 +131,11 @@ export const PAGES = {
     description: 'Website design services for small business plus website maintenance and management: fast, mobile-first, SEO-ready sites with hosting, GA4 and Search Console.',
     schema: [svc('Web design & website management', '/build', 'Planning, design, development, hosting, SEO-ready launch and ongoing management.', 'Web design'),
       crumbs([['Home', '/'], ['Services', '/services'], ['Web design', '/build']])], sitemap: { priority: '0.8' } },
+  '/ehr-emr-integration': { keywords: 'epic integration, integrate with epic, ehr integration, emr integration, epic ehr integration, ehr integration services, emr integration services, epic fhir api, smart on fhir, fhir integration, hl7 integration, ehr vs emr, patient portal integration, medical website design, healthcare web design', body: ehr, cta: false, tools: false,
+    title: 'Epic, EHR & EMR Integration Services | WorldDigital.ai',
+    description: 'Epic integration and EHR and EMR integration services: Epic FHIR API apps, SMART on FHIR, HL7 integration, patient portal tools and medical websites.',
+    schema: [svc('EHR & EMR integration', '/ehr-emr-integration', 'Epic and FHIR-based integrations, AI booking and attribution for Epic clinics, patient-facing AI tools, medical websites and workflow automation for clinics, health systems and health tech companies.', 'Epic integration, EHR and EMR integration, FHIR and HL7 integration'),
+      crumbs([['Home', '/'], ['Services', '/services'], ['EHR & EMR integration', '/ehr-emr-integration']])], sitemap: { priority: '0.9', lastmod: '2026-10-27' } },
   '/about': { body: about, cta: false, title: 'About WorldDigital.ai | Digital Marketing Company',
     description: 'WorldDigital.ai is a digital marketing company in Houston, TX and Murfreesboro, TN, helping businesses across the US and Canada grow on Google and AI search.',
     schema: [ORG, crumbs([['Home', '/'], ['About us', '/about']])], sitemap: { priority: '0.7' } },

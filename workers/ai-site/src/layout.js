@@ -320,7 +320,9 @@ ${o.cta === false && o.noFloat ? '' : `<a class="wa-float" href="${WA}" target="
 // FAQPage schema from <details><summary>Q</summary><p>A</p></details> blocks in a page body.
 export function faqSchema(body) {
   const strip = (s) => s.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();
-  const items = [...body.matchAll(/<details[^>]*>\s*<summary>([\s\S]*?)<\/summary>([\s\S]*?)<\/details>/g)]
+  // Ignore <details> inside <script> (e.g. the free report's JS template): only visible FAQs count.
+  const visible = String(body).replace(/<script\b[\s\S]*?<\/script>/gi, '');
+  const items = [...visible.matchAll(/<details[^>]*>\s*<summary>([\s\S]*?)<\/summary>([\s\S]*?)<\/details>/g)]
     .map((m) => ({ q: strip(m[1]), a: strip(m[2]) })).filter((x) => x.q && x.a);
   if (!items.length) return null;
   return { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: items.map((x) => ({ '@type': 'Question', name: x.q, acceptedAnswer: { '@type': 'Answer', text: x.a } })) };

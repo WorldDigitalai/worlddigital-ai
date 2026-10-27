@@ -70,6 +70,10 @@ function sitemap(posts) {
   const img = (u) => `<image:image><image:loc>${u}</image:loc></image:image>`;
   const urls = Object.entries(PAGES).filter(([, o]) => o.sitemap !== null && !o.noindex).map(([p, o]) => `<url><loc>${SITE}${p === '/' ? '/' : p}</loc><lastmod>${mod(p)}</lastmod><changefreq>${o.sitemap?.changefreq || 'monthly'}</changefreq><priority>${o.sitemap?.priority || '0.5'}</priority>${img(`${SITE}/og.png`)}</url>`);
   urls.push(`<url><loc>${SITE}/blog</loc><lastmod>${(posts[0]?.updated_at || today).slice(0, 10)}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>`);
+  // Blog topic pages (/blog?topic=...) are indexable with their own title and canonical, so list them too.
+  const topics = new Map();
+  for (const p of posts) if (p.category) { const k = String(p.category).toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); const d = (p.updated_at > p.published_at ? p.updated_at : p.published_at).slice(0, 10); if (k && (!topics.has(k) || topics.get(k) < d)) topics.set(k, d); }
+  for (const [k, d] of topics) urls.push(`<url><loc>${SITE}/blog?topic=${k}</loc><lastmod>${d}</lastmod><changefreq>weekly</changefreq><priority>0.5</priority></url>`);
   for (const p of posts) urls.push(`<url><loc>${SITE}/blog/${p.slug}</loc><lastmod>${(p.updated_at > p.published_at ? p.updated_at : p.published_at).slice(0, 10)}</lastmod><changefreq>monthly</changefreq><priority>0.7</priority>${p.cover_id ? img(`${SITE}/media/${p.cover_id}`) : ''}</url>`);
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n${urls.join('\n')}\n</urlset>\n`;
 }

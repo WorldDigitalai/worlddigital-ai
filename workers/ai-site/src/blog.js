@@ -60,7 +60,8 @@ ${filters}
     title: catName ? `${catName} Guides | WorldDigital.ai Blog` : 'Blog: SEO, AI Search & Google Ads Guides | WorldDigital.ai',
     description: 'Plain-English guides for local businesses on SEO, AI search visibility (AEO, GEO), Google Ads and digital marketing, from the WorldDigital.ai team.',
     schema: [{ '@context': 'https://schema.org', '@type': 'Blog', name: 'WorldDigital.ai Blog', url: `${SITE}/blog`, publisher: { '@id': `${SITE}/#org` },
-      blogPost: shown.slice(0, 20).map((p) => ({ '@type': 'BlogPosting', headline: p.title, url: `${SITE}/blog/${p.slug}`, datePublished: p.published_at })) },
+      blogPost: shown.slice(0, 20).map((p) => ({ '@type': 'BlogPosting', headline: p.title, url: `${SITE}/blog/${p.slug}`, datePublished: p.published_at,
+        image: cover(p) ? SITE + cover(p) : `${SITE}/og.png`, author: { '@type': 'Organization', name: p.author || 'WorldDigital.ai Team', url: `${SITE}/about` } })) },
     crumbs([['Home', '/'], ['Blog', '/blog']])],
     body,
   });

@@ -66,7 +66,7 @@ class P(HTMLParser):
             self._a = {"href": a.get("href"), "rel": a.get("rel") or "", "text": ""}
             if self._in_crumb and a.get("href"): self.crumbs.append(a["href"])
         if tag == "h1": self._h1 = True; self.h1.append("")
-        if tag == "summary": self._sum = True; self._sumbuf = ""
+        if tag in ("summary", "h2", "h3", "h4", "dt"): self._sum = True; self._sumbuf = ""
 
     def handle_endtag(self, tag):
         if tag == "title": self._t = False
@@ -74,7 +74,7 @@ class P(HTMLParser):
         if tag == "nav" and self._in_crumb: self._in_crumb -= 1
         if tag == "a" and self._a: self.anchors.append(self._a); self._a = None
         if tag == "h1": self._h1 = False
-        if tag == "summary" and self._sum: self._sum = False; self.faq_q.append(" ".join(self._sumbuf.split()))
+        if tag in ("summary", "h2", "h3", "h4", "dt") and self._sum: self._sum = False; self.faq_q.append(" ".join(self._sumbuf.split()))
 
     def handle_data(self, d):
         if self._t: self.title += d
@@ -152,10 +152,12 @@ def audit(url, site):
     all_nodes = [n for b in blobs for n in nodes(b)]
     tset = collections.Counter(t for n in all_nodes for t in types(n))
     for n in all_nodes:
-        for t in types(n):
-            for k in REQUIRED.get(t, []):
+        for ty in types(n):
+            for k in REQUIRED.get(ty, []):
+                if ty == "Offer" and k in ("price", "priceCurrency") and n.get("itemOffered"):
+                    continue  # quote-based service offer: price is optional
                 if n.get(k) in (None, "", []) and not ("@id" in n and len(n) <= 2):
-                    f.append(f"schema: {t} missing {k}")
+                    f.append(f"schema: {ty} missing {k}")
     if not tset: f.append("schema: none")
     if tset.get("FAQPage", 0) > 1: f.append(f"schema: {tset['FAQPage']} FAQPage blocks (Google allows one)")
     faq_names = [" ".join(str(q.get("name", "")).split()) for n in all_nodes if "FAQPage" in types(n) for q in (n.get("mainEntity") or [])]
@@ -244,7 +246,10 @@ def main():
             for u, (s, fu, n) in sorted(redir.items()):
                 md.append(f"- link redirects ({n} hop{'s' if n > 1 else ''}): {u} -> {fu}, from {', '.join(sorted(inbound[u])[:2])}")
             for u in orphans: md.append(f"- ORPHAN (no internal links point here): {u}")
-            for u in nonsitemap: md.append(f"- linked and indexable but not in sitemap: {u}")
+            for u in nonsitemap:
+                _, _, b = get(u); pp = P(); pp.feed(b)
+                if "noindex" not in pp.meta.get("robots", ""):
+                    md.append(f"- linked and indexable but not in sitemap: {u}")
             if not bad and not broken and not redir and not orphans: md.append("- All checks passed.")
             md.append("")
             totals[host] = sum(cats.values()) + len(broken) + len(redir) + len(orphans)

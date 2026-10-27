@@ -209,6 +209,8 @@ export const REDIRECTS = {
   '/blog/ai-trend-marketing-turn-tech-news-into-local-leads': '/blog/how-ai-marketing-automation-works',
   '/blog/ai-marketing-for-small-businesses-seo-ads': '/blog/how-ai-marketing-automation-works',
   '/blog/ai-marketing-agency-for-small-business-growth': '/ai-marketing-automation',
+  '/blog/what-is-a-buffer-meaning-definition-and-examples': '/ai-marketing-automation',
+  '/blog/what-is-an-sme-sme-and-smb-meaning-for-growth': '/services',
   '/blog/why-is-nike-stock-down-so-much-key-reasons-lessons': '/blog',
   '/blog/ai-search-optimization-get-found-on-chatgpt-google': '/ai-seo-agency',
   '/blog/best-rated-seo-companies': '/ai-seo-agency',

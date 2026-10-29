@@ -11,9 +11,9 @@ const GTM = 'GTM-P7FV5QN6';
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 export const CSS = `
-@font-face{font-family:Inter;font-style:normal;font-weight:100 900;font-display:swap;src:url(/fonts/inter-var-latin.woff2) format("woff2")}
+@font-face{font-family:Inter;font-style:normal;font-weight:100 900;font-display:optional;src:url(/fonts/inter-var-latin.woff2) format("woff2")}
 @font-face{font-family:"Inter Fallback";src:local("Arial");ascent-override:90.44%;descent-override:22.52%;line-gap-override:0%;size-adjust:107.12%}
-@font-face{font-family:Sora;font-style:normal;font-weight:100 800;font-display:swap;src:url(/fonts/sora-var-latin.woff2) format("woff2")}
+@font-face{font-family:Sora;font-style:normal;font-weight:100 800;font-display:optional;src:url(/fonts/sora-var-latin.woff2) format("woff2")}
 @font-face{font-family:"IBM Plex Mono";font-style:normal;font-weight:500;font-display:swap;src:url(/fonts/plex-mono-500-latin.woff2) format("woff2")}
 :root{--ink:#0E1A2B;--ink2:#33445A;--muted:#4A5B70;--line:#DCE5EF;--bg:#F4F8FC;--blue:#0D5EC7;--blue2:#0B4FA8;--red:#C13A2A;--green:#15803D}
 *{box-sizing:border-box}

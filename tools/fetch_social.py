@@ -10,6 +10,7 @@ import os
 import pathlib
 import sys
 import urllib.request
+import urllib.error
 
 API = "https://api.buffer.com"
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -69,6 +70,31 @@ def shape(node):
     }
 
 
+def thumb_ok(url):
+    """False only when the image host answers with an error (e.g. 404); network trouble keeps the image."""
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "WorldDigitalSocialSync/1.0", "Range": "bytes=0-0"})
+        with urllib.request.urlopen(req, timeout=15) as r:
+            return r.status < 400
+    except urllib.error.HTTPError as e:
+        return e.code < 400
+    except Exception:
+        return True
+
+
+def drop_dead_thumbs(posts):
+    """Thumbnails deleted from their host would show as broken images and console errors on /social."""
+    import concurrent.futures as cf
+    urls = sorted({p["thumb"] for p in posts if p.get("thumb")})
+    with cf.ThreadPoolExecutor(12) as ex:
+        dead = {u for u, ok in zip(urls, ex.map(thumb_ok, urls)) if not ok}
+    for p in posts:
+        if p.get("thumb") in dead:
+            p["thumb"] = None
+    if dead:
+        print(f"::notice::Social sync: {len(dead)} thumbnail(s) no longer exist and were dropped: " + ", ".join(u.rsplit("/", 1)[-1][:40] for u in sorted(dead))[:900])
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=str(ROOT / "workers/ai-site/data/social.json"))
@@ -92,6 +118,7 @@ def main():
     except Exception as e:  # never break the site build because Buffer is down
         print(f"::warning::Buffer sync failed, keeping the existing social data: {str(e)[:200]}")
         return 0
+    drop_dead_thumbs(posts)
     posts.sort(key=lambda p: p["date"], reverse=True)
     out = {"updated": __import__("datetime").datetime.utcnow().strftime("%Y-%m-%dT%H:%MZ"), "count": len(posts), "posts": posts}
     pathlib.Path(a.out).write_text(json.dumps(out, indent=1, ensure_ascii=False) + "\n")

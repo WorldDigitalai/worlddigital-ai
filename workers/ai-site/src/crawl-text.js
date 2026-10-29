@@ -74,6 +74,7 @@ Clients include Murfreesboro Kabob, RPM Auto Group and Bean Loft Coffee Company 
 - [About](${SITE}/about) — The company, how we work, founder
 - [Services](${SITE}/services) — Add-on managed services
 - [AI SEO Agency](${SITE}/ai-seo-agency) — SEO, AI SEO, answer engine optimization (AEO) and generative engine optimization (GEO), $199.99/month
+- [AI SEO Pricing](${SITE}/ai-seo-pricing) — what AI SEO (AEO/GEO) costs in 2026, from Fiverr gigs and $100-$500 plans to $1,500+/month agencies, with sources; WorldDigital.ai is $199.99/month, tax included, no long-term contract
 - [Local SEO services](${SITE}/local-seo-services) — Google Business Profile, Maps and “near me” rankings, citations and reviews, included in the $199.99/month plan
 - [Generative engine optimization](${SITE}/generative-engine-optimization) — GEO so ChatGPT, Google AI Overviews, Gemini and Perplexity mention and cite your brand
 - [Google Ads Agency](${SITE}/google-ads-agency) — Google Search, Maps and Performance Max campaign management
@@ -186,6 +187,7 @@ const PAGES = [
   ['/about', 'monthly', '0.8'],
   ['/services', 'monthly', '0.8'],
   ['/ai-seo-agency', 'monthly', '0.95'],
+  ['/ai-seo-pricing', 'monthly', '0.8'],
   ['/google-ads-agency', 'monthly', '0.9'],
   ['/ai-marketing-automation', 'monthly', '0.8'],
   ['/build', 'monthly', '0.8'],

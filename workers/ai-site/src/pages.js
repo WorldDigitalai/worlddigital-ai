@@ -2,6 +2,7 @@
 import home from './pages/home.html';
 import services from './pages/services.html';
 import seo from './pages/ai-seo-agency.html';
+import pricing from './pages/ai-seo-pricing.html';
 import ads from './pages/google-ads-agency.html';
 import build from './pages/build.html';
 import ehr from './pages/ehr-emr-integration.html';
@@ -127,11 +128,17 @@ export const PAGES = {
   '/services': { keywords: 'digital marketing services for small business, digital marketing company, seo services, google ads management, small business website design', body: services, cta: false, title: 'Managed SEO, Google Ads & Website Services | WorldDigital.ai',
     description: 'Managed services from WorldDigital.ai: SEO and AI search ($199.99/month), Google Ads management and websites for SMBs, SMEs and enterprises in the US and Canada.',
     schema: [crumbs([['Home', '/'], ['Services', '/services']])], sitemap: { priority: '0.9' } },
-  '/ai-seo-agency': { keywords: 'ai seo, ai seo agency, ai seo services, generative engine optimization, generative engine optimization services, answer engine optimization, aeo seo, geo seo, llm seo, chatgpt seo, ai search optimization', body: seo, cta: false, title: 'AI SEO Agency: GEO, AEO & AI SEO Services | WorldDigital.ai',
+  '/ai-seo-agency': { keywords: 'ai seo, ai seo agency, ai seo services, ai seo company, ai search optimization agency, ai search agency, generative engine optimization, generative engine optimization services, answer engine optimization, aeo seo, geo seo, llm seo, chatgpt seo, ai search optimization', body: seo, cta: false, title: 'AI SEO Agency: GEO, AEO & AI SEO Services | WorldDigital.ai',
     description: 'AI SEO agency for SMBs, SMEs and enterprises: GEO, AEO and AI SEO services to rank on Google and get cited by ChatGPT and AI Overviews. $199.99/month.',
     schema: [svc('SEO & AI Search Visibility', '/ai-seo-agency', 'SEO, AI SEO, AEO and GEO for SMBs, SMEs and enterprises, $199.99 per month.', 'Search engine optimization'),
       { '@context': 'https://schema.org', '@type': 'Offer', name: 'SEO & AI Search Visibility plan', price: '199.99', priceCurrency: 'USD', url: `${SITE}/ai-seo-agency#plan`, seller: { '@id': `${SITE}/#org` } },
       crumbs([['Home', '/'], ['Services', '/services'], ['SEO & AI Search', '/ai-seo-agency']])], sitemap: { priority: '0.9' } },
+  '/ai-seo-pricing': { keywords: 'ai seo pricing, ai seo cost, how much does ai seo cost, aeo pricing, geo pricing, affordable ai seo, ai seo services for small business, ai seo agency pricing', body: pricing, cta: false,
+    title: 'AI SEO Pricing 2026: $200/mo vs Agencies & Fiverr | WorldDigital.ai',
+    description: 'How much AI SEO (AEO/GEO) costs in 2026: Fiverr gigs, $100-$500 plans, $500-$2,500 packages and $1,500+ agencies compared with sources. Our plan: $199.99/mo.',
+    schema: [{ '@context': 'https://schema.org', '@type': 'Article', headline: 'AI SEO pricing in 2026: what $200 a month gets you vs. agencies and Fiverr', datePublished: '2026-10-27', dateModified: '2026-10-27', author: { '@id': 'https://worlddigital.us/#person' }, publisher: { '@id': `${SITE}/#org` }, mainEntityOfPage: `${SITE}/ai-seo-pricing` },
+      { '@context': 'https://schema.org', '@type': 'Offer', name: 'SEO & AI Search Visibility plan', price: '199.99', priceCurrency: 'USD', url: `${SITE}/ai-seo-agency#plan`, seller: { '@id': `${SITE}/#org` } },
+      crumbs([['Home', '/'], ['SEO & AI Search', '/ai-seo-agency'], ['AI SEO pricing', '/ai-seo-pricing']])], sitemap: { priority: '0.8' } },
   '/google-ads-agency': { keywords: 'google ads agency, google ads management, google ads management services, ppc management services, ppc agency, ppc management, google ads expert, local service ads', body: ads, cta: false, title: 'Google Ads Agency & PPC Management | WorldDigital.ai',
     description: 'Google Ads agency for SMBs, SMEs and enterprises: PPC management, Performance Max and Local Service Ads built around leads and cost per lead.',
     schema: [svc('Google Ads & PPC management', '/google-ads-agency', 'Search, Maps and Performance Max campaigns built around calls, bookings and cost per lead.', 'Pay-per-click advertising management'),

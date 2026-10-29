@@ -167,7 +167,7 @@ function footer() {
 <div><div class="brand" style="color:#fff">WorldDigital.ai</div><p style="margin:10px 0 0;line-height:1.6">WorldDigital.ai Corporation LLC<br>Serving businesses across the US and Canada<br>Hubs: Houston, TX · Murfreesboro, TN</p><p style="margin:10px 0 0"><a href="mailto:support@worlddigital.ai">support@worlddigital.ai</a><br><a href="tel:+18328340680">(832) 834-0680</a></p><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:16px"><a href="${BBB}" style="border:1px solid #33506F;border-radius:10px;padding:8px 12px;font-size:13px;font-weight:700;color:#fff">BBB A+ rated</a><a href="${GBP}" style="border:1px solid #33506F;border-radius:10px;padding:8px 12px;font-size:13px;font-weight:700;color:#fff">5.0 on Google Business Profile</a></div></div>
 <div><h2 class="fh">Software</h2><p style="margin:0;line-height:2"><a href="${REPORT}">SEO &amp; AI visibility report · Free</a><br><a href="/services/keyword-research">Keyword research · $9.99</a><br><a href="/services/content-marketing">Content generator · $24.99</a><br><a href="/google-ads-agency#autopilot">Social &amp; Email Autopilot · Soon</a><br><a href="/tools">All products &amp; prices</a></p></div>
 <div><h2 class="fh">Custom software</h2><p style="margin:0;line-height:2"><a href="/custom-software">Web apps &amp; portals</a><br><a href="/custom-software#ai">AI automation &amp; agents</a><br><a href="/custom-software#integrations">APIs &amp; integrations</a><br><a href="/ehr-emr-integration">EHR &amp; EMR integration</a><br><a href="/ai-marketing-automation">AI marketing automation</a></p></div>
-<div><h2 class="fh">Services</h2><p style="margin:0;line-height:2"><a href="/ai-seo-agency">SEO &amp; AI Search plan</a><br><a href="/local-seo-services">Local SEO</a><br><a href="/generative-engine-optimization">GEO</a><br><a href="/google-ads-agency">Google Ads &amp; PPC</a><br><a href="/build">Websites</a><br><a href="/enterprise">Multi-location</a><br><a href="/houston">Houston, TX</a> · <a href="/murfreesboro">Murfreesboro, TN</a></p></div>
+<div><h2 class="fh">Services</h2><p style="margin:0;line-height:2"><a href="/ai-seo-agency">SEO &amp; AI Search plan</a><br><a href="/ai-seo-pricing">AI SEO pricing</a><br><a href="/local-seo-services">Local SEO</a><br><a href="/generative-engine-optimization">GEO</a><br><a href="/google-ads-agency">Google Ads &amp; PPC</a><br><a href="/build">Websites</a><br><a href="/enterprise">Multi-location</a><br><a href="/houston">Houston, TX</a> · <a href="/murfreesboro">Murfreesboro, TN</a></p></div>
 <div><h2 class="fh">Company</h2><p style="margin:0;line-height:2"><a href="/about">About us</a><br><a href="/contact">Contact</a><br><a href="/testimonials">Reviews</a><br><a href="/blog">Blog &amp; guides</a><br><a href="/social">Social Hub</a><br><a href="/help">Help center</a><br><a href="/career">Careers</a></p></div>
 </div>
 <p style="margin:36px 0 0;font-size:13px;border-top:1px solid #1E3A5F;padding-top:20px;line-height:1.9">© ${new Date().getUTCFullYear()} WorldDigital.ai Corporation LLC · <a href="/privacy-policy">Privacy</a> · <a href="/terms-and-conditions">Terms</a> · <a href="/cookies-policy">Cookies</a></p>
@@ -233,8 +233,17 @@ function analytics(prod) {
   if (!prod) return '';
   // GA4 and Tag Manager (ad and retargeting pixels, which set third-party cookies) load on the first real
   // interaction: tap, click, mouse move or key press. Nothing third-party slows the first view.
-  return `<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','${GA4}');
-(function(){function add(src){var s=document.createElement('script');s.async=true;s.src=src;document.head.appendChild(s)}
+  // Tracking guard: only the live worlddigital.ai host is measured. Admin, login and unsubscribe pages,
+  // previews (business.google.com, localhost) and team browsers are left out of GA4 and Tag Manager.
+  // A team browser is marked once by visiting any page with ?wd_internal=1 (undo with ?wd_internal=0)
+  // or by opening /admin; the mark is kept in this browser only.
+  return `<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}
+(function(){var h=location.hostname,p=location.pathname,q=location.search,me=false;
+try{if(/[?&]wd_internal=1/.test(q)||p.indexOf('/admin')===0)localStorage.setItem('wdInternal','1');if(/[?&]wd_internal=0/.test(q))localStorage.removeItem('wdInternal');me=localStorage.getItem('wdInternal')==='1'}catch(e){}
+window.wdNoTrack=me||(h!=='worlddigital.ai'&&h!=='www.worlddigital.ai')||['admin','login','unsubscribe'].indexOf(p.split('/')[1])>-1;
+window['ga-disable-${GA4}']=window.wdNoTrack;window['ga-disable-G-PWBFJSFNR8']=true})();
+if(!window.wdNoTrack){gtag('js',new Date());gtag('config','${GA4}')}
+(function(){if(window.wdNoTrack)return;function add(src){var s=document.createElement('script');s.async=true;s.src=src;document.head.appendChild(s)}
 var ga=false,tm=false,ev=['pointerdown','mousemove','keydown','touchstart'];
 function loadGA(){if(ga)return;ga=true;add('https://www.googletagmanager.com/gtag/js?id=${GA4}')}
 function loadTM(){loadGA();if(tm)return;tm=true;dataLayer.push({'gtm.start':Date.now(),event:'gtm.js'});add('https://www.googletagmanager.com/gtm.js?id=${GTM}');ev.forEach(function(e){removeEventListener(e,loadTM)})}

@@ -2,7 +2,7 @@
 // Same format as worlddigital.us, written for the company. Social-platform pages are left out on purpose
 // (they come back later as the Social & Email Autopilot service).
 
-export const UPDATED = '2026-10-21';
+export const UPDATED = '2026-10-28';
 const SITE = 'https://worlddigital.ai';
 
 // One group only: crawlers that find a group naming them ignore the "*" group,
@@ -48,26 +48,31 @@ Disallow: /blog-admin
 Sitemap: ${SITE}/sitemap.xml
 `;
 
-export const LLMS = `# WorldDigital.ai — Digital Marketing Company
+export const LLMS = `# WorldDigital.ai — Software Company
 
 Last updated: ${UPDATED}
 
-> WorldDigital.ai Corporation LLC is a digital marketing company serving SMBs, SMEs and enterprises (including multi-location brands) across the United States and Canada, from hubs in Houston, TX and Murfreesboro, TN. We help businesses get more customers from Google Search, Google Maps, ChatGPT and other AI assistants, and Google Ads.
+> WorldDigital.ai Corporation LLC is a software company serving SMBs, SMEs and enterprises across the United States and Canada, from hubs in Houston, TX and Murfreesboro, TN. We make AI marketing software (a free SEO and AI visibility report, keyword research and a content generator) and build custom software: web apps and portals, AI automation and agents, API integrations and EHR/EMR integrations. Managed SEO, Google Ads and website services are available as add-ons.
 
-Services: SEO and AI search visibility (SEO, AI SEO, AEO, GEO), technical, national and local SEO, Google Business Profile, keyword research, content marketing, Google Ads and PPC management, website design and management, analytics and reporting (GA4, Search Console).
+Software: SEO & AI visibility report (free), keyword research ($9.99 one-time), content generator ($24.99 one-time), Social & Email Autopilot (coming soon). Custom software: web apps and customer portals, AI automation and agents, API and data integrations, EHR/EMR integration (Epic, FHIR, HL7).
 
-Pricing: the SEO & AI Search Visibility plan is $199.99 per month, tax included, with SEO, AI SEO, AEO and GEO included, no long-term contract and cancel anytime. Google Ads management and website projects are quoted after a strategy call.
+Add-on services: SEO and AI search visibility (SEO, AI SEO, AEO, GEO), technical, national and local SEO, Google Business Profile, keyword research, content marketing, Google Ads and PPC management, website design and management, analytics and reporting (GA4, Search Console).
 
-Contact: support@worlddigital.ai · Phone and WhatsApp: (832) 834-0680 · Google Business Profile: WorldDigital.ai Corporation LLC (Marketing agency), rated 5.0 on Google.
+Pricing: the SEO & AI Search Visibility plan is $199.99 per month, tax included, with SEO, AI SEO, AEO and GEO included, no long-term contract and cancel anytime. Google Ads management and website projects are quoted after a short conversation.
+
+Contact: support@worlddigital.ai · Phone: (832) 834-0680 · Contact form: https://worlddigital.ai/contact · Google Business Profile: WorldDigital.ai Corporation LLC (Marketing agency), rated 5.0 on Google.
 
 Founder: Ahmad Awwad, digital marketing strategist (personal site: https://worlddigital.us).
 
 Clients include Murfreesboro Kabob, RPM Auto Group and Bean Loft Coffee Company in Murfreesboro, TN.
 
 ## Pages
-- [Home](${SITE}/) — What we do and who we help
+- [Home](${SITE}/) — Our software, custom software and add-on services
+- [Products](${SITE}/tools) — Our software and prices: free SEO & AI visibility report, keyword research ($9.99), content generator ($24.99)
+- [Custom software](${SITE}/custom-software) — Custom software development: web apps and portals, AI automation and agents, API and EHR/EMR integrations
+- [Contact](${SITE}/contact) — Contact form for software, custom projects and services
 - [About](${SITE}/about) — The company, how we work, founder
-- [Services](${SITE}/services) — All services
+- [Services](${SITE}/services) — Add-on managed services
 - [AI SEO Agency](${SITE}/ai-seo-agency) — SEO, AI SEO, answer engine optimization (AEO) and generative engine optimization (GEO), $199.99/month
 - [Local SEO services](${SITE}/local-seo-services) — Google Business Profile, Maps and “near me” rankings, citations and reviews, included in the $199.99/month plan
 - [Generative engine optimization](${SITE}/generative-engine-optimization) — GEO so ChatGPT, Google AI Overviews, Gemini and Perplexity mention and cite your brand
@@ -105,13 +110,14 @@ Last updated: ${UPDATED}
 
 ## Company
 - Legal name: WorldDigital.ai Corporation LLC
-- Type: Digital marketing company (Google Business Profile category: Marketing agency)
+- Type: Software company (SaaS marketing tools and custom software development), with managed marketing services as add-ons
 - Founded: 2023
 - Service area: the whole United States and Canada (remote). Hubs: Houston, Texas and Murfreesboro, Tennessee
 - Languages: English, Arabic
 - Website: ${SITE}
 - Email: support@worlddigital.ai
-- Phone and WhatsApp: (832) 834-0680
+- Phone: (832) 834-0680
+- Contact form: https://worlddigital.ai/contact
 - Founder: Ahmad Awwad, digital marketing strategist; MBA in Strategic Marketing Analytics (in progress) and Bachelor's in Integrated Studies, Middle Tennessee State University; Google Digital Marketing & E-commerce and HubSpot Academy certifications. Personal site: https://worlddigital.us
 - Trust: BBB A+ rated; Google Business Profile rated 5.0
 
@@ -162,13 +168,13 @@ Q: How much does SEO cost?
 A: $199.99 per month, tax included, with SEO, AI SEO, AEO and GEO included and no long-term contract. Larger sites or several locations are quoted separately.
 
 Q: How much does Google Ads management cost?
-A: It depends on goals, monthly ad budget and campaign complexity; WorldDigital.ai sends a custom proposal after a short strategy call.
+A: It depends on goals, monthly ad budget and campaign complexity; WorldDigital.ai sends a custom proposal after a short conversation.
 
 Q: How long does SEO take?
 A: Google Business Profile and on-page fixes can show results within weeks; competitive rankings usually build over three to six months.
 
 Q: How do we get started?
-A: Book a strategy call, message on WhatsApp at (832) 834-0680, or email support@worlddigital.ai.
+A: Start free with any tool at https://worlddigital.ai/tools, send a message through https://worlddigital.ai/contact, or email support@worlddigital.ai.
 
 ## Coming soon
 Social & Email Autopilot: weekly AI-drafted social posts the client approves before they publish, plus email from the client's own domain.

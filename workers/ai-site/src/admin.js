@@ -61,11 +61,11 @@ function topbar(email, csrf) {
 <form method="post" action="/blog-admin/logout" style="margin:0"><input type="hidden" name="csrf" value="${esc(csrf)}"><button type="submit">Sign out</button></form></div></div></div>`;
 }
 
-async function sendEmail(env, to, subject, html) {
+async function sendEmail(env, to, subject, html, replyTo) {
   if (!env.RESEND_API_KEY) { console.log('No RESEND_API_KEY; sign-in link not emailed.'); return false; }
   const r = await fetch('https://api.resend.com/emails', {
     method: 'POST', headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: env.MAIL_FROM || 'WorldDigital.ai <login@worlddigital.ai>', to: [to], subject, html }),
+    body: JSON.stringify({ from: env.MAIL_FROM || 'WorldDigital.ai <login@worlddigital.ai>', to: [to], subject, html, ...(replyTo ? { reply_to: replyTo } : {}) }),
   });
   if (!r.ok) console.log('Resend error', r.status, (await r.text()).slice(0, 300));
   return r.ok;
@@ -217,7 +217,7 @@ function leadsPage(nonce, ed, leads) {
   const rowsHtml = leads.map((l) => {
     let d = {}; try { d = JSON.parse(l.data); } catch {}
     const kv = Object.entries(d).map(([k, v]) => `<div><span class="muted">${esc(k)}:</span> ${esc(v)}</div>`).join('');
-    return `<tr><td style="white-space:nowrap">${esc(fmt(l.created_at))}</td><td>${l.kind === 'waitlist' ? 'Autopilot early list' : 'Job application'}</td><td style="font-size:14.5px">${kv}</td></tr>`;
+    return `<tr><td style="white-space:nowrap">${esc(fmt(l.created_at))}</td><td>${l.kind === 'waitlist' ? 'Autopilot early list' : l.kind === 'contact' ? 'Contact form' : 'Job application'}</td><td style="font-size:14.5px">${kv}</td></tr>`;
   }).join('');
   const body = `${topbar(ed.email, ed.csrf)}<main class="wrap" style="padding-top:36px;padding-bottom:60px"><h1 class="h" style="font-size:32px">Form entries</h1>
 <p class="muted">Autopilot early-list sign-ups and job applications from the website. Each one is also emailed to you.</p>

@@ -1,7 +1,7 @@
 // Shared page shell for worlddigital.ai: head (SEO + analytics), header, footer, CSS.
 export const SITE = 'https://worlddigital.ai';
-export const CAL = 'https://calendar.app.google/X5ghVrBxfR8jTBdA7';
-export const WA = 'https://wa.me/18328340680?text=Hi%2C%20I%20found%20WorldDigital.ai%20online';
+export const CONTACT = '/contact';
+export const START = '/tools';
 export const REPORT = '/free-seo-report';
 export const GBP = 'https://share.google/FB4831wKavklYkwE8';
 export const BBB = 'https://www.bbb.org/us/tn/murfreesboro/profile/marketing-software/worlddigitalai-corporation-llc-0573-37385441';
@@ -76,7 +76,7 @@ textarea{min-height:120px;resize:vertical}
 .post-card:hover h2,.post-card:hover h3{color:#0D5EC7}
 .filters{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}.filters a{padding:8px 14px;border-radius:99px;border:1px solid #DCE5EF;background:#fff;text-decoration:none;color:#33445A;font-weight:600;font-size:14.5px}.filters a[aria-current=page]{background:#0E1A2B;color:#fff;border-color:#0E1A2B}
 @media (max-width:1260px){.brand small{display:none}.nav{gap:16px;font-size:14.5px}}
-@media (max-width:1200px){.nav{display:none}.menu{display:block}.top .btn.red{display:none}}
+@media (max-width:1000px){.nav{display:none}.menu{display:block}.top .btn.red{display:none}}@media (max-width:720px){.nav-cta .btn.ghost{display:none}}
 @media (max-width:420px){.brand small{display:none}}
 @media (max-width:720px){.sec{padding:48px 0}.hero-h{font-size:36px!important}.kv{grid-template-columns:1fr}.wrap{padding:0 16px}h2.h{font-size:30px!important}}
 .menu summary{list-style:none;border:1.5px solid #B9C7D8;border-radius:10px;padding:10px 14px;font-size:15px}.menu summary::-webkit-details-marker{display:none}
@@ -130,24 +130,23 @@ main details:not(.rp-fix-ai)[open]>summary::after{content:"\\2212";background:#C
 main details:not(.rp-fix-ai)>:not(summary){padding:0 20px;margin-top:0}main details:not(.rp-fix-ai)>:last-child{padding-bottom:20px;margin-bottom:0}
 .cta-sec{padding:56px 0}
 .cta-band{background:#0E1A2B;color:#fff;border-radius:22px;padding:44px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:24px;box-shadow:0 30px 60px -30px rgba(14,26,43,.6)}
-.top .wa-icon{width:44px;height:44px;border-radius:50%;background:#108043;color:#fff;display:grid;place-items:center;flex:0 0 44px;transition:background .15s}.top .wa-icon:hover{background:#0B6635;color:#fff}.top .wa-icon svg{width:20px;height:20px}
+
 .nav-cta{display:flex;align-items:center;gap:10px}
-.wa-float{position:fixed;right:20px;bottom:20px;z-index:60;width:56px;height:56px;border-radius:50%;background:#25D366;display:grid;place-items:center;box-shadow:0 10px 24px -6px rgba(37,211,102,.6);transition:transform .15s}.wa-float:hover{transform:scale(1.07)}.wa-float svg{width:30px;height:30px;fill:#fff}
+
 .m-cta{display:none}
 main>section:not(:first-of-type){content-visibility:auto;contain-intrinsic-size:auto 720px}
 .js .reveal{opacity:0;transform:translateY(12px);transition:opacity .45s ease,transform .45s ease}.js .reveal.in{opacity:1;transform:none}
 @media (prefers-reduced-motion:reduce){.js .reveal{opacity:1;transform:none;transition:none}}
-@media (max-width:1060px){.nav-cta .btn.red{display:none}}
+@media (max-width:1000px){.nav-cta .btn.red{display:none}}
 @media (max-width:900px){.tgrid{grid-template-columns:1fr}.steps{grid-template-columns:1fr 1fr}}
 @media (max-width:720px){.stats{grid-template-columns:1fr 1fr;padding:24px 22px;gap:22px 18px}.stats>:last-child{grid-column:1/-1}.steps{grid-template-columns:1fr}.cta-band{padding:30px 22px}.clients-row{gap:10px}.clients-row li{width:calc(50% - 5px);height:84px}.clients-row img{max-height:62px;max-width:130px}
-.wa-float{display:none}.nav-cta .wa-icon{display:none}body{padding-bottom:78px}
+body{padding-bottom:78px}
 .m-cta{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:70;gap:10px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:rgba(255,255,255,.97);border-top:1px solid #DCE5EF;box-shadow:0 -6px 20px -10px rgba(17,24,39,.25)}
 .m-cta .btn{flex:1 1 0;padding:13px 10px;font-size:15px;min-height:48px}}
 `;
 
 const NAV = [
-  ['/services', 'Services'], ['/ai-seo-agency', 'AI SEO'], ['/google-ads-agency', 'Google Ads'], ['/build', 'Websites'],
-  ['/tools', 'Free tools'], ['/houston', 'Locations'], ['/about', 'About'], ['/blog', 'Blog'],
+  ['/tools', 'Products'], ['/custom-software', 'Custom software'], ['/services', 'Services'], ['/blog', 'Blog'], ['/about', 'About'],
 ];
 
 function header(path) {
@@ -155,10 +154,10 @@ function header(path) {
   const links = NAV.map(([h, t]) => `<a href="${h}"${cur(h)}>${esc(t)}</a>`).join('');
   return `<a class="skip" href="#main">Skip to content</a>
 <header class="top"><div class="wrap topin">
-<a class="brand" href="/"><img src="/icon-72.webp" alt="" width="36" height="36"><span>WorldDigital.ai<small>Digital marketing company · Serving the US &amp; Canada</small></span></a>
+<a class="brand" href="/"><img src="/icon-72.webp" alt="" width="36" height="36"><span>WorldDigital.ai<small>Software company · Serving the US &amp; Canada</small></span></a>
 <nav class="nav" aria-label="Main">${links}</nav>
-<div class="nav-cta"><a class="wa-icon" href="${WA}" target="_blank" rel="noopener" aria-label="Chat on WhatsApp" title="Chat on WhatsApp"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg></a><a class="btn red" href="${CAL}">Book a strategy call</a></div>
-<details class="menu"><summary aria-label="Menu">Menu</summary><nav aria-label="Mobile">${links}<a href="${CAL}">Book a strategy call</a><a href="/login">Sign in</a></nav></details>
+<div class="nav-cta"><a class="btn ghost" href="${CONTACT}">Contact</a><a class="btn red" href="${START}">Start free</a></div>
+<details class="menu"><summary aria-label="Menu">Menu</summary><nav aria-label="Mobile">${links}<a href="${START}">Start free</a><a href="${CONTACT}">Contact</a><a href="/login">Sign in</a></nav></details>
 </div></header>`;
 }
 
@@ -166,10 +165,10 @@ function footer() {
   return `<footer class="foot"><div class="wrap">
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:28px">
 <div><div class="brand" style="color:#fff">WorldDigital.ai</div><p style="margin:10px 0 0;line-height:1.6">WorldDigital.ai Corporation LLC<br>Serving businesses across the US and Canada<br>Hubs: Houston, TX · Murfreesboro, TN</p><p style="margin:10px 0 0"><a href="mailto:support@worlddigital.ai">support@worlddigital.ai</a><br><a href="tel:+18328340680">(832) 834-0680</a></p><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:16px"><a href="${BBB}" style="border:1px solid #33506F;border-radius:10px;padding:8px 12px;font-size:13px;font-weight:700;color:#fff">BBB A+ rated</a><a href="${GBP}" style="border:1px solid #33506F;border-radius:10px;padding:8px 12px;font-size:13px;font-weight:700;color:#fff">5.0 on Google Business Profile</a></div></div>
-<div><h2 class="fh">Services</h2><p style="margin:0;line-height:2"><a href="/ai-seo-agency">SEO &amp; AI Search</a><br><a href="/local-seo-services">Local SEO</a><br><a href="/generative-engine-optimization">GEO</a><br><a href="/google-ads-agency">Google Ads &amp; PPC</a><br><a href="/build">Web design</a><br><a href="/ehr-emr-integration">EHR &amp; EMR integration</a><br><a href="/ai-marketing-automation">AI marketing automation</a><br><a href="/enterprise">Multi-location</a><br><a href="/services">All services</a></p></div>
-<div><h2 class="fh">Our hubs</h2><p style="margin:0;line-height:2"><a href="/houston">Houston, TX</a><br><a href="/murfreesboro">Murfreesboro, TN</a></p></div>
-<div><h2 class="fh">Company</h2><p style="margin:0;line-height:2"><a href="/about">About us</a><br><a href="/testimonials">Reviews</a><br><a href="/blog">Blog &amp; guides</a><br><a href="/social">Social Hub</a><br><a href="/help">Help center</a><br><a href="/career">Careers</a></p></div>
-<div><h2 class="fh">Free tools</h2><p style="margin:0;line-height:2"><a href="${REPORT}">Free SEO report</a><br><a href="/services/keyword-research">Keyword research · $9.99</a><br><a href="/services/content-marketing">Content pack · $24.99</a><br><a href="/tools">All tools &amp; prices</a></p></div>
+<div><h2 class="fh">Software</h2><p style="margin:0;line-height:2"><a href="${REPORT}">SEO &amp; AI visibility report · Free</a><br><a href="/services/keyword-research">Keyword research · $9.99</a><br><a href="/services/content-marketing">Content generator · $24.99</a><br><a href="/google-ads-agency#autopilot">Social &amp; Email Autopilot · Soon</a><br><a href="/tools">All products &amp; prices</a></p></div>
+<div><h2 class="fh">Custom software</h2><p style="margin:0;line-height:2"><a href="/custom-software">Web apps &amp; portals</a><br><a href="/custom-software#ai">AI automation &amp; agents</a><br><a href="/custom-software#integrations">APIs &amp; integrations</a><br><a href="/ehr-emr-integration">EHR &amp; EMR integration</a><br><a href="/ai-marketing-automation">AI marketing automation</a></p></div>
+<div><h2 class="fh">Services</h2><p style="margin:0;line-height:2"><a href="/ai-seo-agency">SEO &amp; AI Search plan</a><br><a href="/local-seo-services">Local SEO</a><br><a href="/generative-engine-optimization">GEO</a><br><a href="/google-ads-agency">Google Ads &amp; PPC</a><br><a href="/build">Websites</a><br><a href="/enterprise">Multi-location</a><br><a href="/houston">Houston, TX</a> · <a href="/murfreesboro">Murfreesboro, TN</a></p></div>
+<div><h2 class="fh">Company</h2><p style="margin:0;line-height:2"><a href="/about">About us</a><br><a href="/contact">Contact</a><br><a href="/testimonials">Reviews</a><br><a href="/blog">Blog &amp; guides</a><br><a href="/social">Social Hub</a><br><a href="/help">Help center</a><br><a href="/career">Careers</a></p></div>
 </div>
 <p style="margin:36px 0 0;font-size:13px;border-top:1px solid #1E3A5F;padding-top:20px;line-height:1.9">© ${new Date().getUTCFullYear()} WorldDigital.ai Corporation LLC · <a href="/privacy-policy">Privacy</a> · <a href="/terms-and-conditions">Terms</a> · <a href="/cookies-policy">Cookies</a></p>
 </div></footer>`;
@@ -204,8 +203,8 @@ function withTools(o) {
 }
 
 export const CTA = `<section class="cta-sec"><div class="wrap"><div class="cta-band">
-<div><h2 class="h" style="font-size:36px;color:#fff">Let’s grow your business.</h2><p style="margin:10px 0 0;color:#DBEAFE;font-size:17px">Tell us about your goals. We reply within one business day.</p></div>
-<div style="display:flex;flex-wrap:wrap;gap:12px"><a class="btn red" href="${CAL}">Book a strategy call</a><a class="btn green" href="${WA}">WhatsApp us</a></div>
+<div><h2 class="h" style="font-size:36px;color:#fff">Start free, or tell us what to build.</h2><p style="margin:10px 0 0;color:#DBEAFE;font-size:17px">Try any tool with no sign-up, or send us your project. We reply within one business day.</p></div>
+<div style="display:flex;flex-wrap:wrap;gap:12px"><a class="btn red" href="${START}">Start free</a><a class="btn ghost" href="${CONTACT}" style="background:transparent;color:#fff;border-color:#93C5FD">Contact us</a></div>
 </div></div></section>`;
 
 const FORM_JS = `
@@ -310,8 +309,7 @@ ${zebra(withTools(o))}
 ${o.cta === false ? '' : CTA}
 </main>
 ${footer()}
-${o.cta === false && o.noFloat ? '' : `<a class="wa-float" href="${WA}" target="_blank" rel="noopener" aria-label="Chat on WhatsApp" title="Chat on WhatsApp"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg></a>
-<div class="m-cta"><a class="btn red" href="${REPORT}">Free SEO report</a><a class="btn green" href="${WA}" target="_blank" rel="noopener"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>WhatsApp</a></div>`}
+${o.cta === false && o.noFloat ? '' : `<div class="m-cta"><a class="btn red" href="${START}">Start free</a><a class="btn ghost" href="${CONTACT}">Contact us</a></div>`}
 <script>${FORM_JS}</script>
 </body>
 </html>`;
@@ -339,12 +337,12 @@ export const ORG = {
     { '@type': 'Offer', name: 'Keyword research (10 keywords)', price: '9.99', priceCurrency: 'USD', url: `${SITE}/services/keyword-research` },
     { '@type': 'Offer', name: 'Content pack (5 ads or posts)', price: '24.99', priceCurrency: 'USD', url: `${SITE}/services/content-marketing` },
   ] },
-  description: 'Digital marketing company helping SMBs, SMEs and enterprises across the US and Canada get more customers from Google, Maps and AI search: SEO, AEO, GEO, Google Ads management, content marketing and web design.',
+  description: 'Software company making AI marketing tools (SEO and AI visibility report, keyword research, content generator) and building custom software, AI automation and EHR/EMR integrations for SMBs, SMEs and enterprises across the US and Canada, with managed SEO, Google Ads and website services as add-ons.',
   address: [{ '@type': 'PostalAddress', addressLocality: 'Houston', addressRegion: 'TX', addressCountry: 'US' },
     { '@type': 'PostalAddress', addressLocality: 'Murfreesboro', addressRegion: 'TN', addressCountry: 'US' }],
   contactPoint: { '@type': 'ContactPoint', contactType: 'customer support', email: 'support@worlddigital.ai', telephone: '+1-832-834-0680',
     areaServed: ['US', 'CA'], availableLanguage: ['English', 'Arabic'] },
-  knowsAbout: ['Search engine optimization', 'Local SEO', 'Generative engine optimization (GEO)', 'Answer engine optimization (AEO)',
+  knowsAbout: ['Software development', 'SaaS', 'Custom software development', 'AI automation', 'API integration', 'EHR and EMR integration', 'Search engine optimization', 'Local SEO', 'Generative engine optimization (GEO)', 'Answer engine optimization (AEO)',
     'AI search visibility', 'Google Ads management', 'PPC management', 'Keyword research', 'Content marketing', 'Website design', 'Multi-location SEO'],
   areaServed: [{ '@type': 'Country', name: 'United States' }, { '@type': 'Country', name: 'Canada' }],
   founder: { '@type': 'Person', name: 'Ahmad Awwad', url: `${SITE}/about`, sameAs: ['https://www.linkedin.com/in/ahmadawwad89'] },

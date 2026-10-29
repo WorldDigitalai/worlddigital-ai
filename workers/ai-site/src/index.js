@@ -53,7 +53,7 @@ function portalPage(prod) {
     path: '/login', title: 'Customer portal | WorldDigital.ai', description: 'Sign-in for WorldDigital.ai customers.', noindex: true, prod, cta: false,
     body: `<section class="sec"><div class="wrap" style="max-width:760px"><div class="eyebrow">Customer portal</div><h1 class="h" style="font-size:42px;margin-top:10px">Our customer portal is being rebuilt.</h1>
 <p class="muted" style="font-size:18px;line-height:1.6">Your plan, reports and billing aren’t affected. For anything you need right now, message us and we’ll reply within one business day.</p>
-<p style="display:flex;flex-wrap:wrap;gap:12px;margin-top:22px"><a class="btn green" href="https://wa.me/18328340680?text=Hi%2C%20I%27m%20a%20WorldDigital.ai%20customer">WhatsApp us</a><a class="btn ghost" href="mailto:support@worlddigital.ai">Email support@worlddigital.ai</a><a class="btn ghost" href="/help">Help center</a></p></div></section>`,
+<p style="display:flex;flex-wrap:wrap;gap:12px;margin-top:22px"><a class="btn ghost" href="/tools">Start free</a><a class="btn ghost" href="mailto:support@worlddigital.ai">Email support@worlddigital.ai</a><a class="btn ghost" href="/help">Help center</a></p></div></section>`,
   }), 200, 'no-store');
 }
 
@@ -116,7 +116,12 @@ async function formSubmit(req, env, ctx, kind) {
   const email = g('email', 200).toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return reply(false, 'Please enter a valid email address.', 400);
   let data, subject, message;
-  if (kind === 'waitlist') {
+  if (kind === 'contact') {
+    data = { name: g('name', 120), email, company: g('company', 160), website: g('website', 200), topic: g('topic', 120), message: g('message', 4000) };
+    if (!data.name || !data.topic || !data.message) return reply(false, 'Please fill in your name, topic and message.', 400);
+    subject = `Contact: ${data.topic} (${data.name}${data.company ? `, ${data.company}` : ''})`;
+    message = 'Thanks! Your message is on its way. We reply within one business day.';
+  } else if (kind === 'waitlist') {
     data = { business: g('business', 120), email };
     if (!data.business) return reply(false, 'Please enter your business name.', 400);
     subject = `Autopilot early list: ${data.business}`;
@@ -133,7 +138,7 @@ async function formSubmit(req, env, ctx, kind) {
   if (!ok) return reply(false, 'We already received several submissions from you. Please email support@worlddigital.ai instead.', 429);
   const rows = Object.entries(data).map(([k, v]) => `<tr><td style="padding:6px 12px;color:#4A5B70">${esc(k)}</td><td style="padding:6px 12px">${esc(v)}</td></tr>`).join('');
   ctx.waitUntil(sendEmail(env, env.NOTIFY_EMAIL || 'support@worlddigital.ai', subject,
-    `<div style="font-family:Arial,sans-serif;font-size:15px"><p>New website form entry from worlddigital.ai.</p><table>${rows}</table><p><a href="${SITE}/blog-admin/leads">See all entries</a></p></div>`));
+    `<div style="font-family:Arial,sans-serif;font-size:15px"><p>New website form entry from worlddigital.ai.</p><table>${rows}</table><p><a href="${SITE}/blog-admin/leads">See all entries</a></p></div>`, kind === 'contact' ? email : undefined));
   return reply(true, message);
 }
 
@@ -229,6 +234,7 @@ async function handle(req, env, ctx) {
   }
   if (req.method === 'POST' && path === '/api/site/waitlist') return formSubmit(req, env, ctx, 'waitlist');
   if (req.method === 'POST' && path === '/api/site/apply') return formSubmit(req, env, ctx, 'apply');
+  if (req.method === 'POST' && path === '/api/site/contact') return formSubmit(req, env, ctx, 'contact');
 
   // Anything else: our own 404 (the old app only when LEGACY_APP=1).
   if (prod && legacy) return passthrough();

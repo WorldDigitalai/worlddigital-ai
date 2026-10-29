@@ -51,7 +51,7 @@ export const socialBody = `${CSS}
 <div class="eyebrow" style="margin-top:18px">Social Hub</div>
 <h1 class="h hero-h" style="font-size:52px;line-height:1.08;margin-top:12px;max-width:860px">The WorldDigital.ai <span style="color:#0D5EC7">Social Hub.</span></h1>
 <p style="font-size:19px;line-height:1.6;color:#33445A;margin:18px 0 0;max-width:760px">Short SEO, AI search and marketing tips for SMBs, SMEs and enterprises, from our ${esc(labels.join(', ').replace(/, ([^,]*)$/, ' and $1'))} channels. Filter by platform, or see the top performing posts first.</p>
-<div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:26px"><a class="btn red" href="/free-seo-report">Get my free SEO report</a><a class="btn ghost" href="https://calendar.app.google/X5ghVrBxfR8jTBdA7">Book a strategy call</a></div>
+<div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:26px"><a class="btn red" href="/free-seo-report">Get my free SEO report</a><a class="btn ghost" href="/contact">Contact us</a></div>
 </div></section>
 
 <section class="sec"><div class="wrap">

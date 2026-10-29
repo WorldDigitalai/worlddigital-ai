@@ -12,6 +12,8 @@ import automation from './pages/ai-marketing-automation.html';
 import testimonials from './pages/testimonials.html';
 import help from './pages/help.html';
 import career from './pages/career.html';
+import contact from './pages/contact.html';
+import customSoftware from './pages/custom-software.html';
 import enterprise from './pages/enterprise.html';
 import keywords from './pages/keyword-research.html';
 import content from './pages/content-marketing.html';
@@ -63,6 +65,13 @@ const GEO_FAQ = faq('GEO questions', [
   ['How much do GEO services cost?', 'GEO is included in the SEO &amp; AI Search Visibility plan at $199.99 a month, together with SEO, AI SEO and AEO. No contract.'],
 ]);
 
+const CUSTOM_FAQ = faq('Custom software questions', [
+  ['How much does custom software cost?', 'It depends on scope: the number of screens, users, integrations and the data involved. After a short discovery conversation we send a written proposal with a fixed price and timeline, so you know the full cost before any work starts.'],
+  ['How long does a project take?', 'Small tools and integrations often take 2 to 6 weeks. Larger web apps and portals are delivered in phases, with a working demo early so you can give feedback as it is built.'],
+  ['Who owns the code?', 'You do. When the project is paid for, the code, data and accounts are yours, and we can keep supporting it or hand it to your own team.'],
+  ['Can you connect our existing tools?', 'Yes. We build API and data integrations between CRMs, payment, scheduling, email and ad platforms, and EHR/EMR systems for healthcare.'],
+  ['Do you support the software after launch?', 'Yes. We offer monitoring, security updates, fixes and new features after launch, month to month.'],
+]);
 const TOOLS_FAQ = faq('Tool questions', [
   ['Are the tools really free to try?', 'Yes. The SEO report is completely free. Keyword research shows your top 3 keywords free and the content generator writes your first piece free, with no sign-up and no card.'],
   ['How much do the paid versions cost?', 'All 10 keywords cost $9.99 and a pack of 5 ads or posts costs $24.99. Both are one-time payments through Stripe, with no subscription.'],
@@ -71,9 +80,9 @@ const TOOLS_FAQ = faq('Tool questions', [
   ['What if I want you to do the work?', 'The <a href="/ai-seo-agency">SEO &amp; AI Search Visibility plan</a> is $199.99 a month with no contract and includes keyword research, content and fixes done for you.'],
 ]);
 const TOOLS_BODY = `<section style="background:#fff;border-bottom:1px solid #DCE5EF"><div class="wrap" style="padding-top:64px;padding-bottom:56px">
-<nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> / Free tools</nav>
-<div class="eyebrow" style="margin-top:14px">Free SEO tools</div>
-<h1 class="h hero-h" style="font-size:52px;line-height:1.08;margin-top:14px;max-width:900px">Free SEO tools with <span style="color:#0D5EC7">simple, one-time prices.</span></h1>
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> / Products</nav>
+<div class="eyebrow" style="margin-top:14px">Products</div>
+<h1 class="h hero-h" style="font-size:52px;line-height:1.08;margin-top:14px;max-width:900px">SEO &amp; AI marketing software, <span style="color:#0D5EC7">free to start.</span></h1>
 <p style="font-size:19px;line-height:1.6;color:#33445A;margin:20px 0 0;max-width:760px">Check your website, find the keywords you can win and get ready-to-post content, all from real Google data. Every tool has a free version; pay only if you want the full result.</p>
 </div></section>
 <section class="sec"><div class="wrap">
@@ -86,7 +95,7 @@ const TOOLS_BODY = `<section style="background:#fff;border-bottom:1px solid #DCE
 <tr><th scope="row"><a href="/free-seo-report">SEO &amp; AI visibility report</a></th><td>Full report</td><td>Free</td></tr>
 <tr><th scope="row"><a href="/services/keyword-research">Keyword research</a></th><td>Top 3 keywords</td><td>All 10 for $9.99, one time</td></tr>
 <tr><th scope="row"><a href="/services/content-marketing">Content pack</a></th><td>1 ad or post</td><td>5 for $24.99, one time</td></tr>
-<tr><th scope="row"><a href="/ai-seo-agency">SEO &amp; AI Search Visibility plan</a></th><td>Strategy call</td><td>$199.99 a month, no contract</td></tr>
+<tr><th scope="row"><a href="/ai-seo-agency">SEO &amp; AI Search Visibility plan</a></th><td>Free consultation</td><td>$199.99 a month, no contract</td></tr>
 </tbody></table></div>
 </div></section>
 ${TOOLS_FAQ.html}`;
@@ -111,12 +120,12 @@ function legal(md, path) {
 }
 
 export const PAGES = {
-  '/': { keywords: 'local seo services, seo company, seo services for small business, small business seo, local seo company, seo agency, digital marketing agency for small business, ai seo, seo services canada', body: home, cta: false, title: 'SEO & AI Search for SMBs and Enterprises | WorldDigital.ai',
-    description: 'SEO and AI search for SMBs, SMEs and enterprises in the US and Canada: technical, national and local SEO, GEO/AEO and Google Ads. AI SEO from $199.99/month.',
+  '/': { keywords: 'seo software, ai seo tools, marketing software for small business, custom software development, ai automation, software company, seo services, ai visibility checker', body: home, cta: false, tools: false, title: 'SEO & AI Marketing Software, Custom Software | WorldDigital.ai',
+    description: 'WorldDigital.ai is a software company: AI tools for SEO and AI search visibility, plus custom software, AI automation and integrations for SMBs and enterprises.',
     schema: [ORG, { '@context': 'https://schema.org', '@type': 'WebSite', '@id': `${SITE}/#site`, name: 'WorldDigital.ai', url: `${SITE}/`, publisher: { '@id': `${SITE}/#org` } }],
     sitemap: { priority: '1.0', changefreq: 'weekly' } },
-  '/services': { keywords: 'digital marketing services for small business, digital marketing company, seo services, google ads management, small business website design', body: services, cta: false, title: 'Digital Marketing for SMEs & Enterprises | WorldDigital.ai',
-    description: 'Digital marketing for SMBs, SMEs and enterprises in the US and Canada: SEO, AI SEO, keyword research, content marketing, Google Ads and website design.',
+  '/services': { keywords: 'digital marketing services for small business, digital marketing company, seo services, google ads management, small business website design', body: services, cta: false, title: 'Managed SEO, Google Ads & Website Services | WorldDigital.ai',
+    description: 'Add-on managed services from WorldDigital.ai: SEO and AI search ($199.99/month), Google Ads management and websites, for SMBs, SMEs and enterprises in the US and Canada.',
     schema: [crumbs([['Home', '/'], ['Services', '/services']])], sitemap: { priority: '0.9' } },
   '/ai-seo-agency': { keywords: 'ai seo, ai seo agency, ai seo services, generative engine optimization, generative engine optimization services, answer engine optimization, aeo seo, geo seo, llm seo, chatgpt seo, ai search optimization', body: seo, cta: false, title: 'AI SEO Agency: GEO, AEO & AI SEO Services | WorldDigital.ai',
     description: 'AI SEO agency for SMBs, SMEs and enterprises: GEO, AEO and AI SEO services to rank on Google and get cited by ChatGPT and AI Overviews. $199.99/month.',
@@ -136,8 +145,8 @@ export const PAGES = {
     description: 'Epic integration and EHR and EMR integration services: Epic FHIR API apps, SMART on FHIR, HL7 integration, patient portal tools and medical websites.',
     schema: [svc('EHR & EMR integration', '/ehr-emr-integration', 'Epic and FHIR-based integrations, AI booking and attribution for Epic clinics, patient-facing AI tools, medical websites and workflow automation for clinics, health systems and health tech companies.', 'Epic integration, EHR and EMR integration, FHIR and HL7 integration'),
       crumbs([['Home', '/'], ['Services', '/services'], ['EHR & EMR integration', '/ehr-emr-integration']])], sitemap: { priority: '0.9', lastmod: '2026-10-27' } },
-  '/about': { body: about, cta: false, title: 'About WorldDigital.ai | Digital Marketing Company',
-    description: 'WorldDigital.ai is a digital marketing company in Houston, TX and Murfreesboro, TN, helping businesses across the US and Canada grow on Google and AI search.',
+  '/about': { body: about, cta: false, title: 'About WorldDigital.ai | Software Company',
+    description: 'WorldDigital.ai is a software company in Houston, TX and Murfreesboro, TN making AI marketing tools and custom software for businesses across the US and Canada.',
     schema: [ORG, crumbs([['Home', '/'], ['About us', '/about']])], sitemap: { priority: '0.7' } },
   '/houston': { keywords: 'houston seo company, seo company houston tx, seo houston, houston seo, web design houston, houston web design, digital marketing agency houston', body: houston, cta: false, title: 'Houston SEO Company & Web Design Houston | WorldDigital.ai',
     description: 'Houston SEO company and digital marketing agency for small businesses: local SEO, AI search, Google Ads (PPC) and web design in Houston, TX, from $199.99/month.',
@@ -163,8 +172,8 @@ export const PAGES = {
   '/help': { body: help, title: 'Help Center: Plans, Billing & Results | WorldDigital.ai',
     description: 'Answers about WorldDigital.ai plans, billing, cancelling, results and reporting. Contact support@worlddigital.ai or (832) 834-0680.',
     schema: [crumbs([['Home', '/'], ['Help center', '/help']])], sitemap: { priority: '0.5' } },
-  '/career': { body: career, title: 'Careers at WorldDigital.ai | Digital Marketing Jobs',
-    description: 'Join WorldDigital.ai: remote-friendly digital marketing and AI roles with flexible hours, learning and growth. Apply online.',
+  '/career': { body: career, title: 'Careers at WorldDigital.ai | Software & AI Jobs',
+    description: 'Join WorldDigital.ai: remote-friendly software, AI and digital marketing roles with flexible hours, learning and growth. Apply online.',
     schema: [crumbs([['Home', '/'], ['Careers', '/career']])], sitemap: { priority: '0.4' } },
   '/local-seo-services': { keywords: 'local seo services, local seo, local seo company, google business profile optimization, near me seo, google maps seo, local seo agency', body: localSeo + LOCAL_FAQ.html, title: 'Local SEO Services: Google Maps & Near Me | WorldDigital.ai',
     description: 'Local SEO services for SMBs, SMEs and multi-location brands in the US and Canada: Google Business Profile, Maps rankings, citations and reviews. $199.99/month.',
@@ -178,13 +187,22 @@ export const PAGES = {
     description: 'Multi-location SEO and franchise SEO for brands with many locations: location pages, Google Business Profiles, AI search and Google Ads, priced per location.',
     schema: [svc('Multi-location marketing', '/enterprise', 'Local SEO, AI search and Google Ads across many locations.', 'Multi-location SEO'),
       crumbs([['Home', '/'], ['Multi-location', '/enterprise']])], sitemap: { priority: '0.5' } },
+  '/custom-software': { keywords: 'custom software development, software development company, custom web app development, ai automation services, api integration services, software company for small business', body: customSoftware + CUSTOM_FAQ.html,
+    title: 'Custom Software Development & AI Automation | WorldDigital.ai',
+    description: 'Custom software development for SMBs, SMEs and enterprises: web apps and portals, AI automation and agents, API and EHR/EMR integrations. Fixed-scope proposals.',
+    schema: [svc('Custom software development', '/custom-software', 'Web apps and customer portals, AI automation and agents, API and data integrations, and EHR/EMR integrations.', 'Software development'),
+      crumbs([['Home', '/'], ['Custom software', '/custom-software']])], sitemap: { priority: '0.9' } },
+  '/contact': { body: contact, cta: false, tools: false, title: 'Contact WorldDigital.ai | Software & Custom Development',
+    description: 'Contact WorldDigital.ai about our SEO and marketing software, a custom software or AI automation project, an integration or a managed service. We reply in one business day.',
+    schema: [{ '@context': 'https://schema.org', '@type': 'ContactPage', name: 'Contact WorldDigital.ai', url: `${SITE}/contact`, about: { '@id': `${SITE}/#org` } },
+      crumbs([['Home', '/'], ['Contact', '/contact']])], sitemap: { priority: '0.6' } },
   '/tools': { keywords: 'free seo tools, free keyword research tool, ai content generator, free seo checker, seo tools for small business', body: TOOLS_BODY, tools: false,
-    title: 'Free SEO Tools: Audit, Keywords & Content | WorldDigital.ai',
-    description: 'Free SEO tools for small businesses: a free SEO and AI visibility report, keyword research (3 free, 10 for $9.99) and a content generator (1 free, 5 for $24.99).',
+    title: 'Products: SEO & AI Marketing Software | WorldDigital.ai',
+    description: 'WorldDigital.ai software, free to start: SEO and AI visibility report (free), keyword research (3 free, 10 for $9.99) and content generator (1 free, 5 for $24.99).',
     schema: [{ '@context': 'https://schema.org', '@type': 'ItemList', name: 'WorldDigital.ai SEO tools', itemListElement: TOOLS.map((t, i) => ({ '@type': 'ListItem', position: i + 1, url: SITE + t.path, name: t.name })) },
       ...TOOLS.map((t) => ({ '@context': 'https://schema.org', '@type': 'WebApplication', name: t.name, url: SITE + t.path, applicationCategory: 'BusinessApplication', operatingSystem: 'Any',
         offers: { '@type': 'Offer', price: t.price === 'Free' ? '0' : t.price.slice(1), priceCurrency: 'USD' }, provider: { '@id': `${SITE}/#org` } })),
-      crumbs([['Home', '/'], ['Free tools', '/tools']])], sitemap: { priority: '0.8', changefreq: 'monthly' } },
+      crumbs([['Home', '/'], ['Products', '/tools']])], sitemap: { priority: '0.8', changefreq: 'monthly' } },
   '/free-seo-report': { keywords: 'free seo audit, free seo report, website seo checker, seo checker, free website audit, seo audit, ai visibility checker', body: report + CHECKER_FAQ.html, title: 'Free SEO Audit & Website SEO Checker | WorldDigital.ai',
     description: 'Free SEO audit and website SEO checker: on-page SEO, mobile speed, Google rankings, backlinks and ChatGPT citations, with your top fixes in 60 seconds.',
     schema: [{ '@context': 'https://schema.org', '@type': 'WebApplication', name: 'Free SEO & AI Visibility Report', url: `${SITE}/free-seo-report`, applicationCategory: 'BusinessApplication', operatingSystem: 'Any', offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' }, provider: { '@id': `${SITE}/#org` } },
@@ -255,5 +273,5 @@ export const REDIRECTS = {
   // common alternates
   '/seo-ai-visibility': '/ai-seo-agency', '/paid-media': '/google-ads-agency', '/sem-paid-media': '/google-ads-agency',
   '/website-build-management': '/build', '/privacy': '/privacy-policy', '/terms': '/terms-and-conditions', '/careers': '/career',
-  '/reviews': '/testimonials', '/contact': '/help',
+  '/reviews': '/testimonials', '/contact-us': '/contact', '/software-development': '/custom-software', '/products': '/tools',
 };

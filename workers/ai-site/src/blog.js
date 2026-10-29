@@ -1,5 +1,5 @@
 // Public blog: /blog, /blog/<slug>, /blog/feed.xml. Posts live in the Store (Durable Object).
-import { page, esc, SITE, CAL, REPORT, crumbs } from './layout.js';
+import { page, esc, SITE, REPORT, crumbs } from './layout.js';
 import { mdToHtml, mdToText, readMinutes, parseFrontmatter } from './md.js';
 import p1 from '../content/blog/how-ai-marketing-automation-works.md';
 import p2 from '../content/blog/google-ads-management-local-businesses.md';
@@ -89,7 +89,7 @@ ${img ? `<img src="${img}" alt="${esc(p.cover_alt || '')}" width="1200" height="
 <div class="prose">${html}</div>
 <aside class="card" style="margin:40px 0 0;display:flex;flex-wrap:wrap;gap:18px;align-items:center;justify-content:space-between;background:#0E1A2B;border-color:#0E1A2B;color:#fff">
 <div style="max-width:520px"><div class="eyebrow" style="color:#93C5FD">WorldDigital.ai</div><h2 class="h" style="font-size:24px;color:#fff;margin-top:6px">Want more customers from Google and AI search?</h2><p style="color:#C9D6E6;margin:8px 0 0">SEO, AEO and GEO in one flat plan, $199.99 a month, no contract. Google Ads quoted after a short call.</p></div>
-<div style="display:flex;flex-wrap:wrap;gap:10px"><a class="btn red" href="${REPORT}">Get my free SEO report</a><a class="btn ghost" style="background:transparent;color:#fff;border-color:#93C5FD" href="${CAL}">Book a strategy call</a></div>
+<div style="display:flex;flex-wrap:wrap;gap:10px"><a class="btn red" href="${REPORT}">Get my free SEO report</a><a class="btn ghost" style="background:transparent;color:#fff;border-color:#93C5FD" href="/contact">Contact us</a></div>
 </aside>
 </div>
 </article>

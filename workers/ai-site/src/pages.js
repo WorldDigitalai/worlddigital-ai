@@ -134,7 +134,7 @@ export const PAGES = {
       { '@context': 'https://schema.org', '@type': 'Offer', name: 'SEO & AI Search Visibility plan', price: '199.99', priceCurrency: 'USD', url: `${SITE}/ai-seo-agency#plan`, seller: { '@id': `${SITE}/#org` } },
       crumbs([['Home', '/'], ['Services', '/services'], ['SEO & AI Search', '/ai-seo-agency']])], sitemap: { priority: '0.9' } },
   '/ai-seo-pricing': { keywords: 'ai seo pricing, ai seo cost, how much does ai seo cost, aeo pricing, geo pricing, affordable ai seo, ai seo services for small business, ai seo agency pricing', body: pricing, cta: false,
-    title: 'AI SEO Pricing 2026: $200/mo vs Agencies & Fiverr | WorldDigital.ai',
+    title: 'AI SEO Pricing 2026: $200/mo vs Agencies | WorldDigital.ai',
     description: 'How much AI SEO (AEO/GEO) costs in 2026: Fiverr gigs, $100-$500 plans, $500-$2,500 packages and $1,500+ agencies compared with sources. Our plan: $199.99/mo.',
     schema: [{ '@context': 'https://schema.org', '@type': 'Article', headline: 'AI SEO pricing in 2026: what $200 a month gets you vs. agencies and Fiverr', datePublished: '2026-10-27', dateModified: '2026-10-27', author: { '@id': 'https://worlddigital.us/#person' }, publisher: { '@id': `${SITE}/#org` }, mainEntityOfPage: `${SITE}/ai-seo-pricing` },
       { '@context': 'https://schema.org', '@type': 'Offer', name: 'SEO & AI Search Visibility plan', price: '199.99', priceCurrency: 'USD', url: `${SITE}/ai-seo-agency#plan`, seller: { '@id': `${SITE}/#org` } },

@@ -42,6 +42,31 @@ jobs:
         with:
           workload_identity_provider: ${{ env.WIF_PROVIDER }}
           service_account: ${{ env.DEPLOY_SA }}
+      - uses: google-github-actions/setup-gcloud@v2
+      # The site Worker and the API must share one token, and the GitHub secrets are the source of truth.
+      # Copy them into Secret Manager (a new version only when the value changed), so Cloud Run reads them
+      # as secrets instead of plain environment variables. Values are never printed.
+      # Needs tools/gcp/phase1-hardening.sh to have been run once (gives github-deploy access to these two secrets only).
+      - name: Sync shared secrets into Secret Manager
+        env:
+          TOOLS_API_TOKEN: ${{ secrets.TOOLS_API_TOKEN }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+        run: |
+          sync() {
+            local name=$1 val=$2 cur
+            [ -n "$val" ] || { echo "::error::GitHub secret for $name is empty"; exit 1; }
+            cur=$(gcloud secrets versions access latest --secret="$name" --project="$GCP_PROJECT")
+            if [ "$cur" = "$val" ]; then echo "$name: unchanged"
+            else printf '%s' "$val" | gcloud secrets versions add "$name" --data-file=- --project="$GCP_PROJECT" >/dev/null; echo "$name: new version added"; fi
+          }
+          sync INTERNAL_TOKEN "$TOOLS_API_TOKEN"
+          sync RESEND_API_KEY "$RESEND_API_KEY"
+      - name: Remember the serving revision (for automatic rollback)
+        id: prev
+        run: |
+          rev=$(gcloud run services describe "$SERVICE" --region="$REGION" --project="$GCP_PROJECT" \
+                --format='value(status.traffic[0].revisionName)' 2>/dev/null || true)
+          echo "revision=$rev" >> "$GITHUB_OUTPUT"; echo "serving before deploy: ${rev:-none}"
       - uses: google-github-actions/deploy-cloudrun@v2
         id: run
         with:
@@ -49,13 +74,13 @@ jobs:
           region: ${{ env.REGION }}
           project_id: ${{ env.GCP_PROJECT }}
           source: backend
-          flags: "--allow-unauthenticated --min-instances=0 --max-instances=3 --memory=512Mi --timeout=120"
+          # --remove-env-vars drops the two values that used to be passed in plain text; the app falls back to
+          # INTERNAL_TOKEN and RESEND_API_KEY from Secret Manager (see backend/app/config.py).
+          flags: "--allow-unauthenticated --min-instances=0 --max-instances=3 --memory=512Mi --timeout=120 --remove-env-vars=TOOLS_API_TOKEN,GH_RESEND_API_KEY"
           env_vars: |
             MONGODB_DB=worlddigital_ai
             PUBLIC_ORIGIN=https://worlddigital.ai
             PREVIEW_DAILY_LIMIT=6
-            TOOLS_API_TOKEN=${{ secrets.TOOLS_API_TOKEN }}
-            GH_RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}
           secrets: |
             MONGODB_URI=MONGODB_URI:5
             INTERNAL_TOKEN=INTERNAL_TOKEN:latest
@@ -64,7 +89,21 @@ jobs:
             DATAFORSEO_PASSWORD=DATAFORSEO_PASSWORD:latest
             STRIPE_SECRET_KEY=STRIPE_SECRET_KEY:latest
             RESEND_API_KEY=RESEND_API_KEY:latest
-      - name: Health check
+      - name: Send traffic to the new revision
+        # Clears any earlier rollback pin, so the health check below really tests the new revision.
+        run: gcloud run services update-traffic "$SERVICE" --region="$REGION" --project="$GCP_PROJECT" --to-latest
+      - name: Health check (site token and email key must still work)
+        env:
+          TOOLS_API_TOKEN: ${{ secrets.TOOLS_API_TOKEN }}
         run: |
-          curl -fsS "${{ steps.run.outputs.url }}/api/tools/health" | tee /tmp/h.json
+          curl -fsS -H "X-Internal-Token: $TOOLS_API_TOKEN" "${{ steps.run.outputs.url }}/api/tools/health" > /tmp/h.json
+          jq '{ok, site_token_match, configured}' /tmp/h.json
+          jq -e '.ok == true and .site_token_match == true and .configured.resend == true and .configured.internal_token == true' /tmp/h.json >/dev/null \
+            || { echo "::error::New revision failed the token/email check"; exit 1; }
           echo "::notice title=API URL::${{ steps.run.outputs.url }} (set as TOOLS_API_URL in workers/ai-site/wrangler.jsonc)"
+      - name: Roll back traffic if the new revision failed
+        if: failure() && steps.prev.outputs.revision != ''
+        run: |
+          gcloud run services update-traffic "$SERVICE" --region="$REGION" --project="$GCP_PROJECT" \
+            --to-revisions="${{ steps.prev.outputs.revision }}=100"
+          echo "::error::Traffic returned to ${{ steps.prev.outputs.revision }}. The site keeps working; fix and redeploy."

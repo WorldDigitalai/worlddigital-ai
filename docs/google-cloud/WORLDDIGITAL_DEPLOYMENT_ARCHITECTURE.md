@@ -57,11 +57,12 @@ flowchart TB
 | Data | BigQuery time travel (7 days) |
 
 ## Gaps → PROPOSED
-1. **Pull-request flow for production:** pushes go straight to `main` today. Use PRs (tests run on PR for backend and ai-site already) and branch protection requiring green checks.
-2. **Staging:** Cloud Run tagged revision (`--tag=staging --no-traffic`) + Worker preview versions for risky changes.
-3. **Cloud Run `--min-instances=0`** causes cold starts (a few seconds) on the first tool preview; acceptable now. Use `1` only if conversion data shows drop-off.
-4. **Dependency pinning in the Dockerfile:** it re-lists packages instead of using `uv.lock`. Install from the lockfile for reproducible builds.
-5. **Infrastructure as code:** capture GCP resources (projects, IAM, Scheduler, Pub/Sub, SQL) in Terraform before Phase 2 resources multiply.
+1. **Pull-request flow for production:** pushes go straight to `main` today. Use PRs (tests already run on PRs for the backend and ai-site). Branch protection that requires green checks needs GitHub Team or Pro, because the organization is on the free plan, which doesn't offer it for private repositories (verified 2026-11-02).
+2. **Automatic rollback on the tools API (IN PROGRESS, in the Phase 1 hardening PR):** the backend deploy remembers the serving revision, sends traffic to the new one, checks `/api/tools/health` with the site token (token match + email key configured), and returns traffic to the previous revision if the check fails.
+3. **Staging:** Cloud Run tagged revision (`--tag=staging --no-traffic`) + Worker preview versions for risky changes.
+4. **Cloud Run `--min-instances=0`** causes cold starts (a few seconds) on the first tool preview; acceptable now. Use `1` only if conversion data shows drop-off.
+5. **Dependency pinning in the Dockerfile:** it re-lists packages instead of using `uv.lock`. Install from the lockfile for reproducible builds.
+6. **Infrastructure as code:** capture GCP resources (projects, IAM, Scheduler, Pub/Sub, SQL) in Terraform before Phase 2 resources multiply.
 
 ## Related
 [Google Cloud](WORLDDIGITAL_GOOGLE_CLOUD_ARCHITECTURE.md) · [Backup and DR](../reliability/WORLDDIGITAL_BACKUP_AND_DISASTER_RECOVERY.md)

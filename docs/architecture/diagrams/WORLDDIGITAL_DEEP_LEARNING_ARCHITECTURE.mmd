@@ -1,0 +1,26 @@
+%% Diagram 4: How deep learning components relate. All PROPOSED; most use pretrained models through APIs.
+flowchart TB
+  classDef existing fill:#e6f4ea,stroke:#1e7e34,color:#0b3d17
+  classDef proposed fill:#fff4e5,stroke:#b26a00,color:#4a2c00,stroke-dasharray: 5 3
+
+  nn[Neural networks<br/>shared foundation]:::proposed
+  tr[Transformers<br/>pretrained, hosted]:::proposed
+  nlp[NLP: intent, entity, topic,<br/>sentiment on queries + AI answers]:::proposed
+  emb[Embeddings<br/>text + image]:::proposed
+  cv[Computer vision:<br/>creative attributes from ad images]:::proposed
+  ts[Time-series forecasting<br/>neural only if it beats ARIMA_PLUS]:::proposed
+  pred[Predictive models<br/>tabular: boosted trees first]:::proposed
+  recs[Recommendation engine<br/>rules + retrieval + ranking]:::proposed
+  gen[Generative AI:<br/>ad copy, content packs, reports]:::existing
+  rag[RAG over tenant knowledge<br/>per-tenant vector index]:::proposed
+
+  nn --> tr & cv & ts
+  tr --> nlp & emb & gen
+  cv --> emb
+  emb --> rag & recs
+  nlp --> pred & recs
+  cv --> pred
+  ts --> recs
+  pred --> recs
+  rag --> gen
+  recs --> gen

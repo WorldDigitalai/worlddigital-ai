@@ -1,0 +1,40 @@
+%% Diagram 5: Google Cloud infrastructure. Green = verified in code or BigQuery; orange dashed = proposed; grey = not verifiable from this session.
+flowchart TB
+  classDef existing fill:#e6f4ea,stroke:#1e7e34,color:#0b3d17
+  classDef proposed fill:#fff4e5,stroke:#b26a00,color:#4a2c00,stroke-dasharray: 5 3
+  classDef verify fill:#eeeeee,stroke:#777,color:#333
+
+  gh[GitHub Actions<br/>WorldDigitalai/worlddigital-ai]:::existing
+  wif[Workload Identity Federation<br/>pool: github]:::existing
+  dsa[SA github-deploy]:::existing
+  subgraph P[Project cs-poc-0zqkvyxapah85tnxz2byzqa - us-central1 / US]
+    run[Cloud Run: worlddigital-ai-api<br/>min 0, max 3, 512Mi]:::existing
+    rsa[Runtime SA: default compute]:::existing
+    sm[Secret Manager: 7 secrets]:::existing
+    ar[Artifact Registry + Cloud Build<br/>source deploys]:::existing
+    bq[(BigQuery: 17 datasets)]:::existing
+    dts[BigQuery Data Transfer:<br/>Google Ads]:::existing
+    gscx[Search Console bulk export]:::existing
+    ga4x[GA4 BigQuery export x2]:::existing
+    sched[Cloud Scheduler]:::proposed
+    ps[[Pub/Sub topics]]:::proposed
+    jobs[Cloud Run jobs:<br/>connectors, feature builds, scoring]:::proposed
+    gcs[(Cloud Storage:<br/>datasets, model artifacts)]:::proposed
+    sql[(Cloud SQL Postgres + pgvector)]:::proposed
+    vtx[Vertex AI: training, registry]:::proposed
+    mon[Cloud Monitoring + alerting]:::verify
+  end
+  subgraph PHI[Separate project - healthcare only, later]
+    phi[PHI workloads under BAA]:::proposed
+  end
+
+  gh --> wif --> dsa --> run & ar
+  ar --> run
+  run --> rsa --> sm
+  dts & gscx & ga4x --> bq
+  sched --> ps --> jobs
+  jobs --> bq & gcs & sql
+  gcs --> vtx --> gcs
+  bq --> jobs
+  run --> mon
+  jobs --> mon

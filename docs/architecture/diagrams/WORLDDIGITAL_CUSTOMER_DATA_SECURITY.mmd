@@ -1,0 +1,27 @@
+%% Diagram 6: Customer data and security architecture (PROPOSED - no customer accounts exist today).
+flowchart LR
+  classDef existing fill:#e6f4ea,stroke:#1e7e34,color:#0b3d17
+  classDef proposed fill:#fff4e5,stroke:#b26a00,color:#4a2c00,stroke-dasharray: 5 3
+  classDef gate fill:#fde8e8,stroke:#b42318,color:#5c0b0b
+
+  user([Customer user]):::proposed
+  idp[Identity: email magic link / Google OIDC<br/>MFA for admins]:::proposed
+  edge[Cloudflare edge:<br/>WAF, Turnstile, rate limits]:::existing
+  gw[API layer: verifies session,<br/>resolves tenant_id + role]:::proposed
+  rbac{RBAC check<br/>owner, admin, viewer}:::gate
+  svc[Intelligence services]:::proposed
+  sql[(Cloud SQL: row-level security<br/>by tenant_id)]:::proposed
+  bq[(BigQuery: authorized views +<br/>row access policies by tenant_id)]:::proposed
+  tok[(OAuth refresh tokens:<br/>Secret Manager / KMS envelope)]:::proposed
+  models[Models: per-tenant by default;<br/>pooled only with consent]:::gate
+  audit[(worlddigital_audit +<br/>Cloud Audit Logs)]:::existing
+  del[Deletion workflow:<br/>tenant offboarding, 30-day purge]:::proposed
+
+  user --> edge --> idp --> gw --> rbac
+  rbac -->|allowed| svc
+  rbac -->|denied| audit
+  svc --> sql & bq & tok
+  svc --> models
+  svc --> audit
+  del --> sql & bq & tok & models
+  del --> audit

@@ -10,11 +10,11 @@ Priority: P0 = do first; P1 = this phase; P2 = next. Effort: S ≤ 2 days, M ≤
 ## Phase 1
 | ID | P | Task | Repo / place | Effort | Approval? |
 |---|---|---|---|---|---|
-| B-01 | P0 | Merge this documentation | worlddigital-ai `docs/` | S | Yes (PR review) |
-| B-02 | P0 | Billing budget + alerts on the GCP project | GCP console | S | Yes (billing) |
-| B-03 | P0 | Move `TOOLS_API_TOKEN` and the Resend key into Secret Manager references in `deploy-backend.yml` | worlddigital-ai | S | Yes (prod config) |
-| B-04 | P0 | Create a read-only service account for `site-audit.yml`; reduce `github-deploy` roles | GCP IAM | S | Yes (IAM) |
-| B-05 | P0 | MFA review on GitHub, Cloudflare, Google, Stripe, Atlas, Resend, DataForSEO | accounts | S | – |
+| B-01 | P0 | ✅ DONE 2026-11-02 (PR #2). Merge this documentation | worlddigital-ai `docs/` | S | Yes (PR review) |
+| B-02 | P0 | IN PROGRESS: `tools/gcp/phase1-hardening.sh` step 1. Billing budget + alerts on the GCP project | GCP console | S | Yes (billing) |
+| B-03 | P0 | IN PROGRESS: script step 2 + `deploy-backend.yml` secret sync, with automatic rollback. Move `TOOLS_API_TOKEN` and the Resend key into Secret Manager references | worlddigital-ai | S | Yes (prod config) |
+| B-04 | P0 | IN PROGRESS: script steps 3–4 + `site-audit.yml`. Create a read-only service account for `site-audit.yml`; reduce `github-deploy` roles | GCP IAM | S | Yes (IAM) |
+| B-05 | P0 | IN PROGRESS: founder works through the [checklist](../security/WORLDDIGITAL_SECURITY_ARCHITECTURE.md#account-security-checklist-s-7). MFA review on GitHub, Cloudflare, Google, Stripe, Atlas, Resend, DataForSEO | accounts | S | – |
 | B-06 | P1 | Stripe webhook → record purchases server-side (GA4 Measurement Protocol + Google Ads offline conversion + BigQuery); keep the client event until reconciled | worlddigital-us report Worker or Cloud Run | M | Yes (prod behavior) |
 | B-07 | P1 | Cloudflare Access on report admin paths | Cloudflare | S | Yes |
 | B-08 | P1 | Decide the project structure (`worlddigital-prod`/`-dev`); write the migration plan | docs | S | Yes |

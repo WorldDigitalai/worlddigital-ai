@@ -24,7 +24,8 @@ jobs:
         continue-on-error: true
         with:
           workload_identity_provider: projects/250920469327/locations/global/workloadIdentityPools/github/providers/github
-          service_account: github-deploy@cs-poc-0zqkvyxapah85tnxz2byzqa.iam.gserviceaccount.com
+          # Read-only account (BigQuery jobs + Search Console data), created by tools/gcp/phase1-hardening.sh.
+          service_account: site-audit-reader@cs-poc-0zqkvyxapah85tnxz2byzqa.iam.gserviceaccount.com
       - uses: google-github-actions/setup-gcloud@v2
         if: steps.gcp.outcome == 'success'
         continue-on-error: true

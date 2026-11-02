@@ -1,0 +1,54 @@
+%% Diagram 1: Overall WorldDigital ecosystem. Solid = EXISTING (verified), dashed = PROPOSED, grey = NEEDS VERIFICATION.
+flowchart LR
+  classDef existing fill:#e6f4ea,stroke:#1e7e34,color:#0b3d17
+  classDef proposed fill:#fff4e5,stroke:#b26a00,color:#4a2c00,stroke-dasharray: 5 3
+  classDef verify fill:#eeeeee,stroke:#777,color:#333
+
+  visitor([Visitor / prospect]):::existing
+  customer([Customer business - future tenant]):::proposed
+
+  subgraph CF[Cloudflare account 7a05f2ae]
+    aiSite[worlddigital-ai-site Worker<br/>pages, blog, editor, tools proxy<br/>Durable Object SQLite]:::existing
+    crawl[worlddigital-ai-crawl-files<br/>forwarder, marked for retirement]:::existing
+    usSite[worlddigitalus Worker<br/>Astro static site]:::existing
+    report[worlddigital-report<br/>Python Worker: free report,<br/>follow-ups, monitor, AI visibility]:::existing
+    unsub[worlddigital-unsubscribe<br/>Python Worker]:::existing
+    kv[(KV: REPORTS)]:::existing
+  end
+
+  subgraph GCP[Google Cloud project cs-poc-0zqkvyxapah85tnxz2byzqa]
+    api[Cloud Run: worlddigital-ai-api<br/>FastAPI paid tools]:::existing
+    sm[Secret Manager]:::existing
+    bq[(BigQuery warehouse<br/>17 datasets)]:::existing
+    intel[Intelligence API<br/>Cloud Run]:::proposed
+    sql[(Cloud SQL Postgres<br/>tenants, users, connections)]:::proposed
+    sched[Cloud Scheduler + Pub/Sub<br/>ingestion jobs]:::proposed
+  end
+
+  mongo[(MongoDB Atlas<br/>worlddigital_ai)]:::existing
+  portal[Customer portal + dashboards]:::proposed
+
+  subgraph EXT[External services]
+    dfs[DataForSEO]:::existing
+    oai[OpenAI]:::existing
+    stripe[Stripe]:::existing
+    resend[Resend]:::existing
+    google[GSC, GA4, Google Ads<br/>native BigQuery exports]:::existing
+    adsapi[Meta, TikTok, Snapchat,<br/>Google Ads APIs]:::proposed
+  end
+
+  visitor --> aiSite & usSite
+  usSite -->|free report form| report
+  aiSite -->|/free-seo-report| report
+  aiSite -->|/api/tools/* + internal token| api
+  crawl --> aiSite
+  report --> kv
+  report --> dfs & resend
+  report --> unsub
+  api --> mongo & dfs & oai & stripe & resend
+  api --> sm
+  google --> bq
+  customer --> portal --> intel
+  intel --> sql & bq
+  sched --> adsapi
+  sched --> bq

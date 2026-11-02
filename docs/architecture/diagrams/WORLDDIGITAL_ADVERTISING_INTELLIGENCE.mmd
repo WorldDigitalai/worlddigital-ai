@@ -1,0 +1,33 @@
+%% Diagram 3: Advertising intelligence workflow. Human approval is required before any spend or campaign change.
+flowchart LR
+  classDef existing fill:#e6f4ea,stroke:#1e7e34,color:#0b3d17
+  classDef proposed fill:#fff4e5,stroke:#b26a00,color:#4a2c00,stroke-dasharray: 5 3
+  classDef gate fill:#fde8e8,stroke:#b42318,color:#5c0b0b
+
+  subgraph SRC[Ad platforms]
+    gads[Google Ads<br/>BigQuery Data Transfer<br/>account 442-763-5466]:::existing
+    gapi[Google Ads API<br/>per tenant]:::proposed
+    meta[Meta Marketing API]:::proposed
+    tt[TikTok Business API]:::proposed
+    snap[Snapchat Marketing API]:::proposed
+  end
+  conn[Connector workers<br/>Cloud Run jobs, OAuth tokens in Secret Manager]:::proposed
+  ps[[Pub/Sub: ads.raw]]:::proposed
+  raw[(worlddigital_raw.raw_google_ads<br/>+ per-platform raw tables)]:::existing
+  norm[(worlddigital_core.daily_campaign_metrics<br/>unified schema, tenant_id)]:::existing
+  feat[Features: CPA trend, spend pacing,<br/>CTR decay, conversion lag]:::proposed
+  models[Models: spend anomaly,<br/>CPA forecast, budget reallocation]:::proposed
+  rec[(worlddigital_ai.ai_recommendations)]:::existing
+  ui[Dashboard: recommendation<br/>with rationale + confidence]:::proposed
+  approve{Customer approves?}:::gate
+  act[(worlddigital_ai.ai_actions<br/>requires_approval = true)]:::existing
+  exec[Executor: applies change<br/>within policy limits]:::proposed
+  outcome[(worlddigital_ai.ai_decisions<br/>measured outcome)]:::existing
+
+  gads --> raw
+  gapi & meta & tt & snap --> conn --> ps --> raw
+  raw --> norm --> feat --> models --> rec --> ui --> approve
+  approve -->|yes| act --> exec
+  exec -->|write via platform API| gapi & meta & tt & snap
+  exec --> outcome --> feat
+  approve -->|no / edit| rec

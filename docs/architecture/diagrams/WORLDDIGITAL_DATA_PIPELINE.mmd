@@ -1,0 +1,23 @@
+%% Diagram 7: Data pipeline, current versus proposed.
+flowchart LR
+  classDef existing fill:#e6f4ea,stroke:#1e7e34,color:#0b3d17
+  classDef proposed fill:#fff4e5,stroke:#b26a00,color:#4a2c00,stroke-dasharray: 5 3
+  classDef manual fill:#eef2ff,stroke:#4338ca,color:#1e1b4b
+
+  gsc[Search Console export<br/>daily, automatic]:::existing
+  ga4[GA4 export<br/>daily + intraday]:::existing
+  ads[Google Ads transfer<br/>daily]:::existing
+  aivis[report Worker: weekly AI visibility<br/>stored in KV]:::existing
+  snap[GitHub Action: commits JSON<br/>to data/ai-visibility]:::existing
+  load[Manual: ai_visibility_sql.py<br/>+ refresh_raw_tables.sql]:::manual
+  raw[(seo_raw, analytics_raw,<br/>ads_raw, geo_raw)]:::existing
+  marts[(marketing_marts<br/>mostly empty since 2026-08-27)]:::existing
+  dq[Dataform or scheduled SQL:<br/>tests, freshness, lineage]:::proposed
+  core[(worlddigital_core)]:::existing
+  out[Dashboards, reports, models]:::proposed
+
+  gsc & ga4 & ads --> raw
+  aivis --> snap --> load --> raw
+  gsc & ga4 & ads -.-> load
+  raw --> dq --> core --> marts --> out
+  aivis -. proposed: direct load .-> raw

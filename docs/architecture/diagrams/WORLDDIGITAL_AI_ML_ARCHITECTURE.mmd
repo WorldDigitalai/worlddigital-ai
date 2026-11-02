@@ -1,0 +1,47 @@
+%% Diagram 2: AI and machine learning lifecycle (all PROPOSED except where marked EXISTING).
+flowchart TB
+  classDef existing fill:#e6f4ea,stroke:#1e7e34,color:#0b3d17
+  classDef proposed fill:#fff4e5,stroke:#b26a00,color:#4a2c00,stroke-dasharray: 5 3
+
+  subgraph COLLECT[1. Collect - authorized data only]
+    g1[GSC, GA4, Google Ads exports]:::existing
+    g2[AI visibility runs]:::existing
+    g3[Tenant ad accounts via OAuth]:::proposed
+    g4[Server-side conversions<br/>Stripe webhooks, CRM]:::proposed
+  end
+  subgraph PROCESS[2. Process]
+    raw[(raw datasets<br/>append-only)]:::existing
+    stg[(staging: validated,<br/>normalized, PII-minimized)]:::proposed
+    core[(core: tenant-scoped<br/>conformed tables)]:::proposed
+  end
+  subgraph FEAT[3. Features]
+    fe[SQL feature views<br/>point-in-time correct]:::proposed
+    ds[(Training snapshots<br/>Cloud Storage, versioned)]:::proposed
+  end
+  subgraph MODEL[4. Models]
+    base[Baselines: rules,<br/>last-period, moving average]:::proposed
+    bqml[BigQuery ML<br/>ARIMA_PLUS, boosted trees, k-means]:::proposed
+    vtx[Vertex AI custom training<br/>only when baselines are beaten]:::proposed
+    llm[LLM layer: explanations,<br/>content, summaries]:::existing
+  end
+  subgraph EVAL[5. Evaluate]
+    ev[Holdout + backtest metrics<br/>vs baseline; fairness per tenant]:::proposed
+    reg[Model registry<br/>version, data hash, metrics]:::proposed
+  end
+  subgraph SERVE[6. Serve]
+    batch[Batch scoring to BigQuery<br/>ai_recommendations]:::proposed
+    online[Prediction API on Cloud Run]:::proposed
+  end
+  subgraph MON[7. Monitor]
+    drift[Drift + accuracy monitors]:::proposed
+    retrain{Retrain justified?}:::proposed
+  end
+
+  g1 & g2 & g3 & g4 --> raw --> stg --> core --> fe --> ds
+  ds --> base & bqml & vtx
+  base & bqml & vtx --> ev --> reg
+  reg --> batch & online
+  llm --> batch
+  batch & online --> drift --> retrain
+  retrain -->|yes| ds
+  retrain -->|no| drift

@@ -406,6 +406,17 @@ def clean_mongo_uri(raw: str) -> str:
 _billing: Billing | None = None
 
 
+def _billing_call(name, *args):
+    """Billing endpoints are internal (token-guarded), so unexpected errors are returned with their cause."""
+    try:
+        return getattr(billing(), name)(*args)
+    except ApiError:
+        raise
+    except Exception as e:  # noqa: BLE001
+        log.exception("billing error")
+        raise ApiError(f"billing {type(e).__name__}: {e}", 500, f"Billing error: {type(e).__name__}: {str(e)[:300]}")
+
+
 def billing() -> Billing:
     global _billing
     if _billing is None:
@@ -416,32 +427,32 @@ def billing() -> Billing:
 
 @app.post("/api/tools/billing/plan", dependencies=[Depends(guard)])
 async def billing_plan(request: Request):
-    return json_ok(await run_in_threadpool(billing().start_plan, await body_of(request)))
+    return json_ok(await run_in_threadpool(_billing_call, "start_plan", await body_of(request)))
 
 
 @app.post("/api/tools/billing/invoice", dependencies=[Depends(guard)])
 async def billing_invoice(request: Request):
-    return json_ok(await run_in_threadpool(billing().one_off, await body_of(request)))
+    return json_ok(await run_in_threadpool(_billing_call, "one_off", await body_of(request)))
 
 
 @app.post("/api/tools/billing/run", dependencies=[Depends(guard)])
 async def billing_run():
-    return json_ok(await run_in_threadpool(billing().run))
+    return json_ok(await run_in_threadpool(_billing_call, "run"))
 
 
 @app.post("/api/tools/billing/cancel", dependencies=[Depends(guard)])
 async def billing_cancel(request: Request):
-    return json_ok(await run_in_threadpool(billing().cancel_plan, str((await body_of(request)).get("id") or "")))
+    return json_ok(await run_in_threadpool(_billing_call, "cancel_plan", str((await body_of(request)).get("id") or "")))
 
 
 @app.post("/api/tools/billing/cancel-invoice", dependencies=[Depends(guard)])
 async def billing_cancel_invoice(request: Request):
-    return json_ok(await run_in_threadpool(billing().cancel_invoice, str((await body_of(request)).get("number") or "")))
+    return json_ok(await run_in_threadpool(_billing_call, "cancel_invoice", str((await body_of(request)).get("number") or "")))
 
 
 @app.get("/api/tools/billing", dependencies=[Depends(guard)])
 async def billing_overview():
-    return json_ok(await run_in_threadpool(billing().overview))
+    return json_ok(await run_in_threadpool(_billing_call, "overview"))
 
 
 # ── Site chat (AI Ahmad) ────────────────────────────────────────────────────

@@ -1,0 +1,23 @@
+name: Billing (Mercury) daily
+# Every morning: send monthly plan invoices that are due, check which Mercury invoices are paid,
+# email receipts and flag past-due plans. Safe to run any number of times (each invoice number is unique).
+on:
+  schedule:
+    - cron: "7 13 * * *"   # ~7-8am Chicago
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send due invoices and sync payments
+        env:
+          TOKEN: ${{ secrets.TOOLS_API_TOKEN }}
+          API: https://worlddigital-ai-api-250920469327.us-central1.run.app
+        run: |
+          code=$(curl -s -o out.json -w "%{http_code}" -X POST "$API/api/tools/billing/run" -H "x-internal-token: $TOKEN" --max-time 280)
+          cat out.json; echo
+          if [ "$code" = "503" ]; then echo "::warning::Mercury is not connected yet (MERCURY_API_TOKEN / MERCURY_ACCOUNT_ID)."; exit 0; fi
+          [ "$code" = "200" ] || { echo "::error::billing run returned $code"; exit 1; }
+          python3 -c "import json;d=json.load(open('out.json'));print(f\"::notice title=Billing::renewals {d['renewals']}, paid {d['paid']}, checked {d['checked']}\");[print('::error::'+e[:300]) for e in d.get('errors',[])];exit(1 if d.get('errors') else 0)"

@@ -8,7 +8,7 @@ import { handleAdmin, sendEmail, sha256 } from './admin.js';
 import { ROBOTS, LLMS, LLMS_FULL, UPDATED } from './crawl-text.js';
 import { SOCIAL_UPDATED } from './social.js';
 import { INDEXNOW_KEY, PROD_HOSTS, isAppPath } from './routing.js';
-import { toolsProxy } from './tools-proxy.js';
+import { toolsProxy, backend } from './tools-proxy.js';
 import { withTool } from './tools-widget.js';
 import { humanOk } from './human.js';
 import { htmlToMarkdown, wantsMarkdown } from './markdown.js';
@@ -103,12 +103,15 @@ async function pingNew(env) {
 
 async function formSubmit(req, env, ctx, kind) {
   const isJson = (req.headers.get('Accept') || '').includes('json');
+  const cors = req.headers.get('Origin') === 'https://worlddigital.us' && kind === 'plan' ? { 'Access-Control-Allow-Origin': 'https://worlddigital.us', Vary: 'Origin' } : {};
   const reply = (ok, message, status = 200) => isJson
-    ? new Response(JSON.stringify({ ok, message }), { status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } })
+    ? new Response(JSON.stringify({ ok, message }), { status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...cors } })
     : html(page({ path: '/thanks', title: 'Thank you | WorldDigital.ai', description: message, noindex: true, body: `<section class="sec"><div class="wrap" style="max-width:720px"><h1 class="h" style="font-size:38px">${ok ? 'Thank you!' : 'Something went wrong'}</h1><p style="font-size:18px">${esc(message)}</p><p><a class="btn red" href="/">Back to home</a></p></div></section>` }), status, 'no-store');
   const url = new URL(req.url);
   const o = req.headers.get('Origin');
-  if (o && o !== url.origin) return reply(false, 'Please submit the form from our website.', 403);
+  // The plan signup form also lives on worlddigital.us (same company); everything else is same-origin only.
+  const partner = kind === 'plan' && o === 'https://worlddigital.us';
+  if (o && o !== url.origin && !partner) return reply(false, 'Please submit the form from our website.', 403);
   let f; try { f = await req.formData(); } catch { return reply(false, 'Please fill in the form and try again.', 400); }
   if (String(f.get('company_site') || '')) return reply(true, 'Thanks! We got it.'); // honeypot: quietly ignore bots
   if (!(await humanOk(env, String(f.get('cf-turnstile-response') || ''), req.headers.get('CF-Connecting-IP') || ''))) return reply(false, 'Please complete the quick human check and try again.', 403);
@@ -116,6 +119,16 @@ async function formSubmit(req, env, ctx, kind) {
   const email = g('email', 200).toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return reply(false, 'Please enter a valid email address.', 400);
   let data, subject, message;
+  if (kind === 'plan') {
+    // $199.99/month SEO plan: Mercury creates the customer and emails the first invoice (backend/app/billing.py).
+    const body = { plan: 'seo', name: g('name', 120), email, company: g('company', 160), website: g('website', 200) };
+    if (!body.name || !body.website) return reply(false, 'Please enter your name and business website.', 400);
+    const ipHash0 = await sha256(`${req.headers.get('CF-Connecting-IP') || ''}|wd`);
+    if (!(await store(env).addLead('plan', body, ipHash0.slice(0, 32)))) return reply(false, 'We already received several sign-ups from you. Please email support@worlddigital.ai.', 429);
+    const r = await backend(env, 'POST', '/api/tools/billing/plan', body);
+    if (!r.ok) return reply(false, r.data.error || 'We could not create your invoice. Please email support@worlddigital.ai.', r.status >= 500 ? 503 : 400);
+    return reply(true, r.data.message || 'Done! Check your inbox for your first invoice.');
+  }
   if (kind === 'contact') {
     data = { name: g('name', 120), email, company: g('company', 160), website: g('website', 200), topic: g('topic', 120), message: g('message', 4000) };
     if (!data.name || !data.topic || !data.message) return reply(false, 'Please fill in your name, topic and message.', 400);
@@ -235,6 +248,8 @@ async function handle(req, env, ctx) {
   if (req.method === 'POST' && path === '/api/site/waitlist') return formSubmit(req, env, ctx, 'waitlist');
   if (req.method === 'POST' && path === '/api/site/apply') return formSubmit(req, env, ctx, 'apply');
   if (req.method === 'POST' && path === '/api/site/contact') return formSubmit(req, env, ctx, 'contact');
+  if (req.method === 'POST' && path === '/api/site/plan') return formSubmit(req, env, ctx, 'plan');
+  if (req.method === 'OPTIONS' && path === '/api/site/plan') return new Response(null, { status: 204, headers: { 'Access-Control-Allow-Origin': 'https://worlddigital.us', 'Access-Control-Allow-Methods': 'POST', 'Access-Control-Allow-Headers': 'Accept', 'Access-Control-Max-Age': '86400', Vary: 'Origin' } });
 
   // Anything else: our own 404 (the old app only when LEGACY_APP=1).
   if (prod && legacy) return passthrough();

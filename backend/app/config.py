@@ -2,7 +2,7 @@
 
 Secrets (Cloud Run > worlddigital-ai-api > Variables & Secrets, or GitHub Actions secrets):
   MONGODB_URI, OPENAI_API_KEY, DATAFORSEO_LOGIN, DATAFORSEO_PASSWORD,
-  STRIPE_SECRET_KEY, RESEND_API_KEY, TURNSTILE_SECRET (optional), INTERNAL_TOKEN
+  STRIPE_SECRET_KEY, MERCURY_API_TOKEN, MERCURY_ACCOUNT_ID, RESEND_API_KEY, TURNSTILE_SECRET (optional), INTERNAL_TOKEN
 """
 from __future__ import annotations
 
@@ -35,6 +35,13 @@ class Settings:
     stripe_base: str = field(default_factory=lambda: _env("STRIPE_BASE", "https://api.stripe.com"))
     stripe_automatic_tax: bool = field(default_factory=lambda: _env("STRIPE_AUTOMATIC_TAX", "true") != "false")
     stripe_tax_behavior: str = field(default_factory=lambda: _env("STRIPE_TAX_BEHAVIOR", "inclusive"))
+
+    # Mercury invoicing (plan + one-off invoices). Token: read-write, bound to the backend's static egress IP.
+    mercury_api_token: str = field(default_factory=lambda: _env("MERCURY_API_TOKEN"))
+    mercury_account_id: str = field(default_factory=lambda: _env("MERCURY_ACCOUNT_ID"))
+    mercury_base: str = field(default_factory=lambda: _env("MERCURY_BASE", "https://api.mercury.com/api/v1"))
+    mercury_card: bool = field(default_factory=lambda: _env("MERCURY_CARD", "false") == "true")
+    billing_notify: str = field(default_factory=lambda: _env("BILLING_NOTIFY", "support@worlddigital.ai"))
 
     resend_api_key: str = field(default_factory=lambda: _env("GH_RESEND_API_KEY") or _env("RESEND_API_KEY"))
     resend_base: str = field(default_factory=lambda: _env("RESEND_BASE", "https://api.resend.com"))

@@ -1,0 +1,40 @@
+name: One-time setup - fixed outbound IP for the tools API (Mercury allowlist)
+# Mercury only accepts read-write API tokens from allowlisted IP addresses. Cloud Run has no fixed
+# outbound IP by default, so this gives worlddigital-ai-api one: a reserved static IP + Cloud NAT, and
+# routes the service's outbound traffic through the VPC. Costs a few dollars a month (static IP + NAT).
+# Run manually once; it is safe to re-run. The IP to allowlist in Mercury is printed at the end.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+env:
+  PROJECT: cs-poc-0zqkvyxapah85tnxz2byzqa
+  REGION: us-central1
+  SERVICE: worlddigital-ai-api
+jobs:
+  egress:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/250920469327/locations/global/workloadIdentityPools/github/providers/github
+          service_account: github-deploy@cs-poc-0zqkvyxapah85tnxz2byzqa.iam.gserviceaccount.com
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Static IP, router and NAT
+        run: |
+          set -e
+          g="gcloud --project=$PROJECT --quiet"
+          $g services enable compute.googleapis.com vpcaccess.googleapis.com
+          $g compute addresses describe wd-api-egress --region=$REGION >/dev/null 2>&1 || $g compute addresses create wd-api-egress --region=$REGION
+          $g compute routers describe wd-api-router --region=$REGION >/dev/null 2>&1 || $g compute routers create wd-api-router --network=default --region=$REGION
+          $g compute routers nats describe wd-api-nat --router=wd-api-router --region=$REGION >/dev/null 2>&1 || \
+            $g compute routers nats create wd-api-nat --router=wd-api-router --region=$REGION --nat-external-ip-pool=wd-api-egress --nat-all-subnet-ip-ranges
+      - name: Send the API's outbound traffic through the NAT
+        run: |
+          gcloud --project=$PROJECT --quiet run services update $SERVICE --region=$REGION --network=default --subnet=default --vpc-egress=all-traffic
+      - name: Show the IP to allowlist in Mercury
+        run: |
+          ip=$(gcloud --project=$PROJECT compute addresses describe wd-api-egress --region=$REGION --format='value(address)')
+          echo "::notice title=Allowlist this IP in Mercury::$ip"
+          curl -fsS https://worlddigital-ai-api-250920469327.us-central1.run.app/api/tools/health

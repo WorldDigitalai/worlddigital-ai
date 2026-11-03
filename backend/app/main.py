@@ -10,11 +10,20 @@ X-Internal-Token and the visitor's IP (CF-Connecting-IP).
   GET  /api/tools/order?session=     verify payment, return everything, email the file once
   GET  /api/tools/download?session=&format=pdf|xlsx|docx
   GET  /api/tools/health
+<<<<<<< Updated upstream
 
 Blog editor only (the site forwards these from /blog-admin/ai/* for a signed-in editor; the public
 /api/tools proxy never reaches them):
   POST /api/admin/blog/research      {topic, country, competitors}   -> trends, keywords, SERP, post ideas
   POST /api/admin/blog/draft         {title, keyword, type, competitors, notes, country, words} -> full post
+=======
+  POST /api/tools/billing/plan       {name, email, company, website, plan}  -> Mercury customer + first invoice (emailed)
+  POST /api/tools/billing/invoice    {name, email, company, items[], due_days, memo} -> one-off Mercury invoice
+  POST /api/tools/billing/run        daily: renewal invoices, paid-status sync, receipts
+  POST /api/tools/billing/cancel     {id}
+  GET  /api/tools/billing            subscriptions + invoices
+  (billing paths are blocked on the public site proxy; only the site's own form handler, admin and cron call them)
+>>>>>>> Stashed changes
 """
 from __future__ import annotations
 
@@ -32,7 +41,11 @@ from fastapi.responses import JSONResponse, Response
 from starlette.concurrency import run_in_threadpool
 from pymongo import MongoClient
 
+<<<<<<< Updated upstream
 from . import blog_ai
+=======
+from .billing import Billing
+>>>>>>> Stashed changes
 from .config import Settings
 from .exports import FORMATS, build_file
 from .products import COUNTRIES, PLATFORMS, PRODUCTS, generate_content, generate_keywords, report_title
@@ -378,6 +391,42 @@ def clean_mongo_uri(raw: str) -> str:
     return f"{scheme}://{quote_plus(unquote_plus(user.strip()))}:{quote_plus(unquote_plus(pw))}@{host.strip()}"
 
 
+_billing: Billing | None = None
+
+
+def billing() -> Billing:
+    global _billing
+    if _billing is None:
+        _billing = Billing(settings(), store().db)
+        _billing.ensure_indexes()
+    return _billing
+
+
+@app.post("/api/tools/billing/plan", dependencies=[Depends(guard)])
+async def billing_plan(request: Request):
+    return json_ok(await run_in_threadpool(billing().start_plan, await body_of(request)))
+
+
+@app.post("/api/tools/billing/invoice", dependencies=[Depends(guard)])
+async def billing_invoice(request: Request):
+    return json_ok(await run_in_threadpool(billing().one_off, await body_of(request)))
+
+
+@app.post("/api/tools/billing/run", dependencies=[Depends(guard)])
+async def billing_run():
+    return json_ok(await run_in_threadpool(billing().run))
+
+
+@app.post("/api/tools/billing/cancel", dependencies=[Depends(guard)])
+async def billing_cancel(request: Request):
+    return json_ok(await run_in_threadpool(billing().cancel_plan, str((await body_of(request)).get("id") or "")))
+
+
+@app.get("/api/tools/billing", dependencies=[Depends(guard)])
+async def billing_overview():
+    return json_ok(await run_in_threadpool(billing().overview))
+
+
 @app.get("/api/tools/health")
 def health(request: Request):
     s = settings()
@@ -399,5 +448,6 @@ def health(request: Request):
         "dataforseo": bool(s.dataforseo_password) and "@" in s.dataforseo_login,
         "stripe": key.startswith(("sk_test_", "sk_live_", "rk_test_", "rk_live_")),
         "stripe_mode": ("live" if key.startswith(("sk_live", "rk_live")) else "test") if key else None,
+        "mercury": bool(s.mercury_api_token and s.mercury_account_id),
         "resend": s.resend_api_key.startswith("re_"), "turnstile": bool(s.turnstile_secret),
         "internal_token": bool(s.internal_token)}}

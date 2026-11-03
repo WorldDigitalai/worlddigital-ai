@@ -34,7 +34,9 @@ class Mocks:
     def chat(self, request):
         self.openai += 1
         user = json.loads(request.content)["messages"][1]["content"]
-        if "seed search phrases" in user:
+        if "Write AI Ahmad's next reply" in user:
+            out = {"reply": "Our SEO plan is $199.99 a month with no contract. See /ai-seo-pricing"}
+        elif "seed search phrases" in user:
             out = {"seeds": ["plumber houston", "water heater repair"]}
         elif "Choose the 10 keywords" in user:
             out = {"keywords": [{"index": i, "intent": "Local" if i % 2 else "Transactional",
@@ -237,3 +239,27 @@ def test_excel_never_writes_formulas():
            "items": [{"angle": "=HYPERLINK(\"http://evil\")", "fields": [{"label": "Post", "max": 280, "text": "=1+1"}]}] * 5}
     ws = load_workbook(io.BytesIO(build_xlsx(job))).active
     assert ws["B5"].data_type == "s" and ws["C5"].value == "=1+1" and ws["C5"].data_type == "s"
+
+
+def test_chat(env, monkeypatch):
+    c, m = env
+    monkeypatch.setenv("CHAT_DAILY_LIMIT", "2")
+    main.settings.cache_clear()
+    assert c.post("/api/tools/chat", json={"messages": []}).status_code == 400
+    assert c.post("/api/tools/chat", json={"messages": [{"role": "assistant", "content": "hi"}]}).status_code == 400
+    long = [{"role": "user", "content": "x" * 5000}] * 30 + [{"role": "user", "content": "How much is SEO?"}]
+    r = c.post("/api/tools/chat", json={"messages": long})
+    assert r.status_code == 200 and "$199.99" in r.json()["reply"]
+    assert c.post("/api/tools/chat", json={"messages": [{"role": "user", "content": "hi"}]}).status_code == 200
+    r = c.post("/api/tools/chat", json={"messages": [{"role": "user", "content": "hi"}]})
+    assert r.status_code == 429 and "contact" in r.json()["error"]
+    assert TestClient(main.app).post("/api/tools/chat", json={"messages": [{"role": "user", "content": "hi"}]}).status_code == 403
+    main.settings.cache_clear()
+
+
+def test_chat_trims_history():
+    from app import chat
+    msgs = chat.clean_messages([{"role": "user", "content": " a  b "}, {"role": "system", "content": "x"}] * 20
+                               + [{"role": "user", "content": "q" * 2000}])
+    assert len(msgs) <= chat.MAX_TURNS and all(x["role"] in ("user", "assistant") for x in msgs)
+    assert len(msgs[-1]["content"]) == chat.MAX_CHARS

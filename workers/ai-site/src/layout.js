@@ -1,4 +1,5 @@
 // Shared page shell for worlddigital.ai: head (SEO + analytics), header, footer, CSS.
+import { CHAT_HTML } from './chat.js';
 export const SITE = 'https://worlddigital.ai';
 export const CONTACT = '/contact';
 export const START = '/tools';
@@ -320,6 +321,7 @@ ${o.cta === false ? '' : CTA}
 </main>
 ${footer()}
 ${o.cta === false && o.noFloat ? '' : `<div class="m-cta"><a class="btn red" href="${START}">Start free</a><a class="btn ghost" href="${CONTACT}">Contact us</a></div>`}
+${o.noChat ? '' : CHAT_HTML}
 <script>${FORM_JS}</script>
 </body>
 </html>`;

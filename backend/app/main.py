@@ -9,6 +9,7 @@ X-Internal-Token and the visitor's IP (CF-Connecting-IP).
   POST /api/tools/checkout           {id, format}                    -> Stripe Checkout URL
   GET  /api/tools/order?session=     verify payment, return everything, email the file once
   GET  /api/tools/download?session=&format=pdf|xlsx|docx
+  POST /api/tools/chat               {messages}                      -> AI Ahmad reply (site chat widget)
   GET  /api/tools/health
 
 Blog editor only (the site forwards these from /blog-admin/ai/* for a signed-in editor; the public
@@ -40,7 +41,7 @@ from fastapi.responses import JSONResponse, Response
 from starlette.concurrency import run_in_threadpool
 from pymongo import MongoClient
 
-from . import blog_ai
+from . import blog_ai, chat
 from .billing import Billing
 from .config import Settings
 from .exports import FORMATS, build_file
@@ -436,6 +437,16 @@ async def billing_cancel(request: Request):
 @app.get("/api/tools/billing", dependencies=[Depends(guard)])
 async def billing_overview():
     return json_ok(await run_in_threadpool(billing().overview))
+
+
+# ── Site chat (AI Ahmad) ────────────────────────────────────────────────────
+@app.post("/api/tools/chat", dependencies=[Depends(guard)])
+async def chat_reply(request: Request):
+    s, body = settings(), await body_of(request)
+    messages = chat.clean_messages(body.get("messages"))
+    if not store().hit("chat:" + client_ip(request), s.chat_daily_limit):
+        raise ApiError("rate limited", 429, "You've reached today's chat limit. Please use the contact page and we'll reply within one business day.")
+    return json_ok({"reply": await run_in_threadpool(chat.reply, s, messages)})
 
 
 @app.get("/api/tools/health")

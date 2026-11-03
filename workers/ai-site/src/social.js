@@ -12,7 +12,7 @@ const COLORS = { LinkedIn: '#0A66C2', Instagram: '#C13584', Facebook: '#0F63D6',
 const sorted = [...posts].sort((a, b) => (b.score - a.score) || (b.date > a.date ? 1 : -1));
 
 const card = (p, i) => `<article class="sf-card" data-p="${esc(p.platformLabel)}" data-s="${p.score}" data-d="${esc(p.date)}"${i >= PER_PAGE ? ' hidden' : ''}>
-${p.thumb ? `<div class="sf-thumb"><img src="${esc(p.thumb)}" alt="${esc(`${p.platformLabel} post: ${p.text.slice(0, 80)}`)}" loading="lazy" decoding="async" width="400" height="300" referrerpolicy="no-referrer" onerror="this.parentNode.remove()"></div>` : ''}
+${p.thumb ? `<div class="sf-thumb"><img class="sf-bg" src="${esc(p.thumb)}" alt="" aria-hidden="true" loading="lazy" decoding="async" referrerpolicy="no-referrer"><img class="sf-img" src="${esc(p.thumb)}" alt="${esc(`${p.platformLabel} post: ${p.text.slice(0, 80)}`)}" loading="lazy" decoding="async" width="400" height="400" referrerpolicy="no-referrer" onerror="this.parentNode.remove()"></div>` : ''}
 <div class="sf-body"><div class="sf-meta"><span class="sf-badge" style="--c:${COLORS[p.platformLabel] || '#0D5EC7'}">${esc(p.platformLabel)}</span><time datetime="${esc(p.date)}">${fmt(p.date)}</time></div>
 <p class="sf-text">${esc(p.text)}</p>
 ${p.link ? `<a class="sf-link" href="${esc(p.link)}" target="_blank" rel="noopener">View on ${esc(p.platformLabel)} <span aria-hidden="true">→</span></a>` : ''}</div></article>`;
@@ -26,7 +26,9 @@ const CSS = `<style>
 .sf-sort select{width:auto;min-height:44px}
 .sf-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px}
 .sf-card{background:#fff;border:1px solid #DCE5EF;border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
-.sf-thumb{aspect-ratio:4/3;background:#EAF2FB;overflow:hidden}.sf-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+/* Whole image, never cropped: square frame, the picture contained, a blurred copy of it filling the sides
+   (portrait carousel slides, 9:16 video covers and wide images all fit). */
+.sf-thumb{position:relative;aspect-ratio:1/1;background:#0E1A2B;overflow:hidden}.sf-thumb img{position:absolute;inset:0;width:100%;height:100%;display:block}.sf-img{object-fit:contain}.sf-bg{object-fit:cover;filter:blur(22px) brightness(.8);transform:scale(1.25)}
 .sf-body{padding:16px 18px 18px;display:flex;flex-direction:column;gap:10px;flex:1}
 .sf-meta{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#4A5B70}
 .sf-badge{display:inline-block;padding:4px 10px;border-radius:99px;font-weight:700;font-size:12.5px;color:#fff;background:var(--c)}

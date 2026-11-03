@@ -4,7 +4,7 @@ import { esc, CSS, SITE } from './layout.js';
 import { mdToHtml } from './md.js';
 import { blogPost } from './blog.js';
 import { humanOk, widget } from './human.js';
-import { AI_CSS, aiPanelHtml, aiPanelClient, aiProxy, TYPES } from './ai-panel.js';
+import { AI_CSS, aiPanelHtml, aiPanelClient, TYPES } from './ai-panel.js';
 
 const COOKIE = '__Host-wd_editor';
 const SESSION_MS = 7 * 86400e3;
@@ -261,7 +261,7 @@ function leadsPage(nonce, ed, leads) {
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const RESERVED = new Set(['feed', 'feed.xml', 'admin', 'editor', 'new', 'page', 'topic', 'rss']);
 
-function validate(d) {
+export function validate(d) {
   const clean = (s, n) => String(s ?? '').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').slice(0, n);
   const out = {
     originalSlug: d.originalSlug ? clean(d.originalSlug, 90) : null, action: d.action, title: clean(d.title, 140).trim(), slug: clean(d.slug, 90).trim(),
@@ -335,8 +335,20 @@ export async function handleAdmin(req, env, url, store, ctx, { pingNow, prod }) 
     if (sent !== ed.csrf) return json({ error: 'Security check failed. Reload the page and try again.' }, 403);
   }
 
-  const ai = /^\/blog-admin\/ai\/(research|draft)$/.exec(path);
-  if (ai && method === 'POST') return aiProxy(req, env, ai[1]);
+  const ai = /^\/blog-admin\/ai\/(research|draft|job|autopilot)$/.exec(path);
+  if (ai && method === 'POST') {
+    let d; try { d = await req.json(); } catch { return json({ error: 'Bad request.' }, 400); }
+    if (!d || typeof d !== 'object' || JSON.stringify(d).length > 8000) return json({ error: 'Bad request.' }, 400);
+    if (ai[1] === 'job') { const j = await store.aiJob(d.id); return j ? json(j) : json({ error: 'That job was not found.' }, 404); }
+    if (ai[1] === 'autopilot') {
+      if (d.action === 'save') return json({ ok: true, settings: await store.setAutopilot(d.settings || {}, ed.email) });
+      if (d.action === 'run') { const r = await store.aiStart('autopilot', {}, ed.email); return json(r, r.error ? 429 : 200); }
+      return json({ settings: await store.getAutopilot() });
+    }
+    if (!env.TOOLS_API_URL) return json({ error: 'The AI assistant is being set up. Please try again later.' }, 503);
+    const r = await store.aiStart(ai[1], { ...d, publish: ai[1] === 'draft' && d.publish === true }, ed.email);
+    return json(r, r.error ? 429 : 200);
+  }
   if (path === '/blog-admin/logout' && method === 'POST') {
     await store.endSession(ed.hash);
     return new Response(null, { status: 303, headers: { Location: '/blog-admin', 'Set-Cookie': `${COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0` } });

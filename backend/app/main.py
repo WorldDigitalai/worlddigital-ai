@@ -10,20 +10,17 @@ X-Internal-Token and the visitor's IP (CF-Connecting-IP).
   GET  /api/tools/order?session=     verify payment, return everything, email the file once
   GET  /api/tools/download?session=&format=pdf|xlsx|docx
   GET  /api/tools/health
-<<<<<<< Updated upstream
 
 Blog editor only (the site forwards these from /blog-admin/ai/* for a signed-in editor; the public
 /api/tools proxy never reaches them):
   POST /api/admin/blog/research      {topic, country, competitors}   -> trends, keywords, SERP, post ideas
   POST /api/admin/blog/draft         {title, keyword, type, competitors, notes, country, words} -> full post
-=======
   POST /api/tools/billing/plan       {name, email, company, website, plan}  -> Mercury customer + first invoice (emailed)
   POST /api/tools/billing/invoice    {name, email, company, items[], due_days, memo} -> one-off Mercury invoice
   POST /api/tools/billing/run        daily: renewal invoices, paid-status sync, receipts
   POST /api/tools/billing/cancel     {id}
   GET  /api/tools/billing            subscriptions + invoices
   (billing paths are blocked on the public site proxy; only the site's own form handler, admin and cron call them)
->>>>>>> Stashed changes
 """
 from __future__ import annotations
 
@@ -41,11 +38,8 @@ from fastapi.responses import JSONResponse, Response
 from starlette.concurrency import run_in_threadpool
 from pymongo import MongoClient
 
-<<<<<<< Updated upstream
 from . import blog_ai
-=======
 from .billing import Billing
->>>>>>> Stashed changes
 from .config import Settings
 from .exports import FORMATS, build_file
 from .products import COUNTRIES, PLATFORMS, PRODUCTS, generate_content, generate_keywords, report_title

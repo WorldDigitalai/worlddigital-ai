@@ -8,6 +8,7 @@ The worlddigital.ai company website, blog and private blog editor, as one Cloudf
 | Header, footer, styles, SEO tags | `src/layout.js` |
 | Blog (`/blog`, `/blog/<slug>`, `/blog/feed.xml`) | `src/blog.js`; first 8 posts seeded from `content/blog/*.md` |
 | Blog editor (`/blog-admin`) | `src/admin.js`: one-time email sign-in for `ADMIN_EMAILS`, drafts, schedule, publish, unpublish, photos |
+| AI assistant in the editor (side panel) | `src/ai-panel.js` → `/blog-admin/ai/research` and `/draft` → tools API `/api/admin/blog/*` (`backend/app/blog_ai.py`): Google Trends past 3 months, keyword volume/CPC/trend, live Google results, People also ask (AEO), AI Overview sources (GEO), post ideas incl. vs/alternatives, one-click full draft. About $0.10 of DataForSEO per research, a few cents of OpenAI per draft. Never publishes on its own. |
 | Storage (posts, photos, sign-in, form entries) | `src/store.js`, one SQLite Durable Object |
 | robots.txt, sitemap.xml, llms.txt (include blog posts automatically) | `src/index.js`, `src/crawl-text.js` |
 | Redirects (old social-platform pages etc.) | `REDIRECTS` in `src/pages.js` |

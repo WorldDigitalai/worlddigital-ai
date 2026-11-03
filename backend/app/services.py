@@ -36,7 +36,8 @@ _MODELS = ["gpt-5.4-mini", "gpt-5.5", "gpt-6-luna", "gpt-5.4", "gpt-5.2"]
 _working_model: list[str] = []  # remembered after the first model the project is allowed to use
 
 
-def openai_json(s: Settings, *, system: str, user: str, max_tokens: int = 2500, temperature: float = 0.4) -> dict:
+def openai_json(s: Settings, *, system: str, user: str, max_tokens: int = 2500, temperature: float = 0.4,
+                timeout: float = 90) -> dict:
     if not s.openai_api_key:
         raise ApiError("OPENAI_API_KEY missing", 503, "The generator is being set up. Please try again later.")
     candidates = _working_model or [s.openai_model] + [m for m in _MODELS if m != s.openai_model]
@@ -50,7 +51,7 @@ def openai_json(s: Settings, *, system: str, user: str, max_tokens: int = 2500, 
         else:
             body.update(max_tokens=max_tokens, temperature=temperature)
         res = httpx.post(f"{s.openai_base}/v1/chat/completions", headers={"Authorization": f"Bearer {s.openai_api_key}"},
-                         json=body, timeout=90)
+                         json=body, timeout=timeout)
         if res.status_code in (403, 404) and "model" in res.text:
             last = res
             print(f"openai model {model} refused: {res.status_code} {res.text[:200]}", flush=True)
@@ -70,10 +71,10 @@ def openai_json(s: Settings, *, system: str, user: str, max_tokens: int = 2500, 
 
 # ── DataForSEO (Google Ads keyword data) ───────────────────────────────────
 
-def _dfs(s: Settings, path: str, task: dict) -> list:
+def _dfs(s: Settings, path: str, task: dict, timeout: float = 60) -> list:
     if not (s.dataforseo_login and s.dataforseo_password):
         raise ApiError("DataForSEO credentials missing", 503, "The keyword tool is being set up. Please try again later.")
-    res = httpx.post(f"{s.dataforseo_base}{path}", auth=(s.dataforseo_login, s.dataforseo_password), json=[task], timeout=60)
+    res = httpx.post(f"{s.dataforseo_base}{path}", auth=(s.dataforseo_login, s.dataforseo_password), json=[task], timeout=timeout)
     data = _json(res, "DataForSEO")
     t = (data.get("tasks") or [None])[0]
     if not t or (t.get("status_code") or 0) >= 40000:

@@ -408,6 +408,17 @@ _billing: Billing | None = None
 
 def _billing_call(name, *args):
     """Billing endpoints are internal (token-guarded), so unexpected errors are returned with their cause."""
+    # A freshly started instance can take a while to open its first MongoDB connection through the NAT:
+    # make sure the database answers before anything is sent to Mercury, so a slow start never half-creates an invoice.
+    import time
+    for attempt in range(3):
+        try:
+            store().db.command("ping")
+            break
+        except Exception as e:  # noqa: BLE001
+            if attempt == 2:
+                raise ApiError(f"billing db {type(e).__name__}: {e}", 503, "Billing is busy right now. Please try again in a minute.")
+            time.sleep(2)
     try:
         return getattr(billing(), name)(*args)
     except ApiError:

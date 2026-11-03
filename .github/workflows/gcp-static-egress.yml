@@ -23,16 +23,16 @@ jobs:
       - uses: google-github-actions/setup-gcloud@v2
       - name: Static IP, router and NAT
         run: |
-          set -e
           g="gcloud --project=$PROJECT --quiet"
-          $g services enable compute.googleapis.com vpcaccess.googleapis.com
-          $g compute addresses describe wd-api-egress --region=$REGION >/dev/null 2>&1 || $g compute addresses create wd-api-egress --region=$REGION
-          $g compute routers describe wd-api-router --region=$REGION >/dev/null 2>&1 || $g compute routers create wd-api-router --network=default --region=$REGION
+          run(){ out=$("$@" 2>&1) || { echo "$out"; echo "::error title=$1 $2 $3 $4::$(echo "$out" | grep -iE 'error|denied|permission|required' | head -3 | tr '\n' ' ' | cut -c1-600)"; exit 1; }; echo "$out" | tail -3; }
+          run $g services enable compute.googleapis.com
+          $g compute addresses describe wd-api-egress --region=$REGION >/dev/null 2>&1 || run $g compute addresses create wd-api-egress --region=$REGION
+          $g compute routers describe wd-api-router --region=$REGION >/dev/null 2>&1 || run $g compute routers create wd-api-router --network=default --region=$REGION
           $g compute routers nats describe wd-api-nat --router=wd-api-router --region=$REGION >/dev/null 2>&1 || \
-            $g compute routers nats create wd-api-nat --router=wd-api-router --region=$REGION --nat-external-ip-pool=wd-api-egress --nat-all-subnet-ip-ranges
+            run $g compute routers nats create wd-api-nat --router=wd-api-router --region=$REGION --nat-external-ip-pool=wd-api-egress --nat-all-subnet-ip-ranges
       - name: Send the API's outbound traffic through the NAT
         run: |
-          gcloud --project=$PROJECT --quiet run services update $SERVICE --region=$REGION --network=default --subnet=default --vpc-egress=all-traffic
+          out=$(gcloud --project=$PROJECT --quiet run services update $SERVICE --region=$REGION --network=default --subnet=default --vpc-egress=all-traffic 2>&1) || { echo "$out"; echo "::error title=run services update::$(echo "$out" | grep -iE 'error|denied|permission' | head -3 | tr '\n' ' ' | cut -c1-600)"; exit 1; }
       - name: Show the IP to allowlist in Mercury
         run: |
           ip=$(gcloud --project=$PROJECT compute addresses describe wd-api-egress --region=$REGION --format='value(address)')

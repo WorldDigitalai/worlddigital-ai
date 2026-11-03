@@ -30,7 +30,7 @@ const CSS = `
 .aic-chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 10px;background:#F7F9FC}
 .aic-chips button{font:600 12.5px Inter,sans-serif;color:#0B4FA8;background:#fff;border:1px solid #C9D8EA;border-radius:999px;padding:6px 11px;cursor:pointer}
 .aic-f{display:flex;gap:8px;padding:10px;border-top:1px solid #DCE5EF;background:#fff}
-.aic-f input{flex:1;min-width:0;font:14px Inter,sans-serif;padding:11px 12px;border:1px solid #C9D8EA;border-radius:12px}
+.aic-f input{flex:1;min-width:0;font:16px Inter,sans-serif;padding:11px 12px;border:1px solid #C9D8EA;border-radius:12px}
 .aic-f input:focus{outline:2px solid #0D5EC7;border-color:transparent}
 .aic-f button{font:700 14px Inter,sans-serif;color:#fff;background:#0D5EC7;border:0;border-radius:12px;padding:0 16px;cursor:pointer}
 .aic-f button:disabled{opacity:.5;cursor:default}
@@ -63,7 +63,7 @@ function build(){
  load();add('assistant',HELLO);msgs.forEach(function(m){add(m.role,m.content)});
  if(msgs.length)chips.hidden=true;
 }
-function open(){if(!panel)build();panel.hidden=false;tip.hidden=true;btn.setAttribute('aria-expanded','true');try{sessionStorage.setItem('aic-seen','1')}catch(e){}setTimeout(function(){input.focus()},50)}
+function open(){if(!panel)build();panel.hidden=false;tip.hidden=true;btn.setAttribute('aria-expanded','true');try{sessionStorage.setItem('aic-seen','1')}catch(e){}if(!window.matchMedia||matchMedia('(pointer:fine)').matches)setTimeout(function(){input.focus()},50)}
 function close(){panel.hidden=true;btn.setAttribute('aria-expanded','false');btn.focus()}
 function ask(q){q=String(q||'').trim();if(!q||busy)return;input.value='';panel.querySelector('.aic-chips').hidden=true;
  msgs.push({role:'user',content:q.slice(0,800)});add('user',q);save();busy=true;send.disabled=true;
@@ -72,7 +72,7 @@ function ask(q){q=String(q||'').trim();if(!q||busy)return;input.value='';panel.q
  .then(function(r){return r.json().catch(function(){return{}}).then(function(d){return{ok:r.ok,d:d}})})
  .then(function(x){t.remove();if(x.ok&&x.d.reply){msgs.push({role:'assistant',content:x.d.reply});save();add('assistant',x.d.reply)}else{msgs.pop();save();add('assistant',x.d.error||'Sorry, I can\\u2019t answer right now. Please try again, or use /contact.','err')}})
  .catch(function(){t.remove();msgs.pop();save();add('assistant','Connection problem. Please try again, or use /contact.','err')})
- .then(function(){busy=false;send.disabled=false;input.focus()})}
+ .then(function(){busy=false;send.disabled=false;if(!window.matchMedia||matchMedia('(pointer:fine)').matches)input.focus()})}
 btn.onclick=function(){panel&&!panel.hidden?close():open()};
 tip.onclick=open;
 var seen=false;try{seen=!!sessionStorage.getItem('aic-seen')}catch(e){}

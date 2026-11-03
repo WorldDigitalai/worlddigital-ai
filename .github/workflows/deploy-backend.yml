@@ -49,7 +49,7 @@ jobs:
           region: ${{ env.REGION }}
           project_id: ${{ env.GCP_PROJECT }}
           source: backend
-          flags: "--allow-unauthenticated --min-instances=0 --max-instances=3 --memory=512Mi --timeout=300"
+          flags: "--allow-unauthenticated --min-instances=0 --max-instances=3 --memory=512Mi --timeout=300 --network=default --subnet=default --vpc-egress=all-traffic"
           env_vars: |
             MONGODB_DB=worlddigital_ai
             PUBLIC_ORIGIN=https://worlddigital.ai
@@ -70,4 +70,5 @@ jobs:
       - name: Health check
         run: |
           curl -fsS "${{ steps.run.outputs.url }}/api/tools/health" | tee /tmp/h.json
+          python3 -c "import json;h=json.load(open('/tmp/h.json'));c=h.get('configured',{});print('::notice title=Mercury::'+('connected' if c.get('mercury') else 'NOT configured (MERCURY_API_TOKEN secret missing?)'))"
           echo "::notice title=API URL::${{ steps.run.outputs.url }} (set as TOOLS_API_URL in workers/ai-site/wrangler.jsonc)"

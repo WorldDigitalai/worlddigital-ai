@@ -229,7 +229,7 @@ def research(s: Settings, *, topic: str = "", country: str = "us", competitors: 
     month = datetime.now(ZoneInfo("America/Chicago")).strftime("%B %Y")
     comp_list = "; ".join(f"{g}: {', '.join(v)}" for g, v in COMPETITORS.items())
 
-    ai = openai_json(s, max_tokens=2500, temperature=0.5, timeout=120,
+    ai = openai_json(s, max_tokens=2500, temperature=0.5, timeout=150, effort="low",
                      system=("You are the head of content and SEO (including AEO and GEO: being the answer in Google's "
                              "AI Overviews and getting cited by ChatGPT, Gemini and Perplexity) for WorldDigital.ai. "
                              "You plan blog posts that bring in customers. You only use the data given. Reply with JSON only."),
@@ -315,7 +315,7 @@ def draft(s: Settings, *, title: str, keyword: str = "", type: str = "how-to", c
         "pricing": "Real cost ranges with what drives the price, a table, and how to avoid overpaying.",
     }[ptype]
 
-    out = openai_json(s, max_tokens=7000, temperature=0.6, timeout=200,
+    out = openai_json(s, max_tokens=7000, temperature=0.6, timeout=240, effort="low",
                       system=("You write blog posts for WorldDigital.ai that rank on Google and get cited by AI answers "
                               "(ChatGPT, Gemini, Perplexity, Google AI Overviews). Plain, confident English for busy "
                               "business owners: short sentences, no hype, no filler, no em-dash overuse. You are honest: "

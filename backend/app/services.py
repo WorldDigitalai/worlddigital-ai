@@ -37,7 +37,7 @@ _working_model: list[str] = []  # remembered after the first model the project i
 
 
 def openai_json(s: Settings, *, system: str, user: str, max_tokens: int = 2500, temperature: float = 0.4,
-                timeout: float = 90) -> dict:
+                timeout: float = 90, effort: str | None = None) -> dict:
     if not s.openai_api_key:
         raise ApiError("OPENAI_API_KEY missing", 503, "The generator is being set up. Please try again later.")
     candidates = _working_model or [s.openai_model] + [m for m in _MODELS if m != s.openai_model]
@@ -48,10 +48,16 @@ def openai_json(s: Settings, *, system: str, user: str, max_tokens: int = 2500, 
                 "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
         if reasoning:
             body["max_completion_tokens"] = max_tokens * 4  # room for reasoning tokens
+            if effort:
+                body["reasoning_effort"] = effort
         else:
             body.update(max_tokens=max_tokens, temperature=temperature)
         res = httpx.post(f"{s.openai_base}/v1/chat/completions", headers={"Authorization": f"Bearer {s.openai_api_key}"},
                          json=body, timeout=timeout)
+        if res.status_code == 400 and "reasoning_effort" in res.text and "reasoning_effort" in body:
+            body.pop("reasoning_effort")  # this model does not take it; ask again without
+            res = httpx.post(f"{s.openai_base}/v1/chat/completions", headers={"Authorization": f"Bearer {s.openai_api_key}"},
+                             json=body, timeout=timeout)
         if res.status_code in (403, 404) and "model" in res.text:
             last = res
             print(f"openai model {model} refused: {res.status_code} {res.text[:200]}", flush=True)

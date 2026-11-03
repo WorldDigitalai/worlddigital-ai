@@ -1,8 +1,9 @@
 // AI assistant side panel for the blog editor (/blog-admin/new and /edit).
 // Research: Google Trends (past 3 months), keyword volume/CPC/trend, live Google results (web search),
 // People also ask (AEO) and AI Overview sources (GEO) -> ranked post ideas incl. "vs" and "alternatives" posts.
-// Draft: one click writes the full post into the editor as a draft. Nothing is ever published automatically.
-// Data comes from the Python tools API (backend/app/blog_ai.py) via /blog-admin/ai/*.
+// Draft: one click writes the full post into the editor, or writes and publishes it (Write & publish).
+// Work runs as background jobs in the Store Durable Object (src/autopilot.js) which call the Python tools API
+// (backend/app/blog_ai.py); the page polls /blog-admin/ai/job. Autopilot writes and publishes on a schedule.
 
 export const COMPETITORS = {
   'All-in-one marketing': ['HubSpot', 'Thryv', 'Keap'],
@@ -53,16 +54,26 @@ export function aiPanelHtml() {
 <button type="button" class="btn red" id="ai-go" style="width:100%;margin-top:10px">Find trending post ideas</button>
 <details style="margin-top:14px"><summary><b>2. Compare with competitors</b> <span class="muted" style="font-size:13px">(for “vs” posts)</span></summary>
 <p class="sub">Pick 1–3. Ideas will include comparisons with them, or write a vs post right away.</p>${compChips}
-<button type="button" class="btn ghost" id="ai-vs" style="width:100%;margin-top:10px">Write “WorldDigital.ai vs …” post</button></details>
+<div class="row" style="margin-top:10px"><button type="button" class="btn ghost" id="ai-vs">Write “vs” draft</button><button type="button" class="btn red" id="ai-vs-pub">Write &amp; publish “vs”</button></div></details>
 <details style="margin-top:12px"><summary><b>Or write from your own title</b></summary>
 <input id="ai-title" maxlength="140" placeholder="e.g. Best AI SEO tools for Houston businesses" style="margin-top:8px">
 <div class="row" style="margin-top:6px"><select id="ai-type" aria-label="Post type">${Object.entries(TYPES).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join('')}</select>
 <select id="ai-words" aria-label="Length"><option value="1000">Short (~1,000 words)</option><option value="1600" selected>Standard (~1,600 words)</option><option value="2200">Long (~2,200 words)</option></select></div>
 <textarea id="ai-notes" maxlength="1000" style="min-height:60px;margin-top:6px" placeholder="Notes for the writer (optional): points to cover, offer to mention…"></textarea>
-<button type="button" class="btn ghost" id="ai-own" style="width:100%;margin-top:8px">Write this post</button></details>
+<div class="row" style="margin-top:8px"><button type="button" class="btn ghost" id="ai-own">Write draft</button><button type="button" class="btn red" id="ai-own-pub">Write &amp; publish</button></div></details>
+<details style="margin-top:12px" id="ap"><summary><b>3. Autopilot</b> <span class="muted" style="font-size:13px" id="ap-state">(off)</span></summary>
+<p class="sub">Finds the best trending idea, writes it and publishes it for you on a schedule. You get an email for every post.</p>
+<label style="display:flex;gap:8px;align-items:center;font-weight:700;margin-top:6px"><input type="checkbox" id="ap-on" style="width:auto;min-height:0"> Autopilot on</label>
+<div class="row" style="margin-top:6px"><label style="margin:0">How often<select id="ap-every"><option value="1">Every day</option><option value="2" selected>Every 2 days</option><option value="3.5">Twice a week</option><option value="7">Once a week</option></select></label>
+<label style="margin:0">Time (Houston)<select id="ap-hour">${Array.from({ length: 24 }, (_, h) => `<option value="${h}"${h === 9 ? ' selected' : ''}>${h === 0 ? '12 am' : h < 12 ? h + ' am' : h === 12 ? '12 pm' : (h - 12) + ' pm'}</option>`).join('')}</select></label></div>
+<label style="margin-top:6px">Each new post<select id="ap-mode"><option value="publish">Publish it automatically</option><option value="draft">Save as a draft for me to review</option></select></label>
+<label style="margin-top:6px">Topics to rotate <span class="muted" style="font-weight:400">(comma-separated; empty = trending across all our services)</span><input id="ap-topics" maxlength="600" placeholder="AI SEO, Local SEO, Google Ads, GEO"></label>
+<label style="display:flex;gap:8px;align-items:center;margin-top:8px"><input type="checkbox" id="ap-vs" checked style="width:auto;min-height:0"> Every other post is a comparison (vs / alternatives), using the competitors picked above</label>
+<div class="row" style="margin-top:10px"><button type="button" class="btn red" id="ap-save">Save Autopilot</button><button type="button" class="btn ghost" id="ap-run">Run one now</button></div>
+<p class="sub" id="ap-info" style="margin-top:8px"></p></details>
 <p class="msg" id="ai-msg" role="status" aria-live="polite" style="margin-top:12px"></p>
 <div id="ai-out"></div>
-<p class="sub" style="margin-top:14px">Every draft lands in the editor as a draft. Check facts and competitor details before you publish.</p>
+<p class="sub" style="margin-top:14px">“Write draft” fills the editor for you to review. “Write &amp; publish” and Autopilot publish without review, so spot-check competitor details on live posts.</p>
 </div>`;
 }
 
@@ -99,6 +110,26 @@ export function aiPanelClient() {
     return fetch('/blog-admin/ai/' + path, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF': CSRF }, body: JSON.stringify(body) })
       .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) throw new Error(j.error || 'Something went wrong. Please try again.'); return j; }); });
   }
+  // Start a background job and poll it until it is done (survives slow AI; resumes after a reload).
+  function job(kind, body, onDone, onErr) {
+    post(kind, body).then(function (j) {
+      if (!j.id) throw new Error('The AI job could not start. Please try again.');
+      try { localStorage.setItem('wd-ai-pending', JSON.stringify({ id: j.id, kind: kind, publish: !!body.publish })); } catch (x) {}
+      poll(j.id, onDone, onErr);
+    }).catch(onErr);
+  }
+  function poll(id, onDone, onErr) {
+    var tries = 0;
+    (function go() {
+      post('job', { id: id }).then(function (j) {
+        if (j.state === 'done' || j.state === 'error') { try { localStorage.removeItem('wd-ai-pending'); } catch (x) {} }
+        if (j.state === 'done') return onDone(j.result);
+        if (j.state === 'error') return onErr(new Error(j.error || 'The AI job failed. Please try again.'));
+        if (++tries > 200) return onErr(new Error('This is taking unusually long. Check the posts list in a few minutes.'));
+        setTimeout(go, 3000);
+      }).catch(function (x) { if (/not found/i.test(x.message) || ++tries > 200) { try { localStorage.removeItem('wd-ai-pending'); } catch (y) {} return onErr(x); } setTimeout(go, 5000); });
+    })();
+  }
   function lock(on, steps) {
     busy = on; document.querySelectorAll('.ai button').forEach(function (b) { b.disabled = on; });
     clearInterval(lock.t);
@@ -114,7 +145,7 @@ export function aiPanelClient() {
   function ideaCard(it, i) {
     return '<div class="idea"><b>' + e(it.title) + '</b><div class="m"><span class="badge ' + e(it.type) + '">' + e(A.types[it.type] || it.type) + '</span>' +
       'Keyword: ' + e(it.keyword) + (it.competitors && it.competitors.length ? ' · vs ' + e(it.competitors.join(', ')) : '') + ' · Score ' + e(it.score) +
-      '<br>' + e(it.why) + '</div><button type="button" class="btn red" data-idea="' + i + '">Write this post</button></div>';
+      '<br>' + e(it.why) + '</div><div class="row"><button type="button" class="btn ghost" data-idea="' + i + '">Write draft</button><button type="button" class="btn red" data-idea="' + i + '" data-pub="1">Write &amp; publish</button></div></div>';
   }
   function render(d) {
     R = d; var h = '';
@@ -148,7 +179,7 @@ export function aiPanelClient() {
     if (d.unavailable && d.unavailable.length) h += '<p class="sub">Some Google data was not available this time (' + e(d.unavailable.join(', ')) + ').</p>';
     $('ai-out').innerHTML = h;
     $('ai-out').querySelectorAll('[data-idea]').forEach(function (b) {
-      b.addEventListener('click', function () { var it = R.ideas[+b.getAttribute('data-idea')]; write({ title: it.title, keyword: it.keyword, type: it.type, competitors: it.competitors }); });
+      b.addEventListener('click', function () { var it = R.ideas[+b.getAttribute('data-idea')]; write({ title: it.title, keyword: it.keyword, type: it.type, competitors: it.competitors }, b.getAttribute('data-pub') === '1'); });
     });
     $('ai-out').querySelectorAll('[data-rise]').forEach(function (b) {
       b.addEventListener('click', function () { $('ai-topic').value = b.getAttribute('data-rise'); research(); });
@@ -158,57 +189,91 @@ export function aiPanelClient() {
   function research() {
     if (busy) return;
     lock(true, ['<span class="wdt-spin"></span>Checking Google Trends for the past 3 months…', 'Pulling keyword volume and cost per click…', 'Reading live Google results and AI Overviews…', 'Ranking the best posts to write…']);
-    post('research', { topic: $('ai-topic').value.trim(), country: $('ai-country').value, competitors: picked() }).then(function (d) {
-      lock(false); msg('Done. ' + (d.ideas || []).length + ' post ideas, best first.', 'ok'); render(d);
-      try { localStorage.setItem('wd-ai-last', JSON.stringify(d)); } catch (x) {}
-    }).catch(function (x) { lock(false); msg(e(x.message), 'err'); });
+    job('research', { topic: $('ai-topic').value.trim(), country: $('ai-country').value, competitors: picked() }, researched, failed);
   }
+  function researched(d) {
+    lock(false); msg('Done. ' + (d.ideas || []).length + ' post ideas, best first.', 'ok'); render(d);
+    try { localStorage.setItem('wd-ai-last', JSON.stringify(d)); } catch (x) {}
+  }
+  function failed(x) { lock(false); msg(e(x.message), 'err'); }
   $('ai-go').addEventListener('click', research);
   $('ai-topic').addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); research(); } });
 
   function filled() { return ['title', 'excerpt', 'body'].some(function (k) { return $(k).value.trim(); }); }
-  function write(o) {
+  function write(o, publish) {
     if (busy) return;
-    if (filled() && !confirm('Replace what is in the editor now with a new AI draft?')) return;
+    if (publish && !confirm('Write this post and publish it on worlddigital.ai right away, without review?')) return;
+    if (!publish && filled() && !confirm('Replace what is in the editor now with a new AI draft?')) return;
+    o.publish = !!publish;
     o.country = $('ai-country').value; o.words = +$('ai-words').value || 1600;
     if (!o.notes) o.notes = $('ai-notes').value.trim();
     lock(true, ['<span class="wdt-spin"></span>Researching the live Google results for “' + e(o.keyword || o.title) + '”…', 'Writing the post (about a minute)…', 'Adding the comparison table and FAQ…', 'Almost done…']);
-    post('draft', o).then(function (d) {
+    job('draft', o, drafted, failed);
+  }
+  function drafted(d) {
       lock(false);
+      if (d.published) { dirty = false; msg('Published: ' + e(d.title), 'ok'); location.href = '/blog-admin/edit/' + encodeURIComponent(d.slug) + '?saved=' + encodeURIComponent('Written and published. It is live on the blog now.'); return; }
       $('title').value = d.title; if (!LIVE) { $('slug').value = d.slug; slugEdited = true; }
       $('cat').value = d.category || $('cat').value; $('excerpt').value = d.excerpt; $('body').value = d.body;
       $('seo_title').value = d.seo_title; $('desc').value = d.description; dirty = true; upd(); tab('pv');
       msg('Draft written into the editor. Review it, add a cover photo' + (d.image_idea ? ' (idea: ' + e(d.image_idea) + ')' : '') + ', then save or publish.', 'ok');
       say('AI draft added. Not saved yet.', 'ok');
-    }).catch(function (x) { lock(false); msg(e(x.message), 'err'); });
   }
-  $('ai-vs').addEventListener('click', function () {
+  function vsPost(publish) {
     var c = picked(); if (!c.length) { msg('Pick at least one competitor first.', 'err'); return; }
     var topic = $('ai-topic').value.trim(), yr = new Date().getFullYear();
     write({ title: 'WorldDigital.ai vs ' + c.join(' vs ') + (topic ? ' for ' + topic : '') + ': which is best for small business in ' + yr + '?',
-      keyword: c.map(function (x) { return x.toLowerCase(); }).join(' vs ') + (topic ? ' ' + topic.toLowerCase() : ''), type: 'vs', competitors: c });
-  });
-  $('ai-own').addEventListener('click', function () {
-    var t = $('ai-title').value.trim(); if (!t) { msg('Type a title first.', 'err'); $('ai-title').focus(); return; }
-    write({ title: t, keyword: t, type: $('ai-type').value, competitors: picked() });
-  });
-  try { var last = JSON.parse(localStorage.getItem('wd-ai-last') || 'null'); if (last) { render(last); $('ai-topic').value = last.topic || ''; msg('Showing your last research (' + e(last.month || '') + '). Run it again for fresh data.'); } } catch (x) {}
-}
-
-// Forwards /blog-admin/ai/research|draft (signed-in editor, CSRF already checked) to the tools API.
-export async function aiProxy(req, env, which) {
-  const j = (o, status) => new Response(JSON.stringify(o), { status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
-  if (!env.TOOLS_API_URL) return j({ error: 'The AI assistant is being set up. Please try again later.' }, 503);
-  let body; try { body = JSON.stringify(await req.json()); } catch { return j({ error: 'Bad request.' }, 400); }
-  try {
-    const r = await fetch(env.TOOLS_API_URL.replace(/\/$/, '') + '/api/admin/blog/' + which, {
-      method: 'POST', body, signal: AbortSignal.timeout(290000),
-      headers: { 'content-type': 'application/json', 'x-internal-token': env.TOOLS_API_TOKEN || '' },
-    });
-    const text = await r.text();
-    let o; try { o = JSON.parse(text); } catch { o = { error: 'The AI assistant is busy right now. Please try again in a minute.' }; }
-    return j(o, r.status);
-  } catch {
-    return j({ error: 'The AI assistant took too long or is busy. Please try again in a minute.' }, 504);
+      keyword: c.map(function (x) { return x.toLowerCase(); }).join(' vs ') + (topic ? ' ' + topic.toLowerCase() : ''), type: 'vs', competitors: c }, publish);
   }
+  $('ai-vs').addEventListener('click', function () { vsPost(false); });
+  $('ai-vs-pub').addEventListener('click', function () { vsPost(true); });
+  function own(publish) {
+    var t = $('ai-title').value.trim(); if (!t) { msg('Type a title first.', 'err'); $('ai-title').focus(); return; }
+    write({ title: t, keyword: t, type: $('ai-type').value, competitors: picked() }, publish);
+  }
+  $('ai-own').addEventListener('click', function () { own(false); });
+  $('ai-own-pub').addEventListener('click', function () { own(true); });
+
+  // ---- Autopilot ----
+  var when = function (ms) { return ms ? new Date(ms).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/Chicago' }) : ''; };
+  function apShow(c) {
+    $('ap-on').checked = !!c.enabled; $('ap-every').value = String(c.every_days); $('ap-hour').value = String(c.hour);
+    $('ap-mode').value = c.mode; $('ap-topics').value = (c.topics || []).join(', '); $('ap-vs').checked = c.mix_vs !== false;
+    (c.competitors || []).forEach(function (n) { var b = document.querySelector('[data-comp="' + n.replace(/"/g, '') + '"]'); if (b) b.setAttribute('aria-pressed', 'true'); });
+    $('ap-state').textContent = c.enabled ? '(on · next post ' + when(c.next_run) + ')' : '(off)';
+    var l = c.last_run, info = c.enabled ? 'Next post: ' + when(c.next_run) + ' (Houston time). ' : 'Autopilot is off. ';
+    if (l) info += l.error ? 'Last run failed: ' + l.error : l.skipped ? 'Last run: ' + l.message : 'Last post: “' + l.title + '” (' + (l.status === 'published' ? 'published' : 'draft') + ', ' + new Date(l.at).toLocaleDateString('en-US') + ').';
+    $('ap-info').textContent = info;
+  }
+  function apSettings() {
+    return { enabled: $('ap-on').checked, every_days: +$('ap-every').value, hour: +$('ap-hour').value, mode: $('ap-mode').value,
+      topics: $('ap-topics').value, competitors: picked(), country: $('ai-country').value, words: +$('ai-words').value || 1600, mix_vs: $('ap-vs').checked };
+  }
+  $('ap-save').addEventListener('click', function () {
+    var s = apSettings();
+    if (s.enabled && s.mode === 'publish' && !confirm('Autopilot will publish a new AI-written post on worlddigital.ai ' + $('ap-every').selectedOptions[0].textContent.toLowerCase() + ' without review. Turn it on?')) return;
+    post('autopilot', { action: 'save', settings: s }).then(function (r) { apShow(r.settings); msg(r.settings.enabled ? 'Autopilot saved. Next post ' + e(when(r.settings.next_run)) + '.' : 'Autopilot is off.', 'ok'); }).catch(failed);
+  });
+  $('ap-run').addEventListener('click', function () {
+    if (busy) return;
+    var s = apSettings();
+    if (!confirm('Run Autopilot now? It will ' + (s.mode === 'publish' ? 'write and publish' : 'write a draft of') + ' one post using the saved settings (save first if you changed them).')) return;
+    lock(true, ['<span class="wdt-spin"></span>Autopilot: finding the best trending idea…', 'Autopilot: writing the post (1–3 minutes)…', 'Autopilot: almost done…']);
+    job('autopilot', { action: 'run' }, function (r) {
+      lock(false);
+      if (r.skipped) { msg(e(r.message), ''); return; }
+      msg('Autopilot ' + (r.status === 'published' ? 'published' : 'saved a draft of') + ' “' + e(r.title) + '”. <a href="/blog-admin/edit/' + encodeURIComponent(r.slug) + '">Open it</a>', 'ok');
+      post('autopilot', { action: 'get' }).then(function (x) { apShow(x.settings); });
+    }, failed);
+  });
+  post('autopilot', { action: 'get' }).then(function (r) { apShow(r.settings); }).catch(function () {});
+  // A job that was still running when the page was reloaded
+  try {
+    var pend = JSON.parse(localStorage.getItem('wd-ai-pending') || 'null');
+    if (pend && pend.id) {
+      lock(true, ['<span class="wdt-spin"></span>Still working on your ' + (pend.kind === 'research' ? 'research' : 'post') + '…']);
+      poll(pend.id, pend.kind === 'research' ? researched : pend.kind === 'draft' ? drafted : function () { lock(false); msg('Autopilot finished. See the posts list.', 'ok'); }, failed);
+    }
+  } catch (x) {}
+  try { var last = JSON.parse(localStorage.getItem('wd-ai-last') || 'null'); if (last) { render(last); $('ai-topic').value = last.topic || ''; msg('Showing your last research (' + e(last.month || '') + '). Run it again for fresh data.'); } } catch (x) {}
 }

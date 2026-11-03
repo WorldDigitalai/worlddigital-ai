@@ -1,5 +1,9 @@
 // One SQLite-backed Durable Object holds the blog (posts, images), editor sign-in and form submissions.
 import { DurableObject } from 'cloudflare:workers';
+import { AUTOPILOT_DEFAULTS, callAi, cleanAutopilot, nextLocalHour, runAutopilot, savePost as saveAiPost } from './autopilot.js';
+import { sendEmail, validate } from './admin.js';
+
+const DEPS = { sendEmail, validate };
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS posts (
@@ -14,6 +18,7 @@ CREATE TABLE IF NOT EXISTS login_tokens (hash TEXT PRIMARY KEY, email TEXT NOT N
 CREATE TABLE IF NOT EXISTS sessions (hash TEXT PRIMARY KEY, email TEXT NOT NULL, expires INTEGER NOT NULL, created INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS leads (id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL, data TEXT NOT NULL, ip_hash TEXT, created_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS ai_jobs (id TEXT PRIMARY KEY, kind TEXT NOT NULL, input TEXT NOT NULL, state TEXT NOT NULL, result TEXT, error TEXT, who TEXT, created INTEGER NOT NULL, updated INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS audit (id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT NOT NULL, who TEXT, action TEXT NOT NULL, detail TEXT);
 `;
 
@@ -170,4 +175,96 @@ export class Store extends DurableObject {
   listLeads() { return rows(this.sql.exec(`SELECT id,kind,data,created_at FROM leads ORDER BY id DESC LIMIT 200`)); }
 
   log(who, action, detail) { this.sql.exec(`INSERT INTO audit (at,who,action,detail) VALUES (?,?,?,?)`, nowIso(), who || null, action, detail || null); }
+
+  // ---- AI jobs (blog editor assistant + Autopilot), run by the alarm so long drafts never time out ----
+  async arm(at) {
+    const cur = await this.ctx.storage.getAlarm();
+    if (!cur || at < cur) await this.ctx.storage.setAlarm(Math.max(at, Date.now()));
+  }
+  async aiStart(kind, input, who) {
+    if (!['research', 'draft', 'autopilot'].includes(kind)) return { error: 'Unknown job.' };
+    const n = Date.now();
+    const busy = one(this.sql.exec(`SELECT COUNT(*) AS c FROM ai_jobs WHERE state IN ('queued','running') AND created > ?`, n - 15 * 60e3)).c;
+    if (busy >= 4) return { error: 'A few AI jobs are already running. Wait for them to finish, then try again.' };
+    const id = crypto.randomUUID();
+    this.sql.exec(`INSERT INTO ai_jobs (id,kind,input,state,who,created,updated) VALUES (?,?,?,?,?,?,?)`, id, kind, JSON.stringify(input || {}).slice(0, 8000), 'queued', who || null, n, n);
+    this.sql.exec(`DELETE FROM ai_jobs WHERE created < ?`, n - 7 * 86400e3);
+    await this.arm(n);
+    return { id };
+  }
+  aiJob(id) {
+    const j = one(this.sql.exec(`SELECT id,kind,state,result,error,created,updated FROM ai_jobs WHERE id = ?`, String(id || '')));
+    if (!j) return null;
+    return { id: j.id, kind: j.kind, state: j.state, error: j.error, result: j.result ? JSON.parse(j.result) : null, seconds: Math.round((Date.now() - j.created) / 1000) };
+  }
+  getAutopilot() {
+    const r = one(this.sql.exec(`SELECT v FROM kv WHERE k = 'autopilot'`));
+    return { ...AUTOPILOT_DEFAULTS, ...(r ? JSON.parse(r.v) : {}) };
+  }
+  putAutopilot(cfg) { this.sql.exec(`INSERT OR REPLACE INTO kv (k,v) VALUES ('autopilot', ?)`, JSON.stringify(cfg)); }
+  async setAutopilot(input, who) {
+    const prev = this.getAutopilot();
+    const cfg = cleanAutopilot(input || {}, prev);
+    if (cfg.enabled && (!prev.enabled || !cfg.next_run || cfg.every_days !== prev.every_days || cfg.hour !== prev.hour)) {
+      cfg.next_run = nextLocalHour(Date.now() + 60e3, cfg.hour);
+    }
+    if (!cfg.enabled) cfg.next_run = null;
+    this.putAutopilot(cfg);
+    this.log(who, 'autopilot_settings', JSON.stringify({ enabled: cfg.enabled, every_days: cfg.every_days, mode: cfg.mode }));
+    if (cfg.enabled) await this.arm(cfg.next_run);
+    return cfg;
+  }
+  // Called by the hourly cron as a safety net in case an alarm was lost.
+  async autopilotTick() {
+    const cfg = this.getAutopilot();
+    if (cfg.enabled && cfg.next_run) await this.arm(cfg.next_run);
+    const queued = one(this.sql.exec(`SELECT COUNT(*) AS c FROM ai_jobs WHERE state = 'queued'`)).c;
+    if (queued) await this.arm(Date.now());
+  }
+  async runJob(kind, input, who) {
+    if (kind === 'research') return callAi(this.env, 'research', input);
+    if (kind === 'draft') {
+      const d = await callAi(this.env, 'draft', input);
+      if (!input.publish) return d;
+      const r = saveAiPost(this, d, 'publish', who, DEPS);
+      return { ...d, slug: r.slug, published: true };
+    }
+    const cfg = this.getAutopilot();
+    const out = await runAutopilot(this, this.env, cfg, DEPS);
+    const after = this.getAutopilot();  // settings may have changed while it ran
+    after.runs = (after.runs || 0) + 1;
+    if (out.keyword) after.used = [out.keyword, ...(after.used || [])].slice(0, 300);
+    after.last_run = { at: new Date().toISOString(), ...out };
+    this.putAutopilot(after);
+    return out;
+  }
+  async alarm() {
+    const n = Date.now();
+    this.sql.exec(`UPDATE ai_jobs SET state='error', error='It took too long. Please try again.', updated=? WHERE state='running' AND updated < ?`, n, n - 20 * 60e3);
+    const cfg = this.getAutopilot();
+    if (cfg.enabled && cfg.next_run && cfg.next_run <= n + 30e3) {
+      const pending = one(this.sql.exec(`SELECT COUNT(*) AS c FROM ai_jobs WHERE kind='autopilot' AND state IN ('queued','running')`)).c;
+      if (!pending) this.sql.exec(`INSERT INTO ai_jobs (id,kind,input,state,who,created,updated) VALUES (?,?,?,?,?,?,?)`, crypto.randomUUID(), 'autopilot', '{}', 'queued', 'autopilot', n, n);
+      cfg.next_run = nextLocalHour(n + cfg.every_days * 86400e3 - 6 * 3600e3, cfg.hour);
+      this.putAutopilot(cfg);
+    }
+    const jobs = rows(this.sql.exec(`SELECT id,kind,input,who FROM ai_jobs WHERE state='queued' ORDER BY created LIMIT 4`));
+    await Promise.all(jobs.map(async (j) => {
+      this.sql.exec(`UPDATE ai_jobs SET state='running', updated=? WHERE id=?`, Date.now(), j.id);
+      try {
+        const result = await this.runJob(j.kind, JSON.parse(j.input), j.who);
+        this.sql.exec(`UPDATE ai_jobs SET state='done', result=?, updated=? WHERE id=?`, JSON.stringify(result), Date.now(), j.id);
+      } catch (e) {
+        console.log('ai job failed', j.kind, e.message);
+        this.sql.exec(`UPDATE ai_jobs SET state='error', error=?, updated=? WHERE id=?`, String(e.message || 'Failed').slice(0, 300), Date.now(), j.id);
+        if (j.kind === 'autopilot') {
+          const c = this.getAutopilot(); c.last_run = { at: new Date().toISOString(), error: String(e.message || 'Failed').slice(0, 300) }; this.putAutopilot(c);
+        }
+      }
+    }));
+    const more = one(this.sql.exec(`SELECT COUNT(*) AS c FROM ai_jobs WHERE state='queued'`)).c;
+    const c2 = this.getAutopilot();
+    if (more) await this.ctx.storage.setAlarm(Date.now() + 1000);
+    else if (c2.enabled && c2.next_run) await this.ctx.storage.setAlarm(c2.next_run);
+  }
 }

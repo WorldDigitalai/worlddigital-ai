@@ -290,5 +290,6 @@ export default {
   },
   async scheduled(event, env, ctx) {
     if (env.PING_SEARCH === '1') ctx.waitUntil(pingNew(env));
+    ctx.waitUntil(store(env).autopilotTick().catch((e) => console.log('autopilot tick', e.message)));
   },
 };

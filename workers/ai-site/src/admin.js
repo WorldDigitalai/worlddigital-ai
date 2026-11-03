@@ -3,6 +3,7 @@ import { esc, CSS, SITE } from './layout.js';
 import { mdToHtml } from './md.js';
 import { blogPost } from './blog.js';
 import { humanOk, widget } from './human.js';
+import { AI_CSS, aiPanelHtml, aiPanelClient, aiProxy, TYPES } from './ai-panel.js';
 
 const COOKIE = '__Host-wd_editor';
 const SESSION_MS = 7 * 86400e3;
@@ -52,6 +53,7 @@ ${ts ? `<script nonce="${nonce}" src="https://challenges.cloudflare.com/turnstil
 .list td,.list th{padding:12px 10px;border-bottom:1px solid #DCE5EF;text-align:left;vertical-align:top}.list{width:100%;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden}
 .cover-prev{max-width:100%;border-radius:12px;margin-top:10px;display:block}
 .pv{background:#F4F8FC;border:1px solid #DCE5EF;border-radius:16px;padding:22px;position:sticky;top:12px;max-height:calc(100vh - 120px);overflow:auto}
+${AI_CSS}
 </style></head><body>${body}${script ? `<script nonce="${nonce}">${script}</script>` : ''}</body></html>`;
 }
 
@@ -151,7 +153,8 @@ function editorPage(nonce, ed, p, cats) {
 <div class="serp" aria-label="Google preview"><div class="u">worlddigital.ai › blog › <span id="s-u"></span></div><div class="t" id="s-t"></div><div class="d" id="s-d"></div></div>
 </details>
 </div>
-<div><div class="pv"><div class="eyebrow">Live preview</div><h1 class="h" id="pv-t" style="font-size:32px;margin-top:10px"></h1><p id="pv-e" style="font-size:17px;color:#33445A"></p><div class="prose" id="pv"></div></div></div>
+<div><div class="tabs" role="tablist" aria-label="Side panel"><button type="button" role="tab" data-tab="ai" aria-selected="false">✨ AI assistant</button><button type="button" role="tab" data-tab="pv" aria-selected="true">Live preview</button></div>
+${aiPanelHtml()}<div class="pv" id="pvpanel" role="tabpanel"><div class="eyebrow">Live preview</div><h1 class="h" id="pv-t" style="font-size:32px;margin-top:10px"></h1><p id="pv-e" style="font-size:17px;color:#33445A"></p><div class="prose" id="pv"></div></div></div>
 </div>
 </main>
 <div class="bar"><div class="wrap">
@@ -162,6 +165,7 @@ ${!isNew ? `<a class="btn ghost" href="${p.live ? `/blog/${esc(p.slug)}` : `/blo
 <span class="msg" id="msg" role="status" aria-live="polite"></span>
 </div></div>`;
   const script = `
+window.WD_AI=${JSON.stringify({ isNew, types: TYPES }).replace(/</g, '\\u003c')};
 var CSRF=${JSON.stringify(ed.csrf)}, ORIG=${JSON.stringify(isNew ? null : p.slug)}, LIVE=${p.live ? 'true' : 'false'};
 var __name=function(f){return f};
 var md=${mdToHtml.toString()};
@@ -209,7 +213,8 @@ dirty=false;try{localStorage.removeItem('wd-draft-'+(ORIG||'new'))}catch(e){}
 location.href='/blog-admin/edit/'+encodeURIComponent(x.j.slug)+'?saved='+encodeURIComponent(x.j.message||'Saved.')}).catch(function(){document.querySelectorAll('.bar button').forEach(function(y){y.disabled=false});say('No connection. Your text is still here; try again.','err')})});
 (function(){var q=new URLSearchParams(location.search).get('saved');if(q){say(q,'ok');history.replaceState(null,'',location.pathname)}
 try{var s=localStorage.getItem('wd-draft-'+(ORIG||'new'));if(s){var o=JSON.parse(s);if(o.body&&o.body!==$('body').value&&confirm('You have unsaved changes from earlier on this device. Restore them?')){['title','slug','excerpt','body'].forEach(function(k){$(k).value=o[k]||''});$('cat').value=o.category||'';$('seo_title').value=o.seo_title||'';$('desc').value=o.description||'';dirty=true}}}catch(e){}
-upd()})();`;
+upd()})();
+(${aiPanelClient.toString()})();`;
   return new Response(shell(isNew ? 'New post' : p.title, body, nonce, script), { headers: headers(nonce) });
 }
 
@@ -302,6 +307,8 @@ export async function handleAdmin(req, env, url, store, ctx, { pingNow, prod }) 
     if (sent !== ed.csrf) return json({ error: 'Security check failed. Reload the page and try again.' }, 403);
   }
 
+  const ai = /^\/blog-admin\/ai\/(research|draft)$/.exec(path);
+  if (ai && method === 'POST') return aiProxy(req, env, ai[1]);
   if (path === '/blog-admin/logout' && method === 'POST') {
     await store.endSession(ed.hash);
     return new Response(null, { status: 303, headers: { Location: '/blog-admin', 'Set-Cookie': `${COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0` } });

@@ -10,6 +10,11 @@ X-Internal-Token and the visitor's IP (CF-Connecting-IP).
   GET  /api/tools/order?session=     verify payment, return everything, email the file once
   GET  /api/tools/download?session=&format=pdf|xlsx|docx
   GET  /api/tools/health
+
+Blog editor only (the site forwards these from /blog-admin/ai/* for a signed-in editor; the public
+/api/tools proxy never reaches them):
+  POST /api/admin/blog/research      {topic, country, competitors}   -> trends, keywords, SERP, post ideas
+  POST /api/admin/blog/draft         {title, keyword, type, competitors, notes, country, words} -> full post
 """
 from __future__ import annotations
 
@@ -27,6 +32,7 @@ from fastapi.responses import JSONResponse, Response
 from starlette.concurrency import run_in_threadpool
 from pymongo import MongoClient
 
+from . import blog_ai
 from .config import Settings
 from .exports import FORMATS, build_file
 from .products import COUNTRIES, PLATFORMS, PRODUCTS, generate_content, generate_keywords, report_title
@@ -297,6 +303,28 @@ def download(session: str = "", format: str = ""):
 
 MONGO_USER = "ahmadawwad_db_user"
 MONGO_HOST = "worlddigital-ai.dfgex0b.mongodb.net"
+
+
+# ── Blog editor AI assistant ────────────────────────────────────────────────
+
+def _strs(v, n=6):
+    return [str(x)[:40] for x in v if isinstance(x, str) and x.strip()][:n] if isinstance(v, list) else []
+
+
+@app.post("/api/admin/blog/research", dependencies=[Depends(guard)])
+async def blog_research(request: Request):
+    b = await body_of(request)
+    return json_ok(await run_in_threadpool(blog_ai.research, settings(), topic=str(b.get("topic") or "")[:100],
+                                           country=str(b.get("country") or "us"), competitors=_strs(b.get("competitors"))))
+
+
+@app.post("/api/admin/blog/draft", dependencies=[Depends(guard)])
+async def blog_draft(request: Request):
+    b = await body_of(request)
+    return json_ok(await run_in_threadpool(
+        blog_ai.draft, settings(), title=str(b.get("title") or ""), keyword=str(b.get("keyword") or ""),
+        type=str(b.get("type") or "how-to"), competitors=_strs(b.get("competitors"), 5),
+        notes=str(b.get("notes") or "")[:1000], country=str(b.get("country") or "us"), words=b.get("words") or 1600))
 
 
 # ── Site audit (our own domains only) ───────────────────────────────────────

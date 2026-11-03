@@ -195,6 +195,16 @@ class Billing:
                             due_days=int(body.get("due_days") or 14), kind="one-off", memo=_clean(body.get("memo"), 500))
         return {"ok": True, "invoice": inv["number"], "amount": inv["amount"]}
 
+    def cancel_invoice(self, number: str) -> dict:
+        inv = self.invoices.find_one({"number": number})
+        if not inv or not inv.get("mercury_id"):
+            raise ApiError("no such invoice", 404, "Invoice not found.")
+        if inv["status"] == "Paid":
+            raise ApiError("paid invoice", 400, "A paid invoice cannot be cancelled.")
+        self.m.cancel_invoice(inv["mercury_id"])
+        self.invoices.update_one({"_id": inv["_id"]}, {"$set": {"status": "Cancelled", "status_at": now()}})
+        return {"ok": True, "invoice": number, "status": "Cancelled"}
+
     def cancel_plan(self, sub_id: str) -> dict:
         sub = self.subs.find_one({"_id": sub_id})
         if not sub:

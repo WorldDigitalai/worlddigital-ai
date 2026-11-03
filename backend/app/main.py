@@ -434,6 +434,11 @@ async def billing_cancel(request: Request):
     return json_ok(await run_in_threadpool(billing().cancel_plan, str((await body_of(request)).get("id") or "")))
 
 
+@app.post("/api/tools/billing/cancel-invoice", dependencies=[Depends(guard)])
+async def billing_cancel_invoice(request: Request):
+    return json_ok(await run_in_threadpool(billing().cancel_invoice, str((await body_of(request)).get("number") or "")))
+
+
 @app.get("/api/tools/billing", dependencies=[Depends(guard)])
 async def billing_overview():
     return json_ok(await run_in_threadpool(billing().overview))

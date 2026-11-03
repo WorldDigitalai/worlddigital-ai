@@ -52,6 +52,7 @@ def env(monkeypatch):
         r.post("https://api.mercury.com/api/v1/ar/customers").mock(side_effect=m.customer)
         r.post("https://api.mercury.com/api/v1/ar/invoices").mock(side_effect=m.invoice)
         r.get(url__regex=r"https://api.mercury.com/api/v1/ar/invoices/.+").mock(side_effect=m.get)
+        r.post(url__regex=r"https://api.mercury.com/api/v1/ar/invoices/.+/cancel").mock(return_value=httpx.Response(200, json={"status": "Cancelled"}))
         r.post("https://api.resend.com/emails").mock(side_effect=m.email)
         yield TestClient(main.app), m
     main._billing = None
@@ -120,3 +121,11 @@ def test_not_configured(monkeypatch):
     r = TestClient(main.app).post("/api/tools/billing/plan", headers=H, json={"name": "A", "email": "a@b.co", "website": "a.co"})
     assert r.status_code == 503
     main._billing = None; main.settings.cache_clear()
+
+
+def test_cancel_invoice(env):
+    c, m = env
+    num = c.post("/api/tools/billing/invoice", headers=H, json={"name": "T", "email": "t@x.com", "items": [{"name": "Test", "unitPrice": 1}]}).json()["invoice"]
+    r = c.post("/api/tools/billing/cancel-invoice", headers=H, json={"number": num})
+    assert r.status_code == 200 and r.json()["status"] == "Cancelled"
+    assert c.post("/api/tools/billing/cancel-invoice", headers=H, json={"number": "nope"}).status_code == 404

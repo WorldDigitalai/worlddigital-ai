@@ -222,7 +222,7 @@ upd()})();
 function billingPage(nonce, ed, d) {
   const money = (n) => `$${Number(n || 0).toFixed(2)}`;
   const subs = (d.subscriptions || []).map((s) => `<tr><td>${esc(s.name || '')}<div class="muted" style="font-size:13px">${esc(s.email)}</div></td><td>${esc(s.website || '')}</td><td>${money(s.amount)}/mo</td><td>${esc(s.status)}</td><td>${esc(s.next_invoice || '')}</td><td>${s.status !== 'cancelled' ? `<button type="button" data-cancel="${esc(s._id)}">Cancel plan</button>` : ''}</td></tr>`).join('');
-  const invs = (d.invoices || []).map((i) => `<tr><td>${esc(i.number)}</td><td>${esc(i.email)}</td><td>${money(i.amount)}</td><td>${esc(i.status)}</td><td>${esc(i.date || '')}</td><td>${esc(i.due || '')}</td><td>${esc(i.kind || '')}</td></tr>`).join('');
+  const invs = (d.invoices || []).map((i) => `<tr><td>${esc(i.number)}</td><td>${esc(i.email)}</td><td>${money(i.amount)}</td><td>${esc(i.status)}</td><td>${esc(i.date || '')}</td><td>${esc(i.due || '')}</td><td>${esc(i.kind || '')}</td><td>${['Unpaid', 'Processing'].includes(i.status) ? `<button type="button" data-void="${esc(i.number)}">Cancel</button>` : ''}</td></tr>`).join('');
   const body = `${topbar(ed.email, ed.csrf)}<main class="wrap" style="padding-top:36px;padding-bottom:60px"><h1 class="h" style="font-size:32px">Billing (Mercury)</h1>
 <p class="muted">Invoices are created in Mercury and emailed by Mercury. A daily job sends each plan's monthly invoice, checks which invoices are paid and emails receipts.${d.configured === false ? ' <b style="color:#B42318">Mercury is not connected yet: add MERCURY_API_TOKEN and MERCURY_ACCOUNT_ID.</b>' : ''}${d.error ? ` <b style="color:#B42318">${esc(d.error)}</b>` : ''}</p>
 <h2 class="h" style="font-size:22px;margin-top:28px">New invoice (custom software, services)</h2>
@@ -232,7 +232,7 @@ function billingPage(nonce, ed, d) {
 <label>Memo to client</label><input name="memo" maxlength="500" placeholder="Optional, shown on the invoice">
 <p style="margin-top:14px"><button class="btn" type="submit" id="send">Create and email invoice</button> <span id="msg" class="muted"></span></p></form>
 <h2 class="h" style="font-size:22px;margin-top:32px">Plans</h2><div style="overflow-x:auto;border:1px solid #DCE5EF;border-radius:14px"><table class="list"><thead><tr><th>Client</th><th>Website</th><th>Price</th><th>Status</th><th>Next invoice</th><th></th></tr></thead><tbody>${subs || '<tr><td colspan="6">No plans yet.</td></tr>'}</tbody></table></div>
-<h2 class="h" style="font-size:22px;margin-top:32px">Invoices</h2><p><button type="button" id="run">Check payments and send due invoices now</button> <span id="rmsg" class="muted"></span></p><div style="overflow-x:auto;border:1px solid #DCE5EF;border-radius:14px"><table class="list"><thead><tr><th>Number</th><th>Client</th><th>Amount</th><th>Status</th><th>Date</th><th>Due</th><th>Type</th></tr></thead><tbody>${invs || '<tr><td colspan="7">No invoices yet.</td></tr>'}</tbody></table></div></main>`;
+<h2 class="h" style="font-size:22px;margin-top:32px">Invoices</h2><p><button type="button" id="run">Check payments and send due invoices now</button> <span id="rmsg" class="muted"></span></p><div style="overflow-x:auto;border:1px solid #DCE5EF;border-radius:14px"><table class="list"><thead><tr><th>Number</th><th>Client</th><th>Amount</th><th>Status</th><th>Date</th><th>Due</th><th>Type</th><th></th></tr></thead><tbody>${invs || '<tr><td colspan="8">No invoices yet.</td></tr>'}</tbody></table></div></main>`;
   const script = `var CSRF=${JSON.stringify(ed.csrf)};function $(i){return document.getElementById(i)}
 function post(u,b){return fetch(u,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF':CSRF},body:JSON.stringify(b||{})}).then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j}})})}
 function row(){var d=document.createElement('div');d.className='two';d.style.marginTop='8px';d.innerHTML='<div><label>Item</label><input data-f="name" maxlength="200" placeholder="e.g. Customer portal, phase 1"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div><label>Qty</label><input data-f="quantity" type="number" min="0.01" step="0.01" value="1"></div><div><label>Unit price ($)</label><input data-f="unitPrice" type="number" min="0" step="0.01"></div></div>';$('items').appendChild(d)}
@@ -242,6 +242,7 @@ if(!items.length){$('msg').textContent='Add at least one line item with a price.
 if(!confirm('Create this invoice in Mercury and email it to '+f.email.value+'?'))return;$('send').disabled=true;$('msg').textContent='Creating…';
 post('/blog-admin/billing/invoice',{name:f.name.value,email:f.email.value,company:f.company.value,due_days:f.due_days.value,memo:f.memo.value,items:items}).then(function(x){$('send').disabled=false;$('msg').textContent=x.ok?'Sent: invoice '+x.j.invoice+' ($'+Number(x.j.amount).toFixed(2)+')':(x.j.error||'Could not create the invoice.');if(x.ok)setTimeout(function(){location.reload()},1500)})};
 $('run').onclick=function(){$('rmsg').textContent='Working…';post('/blog-admin/billing/run').then(function(x){$('rmsg').textContent=x.ok?('Renewals sent: '+x.j.renewals+' · paid: '+x.j.paid+' · checked: '+x.j.checked+(x.j.errors&&x.j.errors.length?' · errors: '+x.j.errors.length:'')):(x.j.error||'Failed.')})};
+document.querySelectorAll('[data-void]').forEach(function(b){b.onclick=function(){if(!confirm('Cancel invoice '+b.dataset.void+' in Mercury? This cannot be undone.'))return;post('/blog-admin/billing/cancel-invoice',{number:b.dataset.void}).then(function(x){if(x.ok)location.reload();else alert(x.j.error||'Failed.')})}});
 document.querySelectorAll('[data-cancel]').forEach(function(b){b.onclick=function(){if(!confirm('Cancel this plan? No more monthly invoices will be sent.'))return;post('/blog-admin/billing/cancel',{id:b.dataset.cancel}).then(function(x){if(x.ok)location.reload();else alert(x.j.error||'Failed.')})}});`;
   return new Response(shell('Billing', body, nonce, script), { headers: headers(nonce) });
 }
@@ -361,7 +362,7 @@ export async function handleAdmin(req, env, url, store, ctx, { pingNow, prod }) 
   }
   if (path.startsWith('/blog-admin/billing/') && method === 'POST') {
     const action = path.slice('/blog-admin/billing/'.length);
-    if (!['invoice', 'run', 'cancel'].includes(action)) return json({ error: 'Unknown action.' }, 404);
+    if (!['invoice', 'run', 'cancel', 'cancel-invoice'].includes(action)) return json({ error: 'Unknown action.' }, 404);
     let b = {}; try { b = await req.json(); } catch {}
     const r = await backend(env, 'POST', `/api/tools/billing/${action}`, b);
     await store.log(ed.email, `billing_${action}`, JSON.stringify({ email: b.email, id: b.id, result: r.data.invoice || r.status }).slice(0, 300));

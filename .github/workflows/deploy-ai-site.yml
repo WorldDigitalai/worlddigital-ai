@@ -58,6 +58,15 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           TOOLS_API_TOKEN: ${{ secrets.TOOLS_API_TOKEN }}
+      - name: Set the Buffer key so new blog posts are shared to social (if the GitHub secret exists)
+        if: github.event_name != 'pull_request' && steps.cf.outputs.ok == '1'
+        run: |
+          if [ -n "$BUFFER_API_TOKEN" ]; then printf '%s' "$BUFFER_API_TOKEN" | npx --yes wrangler@4.149.0 secret put BUFFER_API_TOKEN
+          else echo "::warning::GitHub secret BUFFER_API_TOKEN is not set, so new blog posts are not shared to Buffer."; fi
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          BUFFER_API_TOKEN: ${{ secrets.BUFFER_API_TOKEN }}
       - name: Set the email key for editor sign-in links (if the GitHub secret exists)
         if: github.event_name != 'pull_request' && steps.cf.outputs.ok == '1'
         run: |

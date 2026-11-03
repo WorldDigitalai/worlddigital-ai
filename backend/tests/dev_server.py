@@ -28,6 +28,7 @@ b = tb.Calls()  # blog editor AI assistant mocks (Trends, SERP, ideas, drafts)
 router.post("https://openai.test/v1/chat/completions").mock(
     side_effect=lambda req: b.chat(req) if "WorldDigital.ai" in req.content.decode() else m.chat(req))
 router.post(url__regex=r"https://dfs\.test/.*(google_trends|serp/google).*").mock(side_effect=b.dfs_route)
+router.post("https://openai.test/v1/images/generations").mock(return_value=httpx.Response(200, json={"data": [{"b64_json": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA="}]}))
 router.post(url__regex=r"https://dfs\.test/.*keywords_for_site.*").mock(return_value=httpx.Response(200, json={"tasks": [{"status_code": 20000, "result": [t.kw("plumber", 0)]}]}))
 router.post(url__regex=r"https://dfs\.test/.*keywords_for_keywords.*").mock(side_effect=lambda req: b.dfs_route(req) if "seo" in req.content.decode() else httpx.Response(200, json={"tasks": [{"status_code": 20000, "result": [t.kw(f"houston plumbing service {i}", i) for i in range(40)]}]}))
 router.post("https://stripe.test/v1/checkout/sessions").mock(side_effect=m.stripe_create)

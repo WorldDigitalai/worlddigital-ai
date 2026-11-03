@@ -13,6 +13,8 @@ grounded in the live Google results for its keyword. Drafts only; a person revie
 from __future__ import annotations
 
 import re
+
+import httpx
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -357,3 +359,67 @@ def draft(s: Settings, *, title: str, keyword: str = "", type: str = "how-to", c
             "category": str(out.get("category") or ("Comparisons" if ptype in ("vs", "alternatives") else ""))[:40],
             "image_idea": str(out.get("image_idea") or "")[:200], "body": body[:120000], "keyword": keyword,
             "sources": [{"domain": o["domain"], "title": o["title"], "url": o["url"]} for o in sr["organic"][:5]]}
+
+
+# ── Social posts for Buffer + cover image ──────────────────────────────────
+
+SOCIAL_LIMITS = {"linkedin": 1300, "facebook": 900, "instagram": 2000, "x": 250, "google": 1400, "tiktok": 900}
+
+
+def social(s: Settings, *, title: str, excerpt: str = "", url: str, keyword: str = "", category: str = "") -> dict:
+    """One caption per platform for a new blog post. Links: X/LinkedIn/Facebook/Google carry the URL;
+    Instagram and TikTok say 'link in bio' (links in captions are not clickable there)."""
+    title = " ".join(str(title or "").split())[:140]
+    if not title or not str(url).startswith("https://"):
+        raise ApiError("bad social input", 400, "A title and a page address are needed.")
+    out = openai_json(s, max_tokens=1800, temperature=0.7, timeout=90, effort="low",
+                      system=("You write social posts for WorldDigital.ai that make busy business owners click through to "
+                              "a new blog post. Plain, specific, no hype, no clickbait, no invented numbers. Reply with JSON only."),
+                      user=(f"Blog post: {title}\nSummary: {excerpt[:400]}\nMain keyword: {keyword}\nTopic: {category}\n\n"
+                            "Write one post per platform, each opening with a hook from the post's real content:\n"
+                            "- linkedin: 3-5 short lines, professional, end with 3 hashtags (max 1200 chars)\n"
+                            "- facebook: 2-3 friendly sentences (max 600 chars)\n"
+                            "- instagram: caption with line breaks, end with 'Link in bio.' and 8-12 relevant hashtags (max 1800 chars)\n"
+                            "- x: one punchy sentence plus 1-2 hashtags (max 220 chars, the link is added after)\n"
+                            "- google: 2-3 sentences for a Google Business Profile update, no hashtags, no links (max 900 chars)\n"
+                            "- tiktok: short caption, end with 'Link in bio.' and 4-6 hashtags (max 600 chars)\n"
+                            "Do not include any URLs; we add them. Do not use emoji more than twice per post.\n"
+                            'JSON: {"linkedin":"","facebook":"","instagram":"","x":"","google":"","tiktok":""}'))
+    res = {}
+    for k, n in SOCIAL_LIMITS.items():
+        t = re.sub(r"https?://\S+", "", str(out.get(k) or "")).strip()
+        res[k] = t[:n].rstrip() if t else title
+    for k in ("linkedin", "facebook", "x"):
+        res[k] = f"{res[k]}\n\n{url}" if k != "x" else f"{res[k][:250].rstrip()} {url}"
+    return res
+
+
+_IMAGE_MODELS = ["gpt-image-1.5", "gpt-image-1", "gpt-image-1-mini"]
+
+
+def cover_image(s: Settings, *, title: str, keyword: str = "", idea: str = "") -> dict:
+    """A square cover photo for the post (also used for Instagram/TikTok/Google). JPEG, base64."""
+    if not s.openai_api_key:
+        raise ApiError("OPENAI_API_KEY missing", 503, "The image generator is being set up.")
+    prompt = (f"Modern, clean editorial illustration for a business blog post titled \"{title[:140]}\" "
+              f"(topic: {keyword or title}). {idea[:200]} Flat vector style with soft depth, navy (#0E1A2B), "
+              "warm red (#C13A2A) and white, plenty of empty space, professional and optimistic. "
+              "Absolutely no text, letters, numbers, logos, brand marks or real people's faces.")
+    last = None
+    for model in _IMAGE_MODELS:
+        body = {"model": model, "prompt": prompt, "size": "1024x1024", "quality": "medium", "n": 1,
+                "output_format": "jpeg", "output_compression": 82}
+        res = httpx.post(f"{s.openai_base}/v1/images/generations", headers={"Authorization": f"Bearer {s.openai_api_key}"},
+                         json=body, timeout=180)
+        if res.status_code in (400, 403, 404) and "model" in res.text:
+            last = res
+            print(f"image model {model} refused: {res.status_code} {res.text[:200]}", flush=True)
+            continue
+        if res.status_code >= 400:
+            raise ApiError(f"OpenAI images {res.status_code}: {res.text[:300]}", 502, "The cover image could not be made.")
+        b64 = ((res.json().get("data") or [{}])[0]).get("b64_json")
+        if not b64:
+            raise ApiError("no image returned", 502, "The cover image could not be made.")
+        return {"b64": b64, "type": "image/jpeg", "alt": f"Illustration for {title[:120]}", "model": model}
+    raise ApiError(f"no image model available: {last.status_code if last else '-'} {last.text[:200] if last else ''}", 502,
+                   "The cover image could not be made.")

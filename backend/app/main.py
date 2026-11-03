@@ -15,6 +15,8 @@ Blog editor only (the site forwards these from /blog-admin/ai/* for a signed-in 
 /api/tools proxy never reaches them):
   POST /api/admin/blog/research      {topic, country, competitors}   -> trends, keywords, SERP, post ideas
   POST /api/admin/blog/draft         {title, keyword, type, competitors, notes, country, words} -> full post
+  POST /api/admin/blog/social        {title, excerpt, url, keyword, category} -> one caption per platform
+  POST /api/admin/blog/image         {title, keyword, idea}               -> cover image (JPEG, base64)
   POST /api/tools/billing/plan       {name, email, company, website, plan}  -> Mercury customer + first invoice (emailed)
   POST /api/tools/billing/invoice    {name, email, company, items[], due_days, memo} -> one-off Mercury invoice
   POST /api/tools/billing/run        daily: renewal invoices, paid-status sync, receipts
@@ -332,6 +334,21 @@ async def blog_draft(request: Request):
         blog_ai.draft, settings(), title=str(b.get("title") or ""), keyword=str(b.get("keyword") or ""),
         type=str(b.get("type") or "how-to"), competitors=_strs(b.get("competitors"), 5),
         notes=str(b.get("notes") or "")[:1000], country=str(b.get("country") or "us"), words=b.get("words") or 1600))
+
+
+@app.post("/api/admin/blog/social", dependencies=[Depends(guard)])
+async def blog_social(request: Request):
+    b = await body_of(request)
+    return json_ok(await run_in_threadpool(blog_ai.social, settings(), title=str(b.get("title") or ""),
+                                           excerpt=str(b.get("excerpt") or "")[:500], url=str(b.get("url") or "")[:300],
+                                           keyword=str(b.get("keyword") or "")[:100], category=str(b.get("category") or "")[:60]))
+
+
+@app.post("/api/admin/blog/image", dependencies=[Depends(guard)])
+async def blog_image(request: Request):
+    b = await body_of(request)
+    return json_ok(await run_in_threadpool(blog_ai.cover_image, settings(), title=str(b.get("title") or "")[:140],
+                                           keyword=str(b.get("keyword") or "")[:100], idea=str(b.get("idea") or "")[:200]))
 
 
 # ── Site audit (our own domains only) ───────────────────────────────────────

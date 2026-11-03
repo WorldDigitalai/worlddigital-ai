@@ -393,6 +393,7 @@ export async function handleAdmin(req, env, url, store, ctx, { pingNow, prod }) 
     const messages = { save: 'Draft saved.', unpublish: 'Saved as a draft. It is no longer on the blog.', publish: 'Published. It is live on the blog now.',
       update: 'Live post updated.', schedule: 'Scheduled. It will go live automatically at the time you picked.' };
     if (prod && (v.action === 'publish' || v.action === 'update')) ctx.waitUntil(pingNow());
+    if (v.action === 'publish') ctx.waitUntil(store.queueShare(r.slug).catch((e) => console.log('queue share', e.message)));
     return json({ ok: true, slug: r.slug, status: r.status, message: messages[v.action] });
   }
   if (path === '/blog-admin/upload' && method === 'POST') {

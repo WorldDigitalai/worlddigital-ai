@@ -23,7 +23,9 @@
     "TS_SITEKEY": "0x4AAAAAAFRt-4be4VSc7r_H",
     "TS_REQUIRED": "1",
     // Python tools API (backend/). Empty = /api/tools answers "being set up". Secret: TOOLS_API_TOKEN
-    "TOOLS_API_URL": "https://worlddigital-ai-api-250920469327.us-central1.run.app"
+    "TOOLS_API_URL": "https://worlddigital-ai-api-250920469327.us-central1.run.app",
+    // Buffer channels new blog posts are shared to ({channelId: service}). Secret: BUFFER_API_TOKEN. YouTube needs video, so it is skipped.
+    "BUFFER_CHANNELS": "{\"6acc2f87778b240e2fdfccfb\":\"linkedin\",\"6acc2ffb778b240e2fdfcf19\":\"facebook\",\"6acc2fdf778b240e2fdfcea3\":\"instagram\",\"6ad042d2778b240e2f128689\":\"twitter\",\"6ad04365778b240e2f1299e1\":\"googlebusiness\",\"6ad04526778b240e2f12ad54\":\"tiktok\",\"6ad04301778b240e2f128cef\":\"youtube\"}"
   },
   // Secret (set by the deploy workflow from the GitHub secret of the same name): RESEND_API_KEY
   "triggers": { "crons": ["23 * * * *"] },

@@ -11,6 +11,9 @@ export const AUTOPILOT_DEFAULTS = {
   mix_vs: true, runs: 0, used: [], last_run: null, next_run: null,
 };
 const ORIGIN = 'https://worlddigital.ai';
+// With no topics set, Autopilot rotates through what we sell, one per day, and picks what is trending in each.
+export const DEFAULT_TOPICS = ['AI SEO', 'Generative engine optimization', 'Local SEO', 'Google Ads', 'Answer engine optimization',
+  'Keyword research', 'AI content marketing', 'Custom software', 'AI automation for small business', 'Website design', 'EHR integration', ''];
 
 export async function callAi(env, which, body) {
   if (!env.TOOLS_API_URL) throw new Error('The AI assistant is being set up. Please try again later.');
@@ -81,7 +84,8 @@ const escH = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '
 
 export async function runAutopilot(store, env, cfg, deps) {
   const n = cfg.runs || 0;
-  const topic = cfg.topics.length ? cfg.topics[n % cfg.topics.length] : '';
+  const list = cfg.topics.length ? cfg.topics : DEFAULT_TOPICS;
+  const topic = list[n % list.length];
   const r = await callAi(env, 'research', { topic, country: cfg.country, competitors: cfg.competitors });
   const used = new Set(cfg.used || []);
   const cands = (r.ideas || []).filter((i) => i.title && !used.has(i.keyword) && !store.slugTaken(slugify(i.title)));
@@ -92,8 +96,18 @@ export async function runAutopilot(store, env, cfg, deps) {
     competitors: pick.competitors, country: cfg.country, words: cfg.words });
   const saved = savePost(store, d, cfg.mode === 'publish' ? 'publish' : 'save', 'autopilot', deps);
   const live = cfg.mode === 'publish';
+  let social = null;
+  if (live && store.queueShare) {
+    // Mark it shared now so the cron sweep doesn't pick it up too, then share inline so the email can say how it went.
+    await store.queueShare(saved.slug);
+    try { social = await store.sharePost(saved.slug); store.sql.exec(`UPDATE ai_jobs SET state='done', result=?, updated=? WHERE kind='share' AND state='queued' AND input=?`, JSON.stringify(social), Date.now(), JSON.stringify({ slug: saved.slug })); }
+    catch (e) { social = { error: e.message }; }
+  }
+  const socialHtml = !social ? '' : social.error ? `<p>Sharing to Buffer failed: ${escH(social.error)}</p>` : social.results && social.results.skipped ? `<p>Buffer: ${escH(social.results.skipped)}</p>`
+    : `<p>Shared to Buffer: ${Object.entries(social.results || {}).map(([k, v]) => `${escH(k)} ${v.ok ? '✓' : '✗ ' + escH(v.error || '')}`).join(' · ')}</p>`;
   await notify(env, live ? `New blog post published: ${d.title}` : `New blog draft ready: ${d.title}`,
     `<p>Autopilot ${live ? 'published' : 'wrote a draft of'} <b>${escH(d.title)}</b> (topic: ${escH(topic || 'trending across our services')}, keyword: ${escH(pick.keyword)}).</p>
-<p>${escH(pick.why || '')}</p><p><a href="${ORIGIN}/blog-admin/edit/${encodeURIComponent(saved.slug)}">Review or edit it</a>${live ? ` · <a href="${ORIGIN}/blog/${encodeURIComponent(saved.slug)}">See it live</a>` : ''}</p>`, deps.sendEmail);
-  return { title: d.title, slug: saved.slug, status: saved.status, keyword: pick.keyword, topic, type: pick.type };
+<p>${escH(pick.why || '')}</p><p><a href="${ORIGIN}/blog-admin/edit/${encodeURIComponent(saved.slug)}">Review or edit it</a>${live ? ` · <a href="${ORIGIN}/blog/${encodeURIComponent(saved.slug)}">See it live</a>` : ''}</p>${socialHtml}`, deps.sendEmail);
+  return { title: d.title, slug: saved.slug, status: saved.status, keyword: pick.keyword, topic, type: pick.type,
+    social: social && social.results ? Object.fromEntries(Object.entries(social.results).filter(([k]) => k !== 'skipped').map(([k, v]) => [k, !!v.ok])) : social };
 }

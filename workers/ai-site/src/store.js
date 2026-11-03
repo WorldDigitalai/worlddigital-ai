@@ -2,6 +2,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { AUTOPILOT_DEFAULTS, callAi, cleanAutopilot, nextLocalHour, runAutopilot, savePost as saveAiPost } from './autopilot.js';
 import { sendEmail, validate } from './admin.js';
+import { shareToBuffer } from './buffer.js';
 
 const DEPS = { sendEmail, validate };
 
@@ -34,6 +35,17 @@ export class Store extends DurableObject {
       for (const s of SCHEMA.split(';')) if (s.trim()) this.sql.exec(s);
       // Merged blog topics: "AI & Marketing" is now "AI Marketing" (one topic page instead of two competing ones).
       this.sql.exec(`UPDATE posts SET category = 'AI Marketing' WHERE category = 'AI & Marketing'`);
+      // Buffer sharing: when each post was sent to social, and what Buffer answered per channel.
+      for (const col of ['shared_at TEXT', 'shared TEXT']) { try { this.sql.exec(`ALTER TABLE posts ADD COLUMN ${col}`); } catch {} }
+      // Only posts published from now on are shared (the older ones are not re-posted).
+      this.sql.exec(`INSERT OR IGNORE INTO kv (k,v) VALUES ('social_since', ?)`, nowIso());
+      // Requested 2026-11-02: Autopilot once a day, trending across all services, publish + share to Buffer.
+      if (!one(this.sql.exec(`SELECT v FROM kv WHERE k = 'autopilot_daily_v1'`))) {
+        const c = this.getAutopilot();
+        Object.assign(c, { enabled: true, every_days: 1, mode: 'publish', topics: [], mix_vs: true, next_run: nextLocalHour(Date.now() + 60e3, c.hour || 9) });
+        this.putAutopilot(c);
+        this.sql.exec(`INSERT INTO kv (k,v) VALUES ('autopilot_daily_v1', ?)`, nowIso());
+      }
     });
   }
 
@@ -182,7 +194,7 @@ export class Store extends DurableObject {
     if (!cur || at < cur) await this.ctx.storage.setAlarm(Math.max(at, Date.now()));
   }
   async aiStart(kind, input, who) {
-    if (!['research', 'draft', 'autopilot'].includes(kind)) return { error: 'Unknown job.' };
+    if (!['research', 'draft', 'autopilot', 'share'].includes(kind)) return { error: 'Unknown job.' };
     const n = Date.now();
     const busy = one(this.sql.exec(`SELECT COUNT(*) AS c FROM ai_jobs WHERE state IN ('queued','running') AND created > ?`, n - 15 * 60e3)).c;
     if (busy >= 4) return { error: 'A few AI jobs are already running. Wait for them to finish, then try again.' };
@@ -214,8 +226,48 @@ export class Store extends DurableObject {
     if (cfg.enabled) await this.arm(cfg.next_run);
     return cfg;
   }
+  // ---- Buffer: share each newly published post to every social channel once ----
+  async queueShare(slug) {
+    const p = one(this.sql.exec(`SELECT slug,status,publish_at,shared_at FROM posts WHERE slug = ?`, slug));
+    const live = p && (p.status === 'published' || (p.status === 'scheduled' && p.publish_at && p.publish_at <= nowIso()));
+    if (!live || p.shared_at) return false;
+    const n = Date.now();
+    this.sql.exec(`UPDATE posts SET shared_at=?, shared=? WHERE slug=?`, nowIso(), JSON.stringify({ state: 'queued' }), slug);
+    this.sql.exec(`INSERT INTO ai_jobs (id,kind,input,state,who,created,updated) VALUES (?,?,?,?,?,?,?)`, crypto.randomUUID(), 'share', JSON.stringify({ slug }), 'queued', 'buffer', n, n);
+    await this.arm(n);
+    return true;
+  }
+  async shareSweep() {
+    const since = (one(this.sql.exec(`SELECT v FROM kv WHERE k = 'social_since'`)) || {}).v || nowIso();
+    const due = rows(this.sql.exec(`SELECT slug FROM posts WHERE shared_at IS NULL AND (status='published' OR (status='scheduled' AND publish_at <= ?))
+      AND COALESCE(publish_at, published_at) >= ? LIMIT 3`, nowIso(), since));
+    for (const r of due) await this.queueShare(r.slug);
+  }
+  async sharePost(slug) {
+    const p = this.getPost(slug);
+    if (!p || p.redirect || !p.live) throw new Error('Post is not live.');
+    const url = `https://worlddigital.ai/blog/${p.slug}`;
+    let coverId = p.cover_id, imageNote = null;
+    if (!coverId) {
+      try {
+        const im = await callAi(this.env, 'image', { title: p.title, keyword: p.category || '', idea: '' });
+        const bytes = Uint8Array.from(atob(im.b64), (ch) => ch.charCodeAt(0));
+        if (bytes.byteLength > 1900 * 1024) throw new Error('image too large');
+        coverId = this.putMedia(bytes.buffer, 'image/jpeg', im.alt || '', 'ai');
+        this.sql.exec(`UPDATE posts SET cover_id=?, cover_alt=? WHERE slug=?`, coverId, im.alt || '', p.slug);
+      } catch (e) { imageNote = 'No cover image: ' + e.message; console.log('cover image failed', e.message); }
+    }
+    const imageUrl = coverId ? `https://worlddigital.ai/media/${coverId}` : 'https://worlddigital.ai/og.png';
+    const texts = await callAi(this.env, 'social', { title: p.title, excerpt: p.excerpt || p.description || '', url, category: p.category || '', keyword: '' });
+    const results = await shareToBuffer(this.env, { url, title: p.title, texts, imageUrl });
+    const out = { state: 'done', at: nowIso(), image: imageUrl, imageNote, results };
+    this.sql.exec(`UPDATE posts SET shared=? WHERE slug=?`, JSON.stringify(out), p.slug);
+    return out;
+  }
+
   // Called by the hourly cron as a safety net in case an alarm was lost.
   async autopilotTick() {
+    await this.shareSweep();
     const cfg = this.getAutopilot();
     if (cfg.enabled && cfg.next_run) await this.arm(cfg.next_run);
     const queued = one(this.sql.exec(`SELECT COUNT(*) AS c FROM ai_jobs WHERE state = 'queued'`)).c;
@@ -223,10 +275,12 @@ export class Store extends DurableObject {
   }
   async runJob(kind, input, who) {
     if (kind === 'research') return callAi(this.env, 'research', input);
+    if (kind === 'share') return this.sharePost(input.slug);
     if (kind === 'draft') {
       const d = await callAi(this.env, 'draft', input);
       if (!input.publish) return d;
       const r = saveAiPost(this, d, 'publish', who, DEPS);
+      await this.queueShare(r.slug);
       return { ...d, slug: r.slug, published: true };
     }
     const cfg = this.getAutopilot();
@@ -257,6 +311,10 @@ export class Store extends DurableObject {
       } catch (e) {
         console.log('ai job failed', j.kind, e.message);
         this.sql.exec(`UPDATE ai_jobs SET state='error', error=?, updated=? WHERE id=?`, String(e.message || 'Failed').slice(0, 300), Date.now(), j.id);
+        if (j.kind === 'share') {
+          const slug = JSON.parse(j.input).slug;
+          this.sql.exec(`UPDATE posts SET shared=? WHERE slug=?`, JSON.stringify({ state: 'error', at: nowIso(), error: String(e.message || 'Failed').slice(0, 300) }), slug);
+        }
         if (j.kind === 'autopilot') {
           const c = this.getAutopilot(); c.last_run = { at: new Date().toISOString(), error: String(e.message || 'Failed').slice(0, 300) }; this.putAutopilot(c);
         }

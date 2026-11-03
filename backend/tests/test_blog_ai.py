@@ -125,3 +125,34 @@ def test_draft_returns_full_post_fields(client):
 def test_admin_blog_requires_token(client):
     c, _ = client
     assert c.post("/api/admin/blog/research", json={}, headers={"x-internal-token": "nope"}).status_code == 403
+
+
+def test_social_captions_per_platform(client, monkeypatch):
+    c, calls = client
+    texts = {"linkedin": "Big news https://evil.test", "facebook": "FB", "instagram": "IG Link in bio. #seo",
+             "x": "x" * 400, "google": "GBP update", "tiktok": "TT"}
+    monkeypatch.setattr(blog_ai, "openai_json", lambda *a, **k: texts)
+    r = c.post("/api/admin/blog/social", json={"title": "AI SEO", "url": "https://worlddigital.ai/blog/ai-seo"})
+    assert r.status_code == 200, r.text
+    d = r.json()
+    assert "evil.test" not in d["linkedin"] and d["linkedin"].endswith("https://worlddigital.ai/blog/ai-seo")
+    assert len(d["x"].rsplit(" ", 1)[0]) <= 250 and d["x"].endswith("https://worlddigital.ai/blog/ai-seo")
+    assert "https://" not in d["instagram"] and "https://" not in d["google"]
+    assert c.post("/api/admin/blog/social", json={"title": "x", "url": "javascript:1"}).status_code == 400
+
+
+def test_cover_image_falls_back_between_models(client):
+    c, _ = client
+    seen = []
+
+    def img(request):
+        body = json.loads(request.content)
+        seen.append(body["model"])
+        if body["model"] == "gpt-image-1.5":
+            return httpx.Response(404, json={"error": {"message": "The model gpt-image-1.5 does not exist"}})
+        assert body["output_format"] == "jpeg" and "no text" in body["prompt"].lower()
+        return httpx.Response(200, json={"data": [{"b64_json": "QUJD"}]})
+    with respx.mock(assert_all_called=False) as r:
+        r.post("https://openai.test/v1/images/generations").mock(side_effect=img)
+        d = c.post("/api/admin/blog/image", json={"title": "HubSpot vs Fiverr"}).json()
+    assert d["b64"] == "QUJD" and d["type"] == "image/jpeg" and seen == ["gpt-image-1.5", "gpt-image-1"]

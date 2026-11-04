@@ -8,6 +8,7 @@ export const GBP = 'https://share.google/FB4831wKavklYkwE8';
 export const BBB = 'https://www.bbb.org/us/tn/murfreesboro/profile/marketing-software/worlddigitalai-corporation-llc-0573-37385441';
 const GA4 = 'G-C6V00GEZP6';
 const GTM = 'GTM-P7FV5QN6';
+const ADS = 'AW-16853962405'; // Google Ads, served first-party through Cloudflare's Google tag gateway at /5cex/
 
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -233,8 +234,10 @@ m.textContent=x.j.message||(x.ok?'Thanks!':'Something went wrong. Please email s
 
 function analytics(prod) {
   if (!prod) return '';
-  // GA4 and Tag Manager (ad and retargeting pixels, which set third-party cookies) load on the first real
-  // interaction: tap, click, mouse move or key press. Nothing third-party slows the first view.
+  // GA4, Google Ads (through Cloudflare's first-party tag gateway, /5cex/) and Tag Manager (ad and retargeting
+  // pixels, which set third-party cookies) load on the first real interaction: tap, click, mouse move or key press.
+  // Nothing third-party slows the first view. Cloudflare's own "add the tag to pages" option must stay OFF:
+  // it inserts the Ads tag at the top of every page, ahead of this code (mobile speed 99 -> 69, 2026-11-04 audit).
   // Tracking guard: only the live worlddigital.ai host is measured. Admin, login and unsubscribe pages,
   // previews (business.google.com, localhost) and team browsers are left out of GA4 and Tag Manager.
   // A team browser is marked once by visiting any page with ?wd_internal=1 (undo with ?wd_internal=0)
@@ -248,7 +251,8 @@ if(!window.wdNoTrack){gtag('js',new Date());gtag('config','${GA4}')}
 (function(){if(window.wdNoTrack)return;function add(src){var s=document.createElement('script');s.async=true;s.src=src;document.head.appendChild(s)}
 var ga=false,tm=false,ev=['pointerdown','mousemove','keydown','touchstart'];
 function loadGA(){if(ga)return;ga=true;add('https://www.googletagmanager.com/gtag/js?id=${GA4}')}
-function loadTM(){loadGA();if(tm)return;tm=true;dataLayer.push({'gtm.start':Date.now(),event:'gtm.js'});add('https://www.googletagmanager.com/gtm.js?id=${GTM}');ev.forEach(function(e){removeEventListener(e,loadTM)})}
+function loadAds(){if(document.querySelector('script[src^="/5cex/"]'))return;(window.google_tags_first_party=window.google_tags_first_party||[]).push('${ADS}');gtag('set','developer_id.dYzg1YT',true);gtag('config','${ADS}');add('/5cex/')}
+function loadTM(){loadGA();if(tm)return;tm=true;loadAds();dataLayer.push({'gtm.start':Date.now(),event:'gtm.js'});add('https://www.googletagmanager.com/gtm.js?id=${GTM}');ev.forEach(function(e){removeEventListener(e,loadTM)})}
 ev.forEach(function(e){addEventListener(e,loadTM,{passive:true})})})();</script>`;
 }
 

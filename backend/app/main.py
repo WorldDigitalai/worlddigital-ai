@@ -656,4 +656,5 @@ def health(request: Request):
         "stripe": key.startswith(("sk_test_", "sk_live_", "rk_test_", "rk_live_")),
         "stripe_mode": ("live" if key.startswith(("sk_live", "rk_live")) else "test") if key else None,
         "resend": s.resend_api_key.startswith("re_"), "turnstile": bool(s.turnstile_secret),
+        "stripe_webhook": s.stripe_webhook_secret.startswith("whsec_"),
         "internal_token": bool(s.internal_token)}}

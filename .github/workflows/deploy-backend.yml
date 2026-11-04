@@ -56,13 +56,14 @@ jobs:
           region: ${{ env.REGION }}
           project_id: ${{ env.GCP_PROJECT }}
           source: backend
-          flags: "--allow-unauthenticated --min-instances=0 --max-instances=3 --memory=1Gi --timeout=300 --clear-network --remove-secrets=STRIPE_WEBHOOK_SECRET"
+          flags: "--allow-unauthenticated --min-instances=0 --max-instances=3 --memory=1Gi --timeout=300 --clear-network"
           env_vars: |
             MONGODB_DB=worlddigital_ai
             PUBLIC_ORIGIN=https://worlddigital.ai
             PREVIEW_DAILY_LIMIT=6
             TOOLS_API_TOKEN=${{ secrets.TOOLS_API_TOKEN }}
             GH_RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}
+            STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }}
           secrets: |
             MONGODB_URI=MONGODB_URI:5
             INTERNAL_TOKEN=INTERNAL_TOKEN:latest

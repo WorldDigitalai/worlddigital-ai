@@ -120,7 +120,8 @@ def main():
     else:
         import re
         import urllib.request
-        xml = urllib.request.urlopen(a.base.rstrip("/") + "/sitemap.xml", timeout=30).read().decode()
+        req = urllib.request.Request(a.base.rstrip("/") + "/sitemap.xml", headers={"User-Agent": "Mozilla/5.0 (compatible; WorldDigitalResponsiveCheck/1.0)"})
+        xml = urllib.request.urlopen(req, timeout=30).read().decode()
         base = a.base.rstrip("/")
         PAGES.extend(dict.fromkeys(re.sub(r"^https?://[^/]+", "", u) or "/" for u in re.findall(r"<loc>\s*([^<\s]+)\s*</loc>", xml)))
     results, problems = asyncio.run(run(a.base, a.shots))

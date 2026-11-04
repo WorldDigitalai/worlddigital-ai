@@ -475,6 +475,17 @@ def rag() -> Rag:
     return Rag(settings(), store().db)
 
 
+def _rag_call(fn):
+    """Internal, token-guarded endpoints: report the cause of unexpected errors."""
+    try:
+        return fn()
+    except ApiError:
+        raise
+    except Exception as e:  # noqa: BLE001
+        log.exception("rag error")
+        raise ApiError(f"rag {type(e).__name__}: {e}", 500, f"Knowledge base error: {type(e).__name__}: {str(e)[:300]}")
+
+
 def _rag_facts(query: str, k: int = 5, chars: int = 900) -> str:
     """Never lets the knowledge base break chat or drafts: on any problem, answer without it."""
     try:
@@ -486,24 +497,24 @@ def _rag_facts(query: str, k: int = 5, chars: int = 900) -> str:
 
 @app.post("/api/admin/rag/index", dependencies=[Depends(guard)])
 async def rag_index():
-    return json_ok(await run_in_threadpool(lambda: rag().index()))
+    return json_ok(await run_in_threadpool(_rag_call, lambda: rag().index()))
 
 
 @app.get("/api/admin/rag", dependencies=[Depends(guard)])
 async def rag_status():
-    return json_ok(await run_in_threadpool(lambda: rag().status()))
+    return json_ok(await run_in_threadpool(_rag_call, lambda: rag().status()))
 
 
 @app.post("/api/admin/rag/search", dependencies=[Depends(guard)])
 async def rag_search(request: Request):
     b = await body_of(request)
-    return json_ok({"hits": await run_in_threadpool(lambda: rag().search(str(b.get("q") or ""), max(1, min(int(b.get("k") or 6), 12))))})
+    return json_ok({"hits": await run_in_threadpool(_rag_call, lambda: rag().search(str(b.get("q") or ""), max(1, min(int(b.get("k") or 6), 12))))})
 
 
 @app.post("/api/admin/rag/ask", dependencies=[Depends(guard)])
 async def rag_ask(request: Request):
     b = await body_of(request)
-    return json_ok(await run_in_threadpool(lambda: rag().answer(str(b.get("q") or ""))))
+    return json_ok(await run_in_threadpool(_rag_call, lambda: rag().answer(str(b.get("q") or ""))))
 
 
 # ── Site chat (AI Ahmad) ────────────────────────────────────────────────────

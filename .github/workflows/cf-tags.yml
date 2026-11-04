@@ -25,6 +25,13 @@ jobs:
           grep -oE '<script[^>]*>' home.html | sed -E 's/nonce="[^"]*"//' | sort | uniq -c | while read -r l; do echo "::notice title=script tag::$l"; done
           grep -oE '/5cex/[^"'"'"' ]*' home.html | sort -u | while read -r l; do echo "::notice title=5cex reference in HTML::$l"; done
           grep -c "5cex" home.html | xargs -I{} echo "::notice title=5cex mentions in HTML::{}"
+          python3 - <<'PY'
+          import re
+          h = open("home.html", encoding="utf-8", errors="replace").read()
+          for i, m in enumerate(re.finditer(r"<script(?![^>]*ld\+json)[^>]*>(.*?)</script>", h, re.S)):
+              body = re.sub(r"\s+", " ", m.group(1)).strip()
+              print(f"::notice title=inline script {i}::{len(body)} chars: {body[:160]}")
+          PY
           curl -sI "https://worlddigital.ai/5cex/" | grep -iE "^(HTTP|server|content-type|cf-|x-)" | while read -r l; do echo "::notice title=/5cex/ headers::$l"; done
       - name: Zone settings (read-only)
         run: |

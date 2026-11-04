@@ -1,6 +1,7 @@
 name: Knowledge base (RAG) index
 # Nightly: re-reads every worlddigital.ai page, re-embeds only what changed, removes deleted pages.
 # The chat assistant (AI Ahmad) and the blog draft writer answer from this index.
+# Then runs the answer-quality test (backend/app/rag_eval.json) and reports the score.
 # Manual run: optionally ask a test question to see a cited answer.
 on:
   schedule:
@@ -22,10 +23,25 @@ jobs:
       - name: Index the site
         run: |
           curl -s -o /dev/null "$API/api/tools/health" || true
-          code=$(curl -s -o out.json -w "%{http_code}" -X POST "$API/api/admin/rag/index" -H "x-internal-token: $TOKEN" --max-time 290)
+          code=$(curl -s -o out.json -w "%{http_code}" -X POST "$API/api/admin/rag/index" -H "x-internal-token: $TOKEN" -H "content-type: application/json" -d '{"source":"ai"}' --max-time 290)
           cat out.json; echo
           [ "$code" = "200" ] || { echo "::error::index returned $code: $(head -c 300 out.json)"; exit 1; }
-          python3 -c "import json;d=json.load(open('out.json'));print(f\"::notice title=Knowledge base::{d['pages']} pages read, {d['updated']} updated, {d['unchanged']} unchanged, {d['removed']} removed, {d['total_chunks']} chunks, vector index: {d['vector_index']}\");[print('::warning::'+e) for e in d.get('errors',[])[:10]]"
+          python3 -c "import json;d=json.load(open('out.json'));print(f\"::notice title=Knowledge base::{d['pages']} pages read, {d['updated']} updated, {d['unchanged']} unchanged, {d['removed']} removed, {d['total_chunks']} chunks, {d.get('duplicates',0)} repeated sections skipped, search indexes: {d.get('search_indexes')}\");[print('::warning::'+e) for e in d.get('errors',[])[:10]]"
+      - name: Answer-quality test
+        run: |
+          code=$(curl -s -o ev.json -w "%{http_code}" -X POST "$API/api/admin/rag/eval" -H "x-internal-token: $TOKEN" --max-time 290)
+          [ "$code" = "200" ] || { echo "::error::eval returned $code: $(head -c 300 ev.json)"; exit 1; }
+          python3 - <<'PY'
+          import json
+          d = json.load(open("ev.json"))
+          print(f"::notice title=Answer quality::{d['passed']}/{d['total']} passed ({d['score']}%)")
+          for r in d.get("results", []):
+              if not r.get("ok"):
+                  why = r.get("why") or (("missing: " + ", ".join(r["missing"])) if r.get("missing") else "wrong source page")
+                  print(f"::warning title=Failed question::{r['q']} | {why} | {r.get('answer','')[:200]}")
+          if d["score"] < 75:
+              raise SystemExit(f"::error::answer quality dropped to {d['score']}%")
+          PY
       - name: Test question
         if: inputs.question != ''
         env:

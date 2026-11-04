@@ -1,6 +1,6 @@
 ---
 title: Privacy Policy
-updated: April 1, 2025
+updated: November 3, 2026
 ---
 ## 1. Introduction
 
@@ -14,6 +14,7 @@ We collect information in the following ways:
 - **Usage data:** Log files, pages visited, features used, and timestamps of interactions.
 - **Ad platform data:** Campaign performance metrics and audience data from your connected Google, Meta, and Snapchat accounts.
 - **Communications:** Support tickets, email correspondence, and chat logs.
+- **Website chat questions:** When you use the chat assistant on our website, we store the question you typed and the answer it gave, so we can improve our pages and answers. We remove email addresses and phone numbers before storing them, we do not store your IP address with them, and we delete them automatically after 180 days.
 - **Device and technical data:** IP address, browser type, operating system, and device identifiers.
 
 ## 3. How We Use Your Information
@@ -36,7 +37,7 @@ We do not sell your personal data. We may share your information with:
 
 ## 5. Data Retention
 
-We retain your personal data for as long as your account is active and for a reasonable period thereafter to comply with legal obligations and resolve disputes. You may request deletion of your account and data by contacting us at [privacy@worlddigital.ai](mailto:privacy@worlddigital.ai).
+We retain your personal data for as long as your account is active and for a reasonable period thereafter to comply with legal obligations and resolve disputes. Website chat questions are deleted automatically after 180 days. If you are a customer and we build a knowledge base from your website or documents, it is kept separate from every other customer's and is deleted when you ask or when our work together ends. You may request deletion of your account and data by contacting us at [privacy@worlddigital.ai](mailto:privacy@worlddigital.ai).
 
 ## 6. Your Rights
 

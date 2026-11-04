@@ -1,0 +1,14 @@
+[
+  {"q": "How much does keyword research cost?", "expect": ["9.99"], "source": "keyword-research"},
+  {"q": "How many keywords do I get for free?", "expect": ["3"], "source": "keyword-research"},
+  {"q": "What does the content generator cost?", "expect": ["24.99"], "source": "content"},
+  {"q": "How much is the SEO and AI search plan per month?", "expect": ["199.99"]},
+  {"q": "Is there a long-term contract for the SEO plan?", "expect": ["contract"]},
+  {"q": "Is the SEO report free?", "expect": ["free"], "source": "free-seo-report"},
+  {"q": "Can you integrate with Epic using FHIR?", "expect": ["fhir"], "source": "ehr-emr-integration"},
+  {"q": "Do you build custom software and web apps?", "expect": ["custom"], "source": "custom-software"},
+  {"q": "Where are your offices or hubs?", "expect": ["houston", "murfreesboro"]},
+  {"q": "Do you work with businesses in Canada?", "expect": ["canada"]},
+  {"q": "What is generative engine optimization?", "expect": ["ai"], "source": "generative-engine-optimization"},
+  {"q": "How do I contact support?", "expect": ["support@worlddigital.ai"]}
+]

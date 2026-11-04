@@ -336,7 +336,7 @@ async def blog_draft(request: Request):
         blog_ai.draft, settings(), title=str(b.get("title") or ""), keyword=str(b.get("keyword") or ""),
         type=str(b.get("type") or "how-to"), competitors=_strs(b.get("competitors"), 5),
         notes=str(b.get("notes") or "")[:1000], country=str(b.get("country") or "us"), words=b.get("words") or 1600,
-        facts=await run_in_threadpool(_rag_facts, f"{b.get('title') or ''} {b.get('keyword') or ''}", 6, 900)))
+        facts=(await run_in_threadpool(_rag_facts, f"{b.get('title') or ''} {b.get('keyword') or ''}", 6, 900))[0]))
 
 
 @app.post("/api/admin/blog/social", dependencies=[Depends(guard)])
@@ -468,9 +468,12 @@ async def billing_overview():
     return json_ok(await run_in_threadpool(_billing_call, "overview"))
 
 
-# ── RAG: knowledge base over our own site ────────────────────────────────────
-#   POST /api/admin/rag/index   rebuild/refresh the index (nightly job)      GET /api/admin/rag  status
-#   POST /api/admin/rag/search  {q, k}  -> top chunks                        POST /api/admin/rag/ask {q} -> cited answer
+# ── RAG: knowledge bases (our sites + per-customer) ──────────────────────────
+# Internal only (token-guarded; the public /api/tools proxy never reaches /api/admin/*):
+#   GET  /api/admin/rag                 status          POST /api/admin/rag/index      {source: ai}   
+#   POST /api/admin/rag/index-url       {url}           POST /api/admin/rag/search     {q, k, sources}
+#   POST /api/admin/rag/ask             {q, sources}    POST /api/admin/rag/eval       golden questions
+#   GET  /api/admin/rag/questions?days= chat questions  POST /api/admin/rag/tenants    {action, ...}
 def rag() -> Rag:
     return Rag(settings(), store().db)
 
@@ -486,18 +489,13 @@ def _rag_call(fn):
         raise ApiError(f"rag {type(e).__name__}: {e}", 500, f"Knowledge base error: {type(e).__name__}: {str(e)[:300]}")
 
 
-def _rag_facts(query: str, k: int = 5, chars: int = 900) -> str:
+def _rag_facts(query: str, k: int = 5, chars: int = 900):
     """Never lets the knowledge base break chat or drafts: on any problem, answer without it."""
     try:
         return rag().context(query, k, chars)
     except Exception as e:  # noqa: BLE001
         log.warning("rag context skipped: %s", e)
-        return ""
-
-
-@app.post("/api/admin/rag/index", dependencies=[Depends(guard)])
-async def rag_index():
-    return json_ok(await run_in_threadpool(_rag_call, lambda: rag().index()))
+        return "", []
 
 
 @app.get("/api/admin/rag", dependencies=[Depends(guard)])
@@ -505,16 +503,58 @@ async def rag_status():
     return json_ok(await run_in_threadpool(_rag_call, lambda: rag().status()))
 
 
+@app.post("/api/admin/rag/index", dependencies=[Depends(guard)])
+async def rag_index(request: Request):
+    b = await body_of(request)
+    return json_ok(await run_in_threadpool(_rag_call, lambda: rag().index(str(b.get("source") or "ai"))))
+
+
+@app.post("/api/admin/rag/index-url", dependencies=[Depends(guard)])
+async def rag_index_url(request: Request):
+    b = await body_of(request)
+    return json_ok(await run_in_threadpool(_rag_call, lambda: rag().index_url(str(b.get("url") or ""))))
+
+
 @app.post("/api/admin/rag/search", dependencies=[Depends(guard)])
 async def rag_search(request: Request):
     b = await body_of(request)
-    return json_ok({"hits": await run_in_threadpool(_rag_call, lambda: rag().search(str(b.get("q") or ""), max(1, min(int(b.get("k") or 6), 12))))})
+    return json_ok({"hits": await run_in_threadpool(_rag_call, lambda: rag().search(
+        str(b.get("q") or ""), max(1, min(int(b.get("k") or 6), 12)), b.get("sources")))})
 
 
 @app.post("/api/admin/rag/ask", dependencies=[Depends(guard)])
 async def rag_ask(request: Request):
     b = await body_of(request)
-    return json_ok(await run_in_threadpool(_rag_call, lambda: rag().answer(str(b.get("q") or ""))))
+    return json_ok(await run_in_threadpool(_rag_call, lambda: rag().answer(str(b.get("q") or ""), sources=b.get("sources"))))
+
+
+@app.post("/api/admin/rag/eval", dependencies=[Depends(guard)])
+async def rag_eval():
+    return json_ok(await run_in_threadpool(_rag_call, lambda: rag().evaluate()))
+
+
+@app.get("/api/admin/rag/questions", dependencies=[Depends(guard)])
+async def rag_questions(days: int = 30):
+    return json_ok(await run_in_threadpool(_rag_call, lambda: rag().questions_report(days)))
+
+
+@app.post("/api/admin/rag/tenants", dependencies=[Depends(guard)])
+async def rag_tenants(request: Request):
+    b = await body_of(request)
+    a, t = str(b.get("action") or "list"), str(b.get("tenant") or "")
+    ops = {
+        "list": lambda r: {"tenants": r.tenant_list()},
+        "create": lambda r: r.tenant_create(b.get("name"), b.get("website") or "", b.get("note") or ""),
+        "docs": lambda r: {"docs": r.tenant_docs(t)},
+        "add-doc": lambda r: r.tenant_add_doc(t, b.get("title") or "", b.get("text") or ""),
+        "remove-doc": lambda r: r.tenant_remove_doc(t, str(b.get("url") or "")),
+        "index-site": lambda r: r.tenant_index_site(t),
+        "delete": lambda r: r.tenant_delete(t),
+        "ask": lambda r: r.answer(str(b.get("q") or ""), sources=[f"tenant:{t}"]),
+    }
+    if a not in ops:
+        raise ApiError("bad action", 400, "Unknown action.")
+    return json_ok(await run_in_threadpool(_rag_call, lambda: ops[a](rag())))
 
 
 # ── Site chat (AI Ahmad) ────────────────────────────────────────────────────
@@ -524,8 +564,10 @@ async def chat_reply(request: Request):
     messages = chat.clean_messages(body.get("messages"))
     if not store().hit("chat:" + client_ip(request), s.chat_daily_limit):
         raise ApiError("rate limited", 429, "You've reached today's chat limit. Please use the contact page and we'll reply within one business day.")
-    facts = await run_in_threadpool(_rag_facts, messages[-1]["content"], 4, 700)
-    return json_ok({"reply": await run_in_threadpool(chat.reply, s, messages, facts)})
+    facts, hits = await run_in_threadpool(_rag_facts, messages[-1]["content"], 4, 700)
+    text, covered = await run_in_threadpool(chat.reply, s, messages, facts)
+    await run_in_threadpool(lambda: rag().log_question(messages[-1]["content"], text, covered, hits))
+    return json_ok({"reply": text})
 
 
 @app.get("/api/tools/health")

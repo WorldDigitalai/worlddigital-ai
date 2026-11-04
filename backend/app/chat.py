@@ -52,7 +52,7 @@ RULES
 - Stay on topic (WorldDigital.ai, marketing, SEO, ads, websites). Politely decline unrelated tasks in one sentence.
 - Never claim to be human. Never promise rankings or specific numbers.
 
-Return JSON: {"reply": "<your answer>"}"""
+Return JSON: {"reply": "<your answer>", "covered": true}. Set covered to false when FACTS and the website detail did not contain what the visitor asked (you had to point them to /contact or say you don't know)."""
 
 
 def clean_messages(raw) -> list[dict]:
@@ -71,7 +71,7 @@ def clean_messages(raw) -> list[dict]:
     return out
 
 
-def reply(s: Settings, messages: list[dict], facts: str = "") -> str:
+def reply(s: Settings, messages: list[dict], facts: str = "") -> tuple[str, bool]:
     convo = "\n".join(("Visitor: " if m["role"] == "user" else "AI Ahmad: ") + m["content"] for m in messages)
     extra = ("\n\nMore detail from our website, retrieved for this question (use it if relevant; if it ever disagrees "
              "with FACTS, FACTS win; only link paths that appear here or in FACTS):\n" + facts[:3500]) if facts else ""
@@ -80,4 +80,4 @@ def reply(s: Settings, messages: list[dict], facts: str = "") -> str:
     text = str((data or {}).get("reply") or "").strip()
     if not text:
         raise ApiError("empty reply", 502, "Sorry, I couldn't answer that. Please try again or use the contact page.")
-    return text[:1200]
+    return text[:1200], bool((data or {}).get("covered", True))

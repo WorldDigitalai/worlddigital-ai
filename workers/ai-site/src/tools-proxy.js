@@ -32,16 +32,16 @@ export async function toolsProxy(req, env, url) {
 }
 
 // Server-side call to the tools API (billing etc.). Returns {ok, status, data}.
-export async function backend(env, method, path, body) {
-  if (!env.TOOLS_API_URL) return { ok: false, status: 503, data: { error: 'Billing is being set up. Please email support@worlddigital.ai.' } };
+export async function backend(env, method, path, body, timeoutMs = 60000) {
+  if (!env.TOOLS_API_URL) return { ok: false, status: 503, data: { error: 'The backend is being set up. Please try again later.' } };
   try {
     const res = await fetch(env.TOOLS_API_URL.replace(/\/$/, '') + path, {
       method, headers: { 'x-internal-token': env.TOOLS_API_TOKEN || '', 'content-type': 'application/json' },
-      body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(60000),
+      body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(timeoutMs),
     });
     let data = {}; try { data = await res.json(); } catch {}
     return { ok: res.ok, status: res.status, data };
   } catch {
-    return { ok: false, status: 502, data: { error: 'Billing is busy right now. Please try again in a minute.' } };
+    return { ok: false, status: 502, data: { error: 'The backend is busy right now. Please try again in a minute.' } };
   }
 }

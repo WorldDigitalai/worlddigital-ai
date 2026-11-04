@@ -60,7 +60,7 @@ ${AI_CSS}
 
 function topbar(email, csrf) {
   return `<div class="ad-top"><div class="wrap"><a href="/blog-admin">WorldDigital.ai · Blog editor</a>
-<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><a href="/blog" target="_blank" rel="noopener">View blog ↗</a><a href="/blog-admin/leads">Form entries</a><span style="color:#C9D6E6;font-size:14px">${esc(email)}</span>
+<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><a href="/blog" target="_blank" rel="noopener">View blog ↗</a><a href="/blog-admin/leads">Form entries</a><a href="/blog-admin/kb">Knowledge base</a><span style="color:#C9D6E6;font-size:14px">${esc(email)}</span>
 <form method="post" action="/blog-admin/logout" style="margin:0"><input type="hidden" name="csrf" value="${esc(csrf)}"><button type="submit">Sign out</button></form></div></div></div>`;
 }
 
@@ -247,6 +247,59 @@ document.querySelectorAll('[data-cancel]').forEach(function(b){b.onclick=functio
   return new Response(shell('Billing', body, nonce, script), { headers: headers(nonce) });
 }
 
+function kbPage(nonce, ed, st, qs, tenants) {
+  const n = (v) => Number(v || 0).toLocaleString('en-US');
+  const ai = (st.sites || {}).ai || {};
+  const ev = st.eval && st.eval.total ? st.eval : null;
+  const idx = Object.entries(st.search_indexes || {}).map(([k, v]) => `${k === 'vector' ? 'meaning' : 'keywords'}: ${esc(v)}`).join(' · ') || 'unknown';
+  const qrows = (qs.questions || []).slice(0, 60).map((q) => `<tr><td style="white-space:nowrap">${esc(fmt(q.at))}</td><td>${esc(q.q)}</td><td>${q.covered ? '<span class="status published">answered</span>' : '<span class="status scheduled">not covered</span>'}</td><td style="font-size:13px">${q.top_url ? esc(q.top_url.replace('https://worlddigital.ai', '') || '/') : ''}</td></tr>`).join('');
+  const trows = (tenants || []).map((t) => `<tr><td><b>${esc(t.name)}</b><div class="muted" style="font-size:13px">${esc(t.website || 'no website')}</div></td><td>${n(t.pages)} pages · ${n(t.docs)} docs · ${n(t.chunks)} chunks</td>
+<td style="white-space:nowrap"><button type="button" data-t-ask="${esc(t.id)}" data-name="${esc(t.name)}">Ask</button> <button type="button" data-t-doc="${esc(t.id)}" data-name="${esc(t.name)}">Add document</button> ${t.website ? `<button type="button" data-t-site="${esc(t.id)}">Re-read website</button>` : ''} <button type="button" data-t-del="${esc(t.id)}" data-name="${esc(t.name)}">Delete</button></td></tr>`).join('');
+  const body = `${topbar(ed.email, ed.csrf)}<main class="wrap" style="padding-top:36px;padding-bottom:60px"><h1 class="h" style="font-size:32px">Knowledge base</h1>
+<p class="muted">What AI Ahmad and the blog assistant know about worlddigital.ai. It refreshes every night and whenever you publish or update a post.${st.error ? ` <b style="color:#B42318">${esc(st.error)}</b>` : ''}</p>
+<div class="card" style="margin-top:14px"><div class="two"><div><b>worlddigital.ai</b><div>${n(ai.pages)} pages · ${n(ai.chunks)} chunks</div><div class="muted" style="font-size:14px">Last update: ${esc(fmt(ai.last_update) || 'never')}</div></div>
+<div><b>Answer quality test</b><div>${ev ? `${ev.passed}/${ev.total} passed (${ev.score}%)` : 'not run yet'}</div><div class="muted" style="font-size:14px">${ev ? 'Run ' + esc(fmt(ev.at)) : ''}</div></div></div>
+<div class="muted" style="font-size:14px;margin-top:8px">Search indexes: ${idx}</div>
+<p style="margin-top:12px"><button type="button" id="rebuild">Refresh from the website now</button> <button type="button" id="evalb">Run quality test</button> <span id="smsg" class="muted"></span></p>
+<div id="evout"></div></div>
+<h2 class="h" style="font-size:22px;margin-top:28px">Ask the knowledge base</h2>
+<form id="ask" class="card" style="margin-top:10px"><label>Question</label><input name="q" maxlength="500" required placeholder="e.g. How much is the content pack?">
+<input type="hidden" name="tenant" value=""><p class="muted" id="askwho" style="font-size:14px;margin:6px 0 0">Searching: worlddigital.ai</p>
+<p style="margin-top:12px"><button class="btn" type="submit" id="askb">Ask</button> <span id="amsg" class="muted"></span></p><div id="aout"></div></form>
+<h2 class="h" style="font-size:22px;margin-top:28px">Chat questions (last 30 days)</h2>
+<p class="muted">${n(qs.total)} questions · ${n(qs.uncovered)} the knowledge base could not answer. Those are ideas for new pages or posts. Emails and phone numbers are removed, and questions are deleted after 180 days.</p>
+<div style="overflow-x:auto;border:1px solid #DCE5EF;border-radius:14px;margin-top:10px"><table class="list"><thead><tr><th>When</th><th>Question</th><th>Result</th><th>Best page</th></tr></thead><tbody>${qrows || '<tr><td colspan="4">No questions yet.</td></tr>'}</tbody></table></div>
+<h2 class="h" style="font-size:22px;margin-top:32px">Customer knowledge bases</h2>
+<p class="muted">A private knowledge base per customer, built from their website and documents you add. Each one is kept separate: it never mixes with ours or with another customer's.</p>
+<form id="tnew" class="card" style="margin-top:10px"><div class="two"><div><label>Customer name *</label><input name="name" required maxlength="120"></div><div><label>Website</label><input name="website" maxlength="200" placeholder="clinic.com"></div></div>
+<p style="margin-top:12px"><button class="btn" type="submit">Create</button> <span id="tmsg" class="muted"></span></p></form>
+<div style="overflow-x:auto;border:1px solid #DCE5EF;border-radius:14px;margin-top:14px"><table class="list"><thead><tr><th>Customer</th><th>Contents</th><th></th></tr></thead><tbody>${trows || '<tr><td colspan="3">No customers yet.</td></tr>'}</tbody></table></div>
+<form id="tdoc" class="card" style="margin-top:14px;display:none"><h3 class="h" style="font-size:19px" id="tdoch">Add document</h3><label>Title</label><input name="title" maxlength="160" placeholder="e.g. Price list 2026">
+<label>Text</label><textarea name="text" rows="10" maxlength="200000" required placeholder="Paste the document text here"></textarea><input type="hidden" name="tenant">
+<p style="margin-top:12px"><button class="btn" type="submit">Add to knowledge base</button> <button type="button" id="tdocx">Close</button> <span id="dmsg" class="muted"></span></p></form></main>`;
+  const script = `var CSRF=${JSON.stringify(ed.csrf)};function $(i){return document.getElementById(i)}
+function post(u,b){return fetch(u,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF':CSRF},body:JSON.stringify(b||{})}).then(function(r){return r.json().catch(function(){return {}}).then(function(j){return {ok:r.ok,j:j}})}).catch(function(){return {ok:false,j:{error:'Network problem. Try again.'}}})}
+function el(tag,txt,css){var e=document.createElement(tag);if(txt!=null)e.textContent=txt;if(css)e.style.cssText=css;return e}
+function err(x,d){return (x.j&&(x.j.error||x.j.detail))||d}
+$('rebuild').onclick=function(){$('smsg').textContent='Reading the website… this can take a minute.';post('/blog-admin/kb/index',{}).then(function(x){$('smsg').textContent=x.ok?('Done: '+x.j.updated+' pages updated, '+x.j.unchanged+' unchanged, '+x.j.removed+' removed.'+(x.j.errors&&x.j.errors.length?' Problems: '+x.j.errors.length:'')):err(x,'Refresh failed.');if(x.ok)setTimeout(function(){location.reload()},1500)})};
+$('evalb').onclick=function(){$('smsg').textContent='Testing '+'answers… about a minute.';post('/blog-admin/kb/eval',{}).then(function(x){if(!x.ok){$('smsg').textContent=err(x,'Test failed.');return}$('smsg').textContent=x.j.passed+'/'+x.j.total+' passed ('+x.j.score+'%).';var o=$('evout');o.textContent='';(x.j.results||[]).filter(function(r){return !r.ok}).forEach(function(r){o.appendChild(el('div','✗ '+r.q+(r.why?' ('+r.why+')':r.missing&&r.missing.length?' (missing: '+r.missing.join(', ')+')':''),'font-size:14px;color:#B42318;margin-top:4px'))})})};
+function showAnswer(x){var o=$('aout');o.textContent='';$('askb').disabled=false;if(!x.ok){$('amsg').textContent=err(x,'Could not answer.');return}$('amsg').textContent=x.j.covered===false?'Not covered by the knowledge base.':'';
+o.appendChild(el('p',x.j.answer,'margin-top:12px;font-size:16.5px;line-height:1.6'));if(x.j.method)o.appendChild(el('div','Search: '+x.j.method,'font-size:13px;color:#4A5B70'));
+(x.j.sources||[]).forEach(function(s,i){var d=el('div',null,'font-size:14px;margin-top:4px');d.appendChild(el('b','['+(s.n||i+1)+'] '));if(/^https:/.test(s.url)){var a=el('a',s.title||s.url);a.href=s.url;a.target='_blank';a.rel='noopener';d.appendChild(a)}else d.appendChild(el('span',s.title||s.url));o.appendChild(d)});
+if((x.j.passages||[]).length){var det=el('details',null,'margin-top:10px');det.appendChild(el('summary','Passages found ('+x.j.passages.length+')'));x.j.passages.forEach(function(p){var b=el('div',null,'border-top:1px solid #DCE5EF;padding:8px 0;font-size:14px;white-space:pre-wrap');b.appendChild(el('b',(p.title||p.url)+(p.score!=null?' · '+Number(p.score).toFixed(3):'')+'\\n'));b.appendChild(document.createTextNode(p.text||''));det.appendChild(b)});o.appendChild(det)}}
+$('ask').onsubmit=function(e){e.preventDefault();var f=e.target,t=f.tenant.value;$('askb').disabled=true;$('amsg').textContent='Thinking…';
+(t?post('/blog-admin/kb/tenants',{action:'ask',tenant:t,q:f.q.value}):post('/blog-admin/kb/ask',{q:f.q.value})).then(showAnswer)};
+$('tnew').onsubmit=function(e){e.preventDefault();var f=e.target;$('tmsg').textContent='Creating…';post('/blog-admin/kb/tenants',{action:'create',name:f.name.value,website:f.website.value}).then(function(x){if(!x.ok){$('tmsg').textContent=err(x,'Could not create.');return}
+if(!f.website.value){location.reload();return}$('tmsg').textContent='Created. Reading the website…';post('/blog-admin/kb/tenants',{action:'index-site',tenant:x.j.id}).then(function(y){$('tmsg').textContent=y.ok?'Done: '+y.j.pages+' pages read.':err(y,'Created, but the website could not be read.');setTimeout(function(){location.reload()},1500)})})};
+document.querySelectorAll('[data-t-ask]').forEach(function(b){b.onclick=function(){var f=$('ask');f.tenant.value=b.dataset.tAsk;$('askwho').textContent='Searching: '+b.dataset.name+' (customer knowledge base) · ';var r=el('a','switch back to worlddigital.ai');r.href='#';r.onclick=function(e){e.preventDefault();f.tenant.value='';$('askwho').textContent='Searching: worlddigital.ai'};$('askwho').appendChild(r);f.scrollIntoView({behavior:'smooth'});f.q.focus()}});
+document.querySelectorAll('[data-t-doc]').forEach(function(b){b.onclick=function(){var f=$('tdoc');f.style.display='block';f.tenant.value=b.dataset.tDoc;$('tdoch').textContent='Add document for '+b.dataset.name;f.scrollIntoView({behavior:'smooth'})}});
+$('tdocx').onclick=function(){$('tdoc').style.display='none'};
+$('tdoc').onsubmit=function(e){e.preventDefault();var f=e.target;$('dmsg').textContent='Adding…';post('/blog-admin/kb/tenants',{action:'add-doc',tenant:f.tenant.value,title:f.title.value,text:f.text.value}).then(function(x){$('dmsg').textContent=x.ok?'Added ('+x.j.chunks+' chunks).':err(x,'Could not add.');if(x.ok)setTimeout(function(){location.reload()},1200)})};
+document.querySelectorAll('[data-t-site]').forEach(function(b){b.onclick=function(){b.disabled=true;b.textContent='Reading…';post('/blog-admin/kb/tenants',{action:'index-site',tenant:b.dataset.tSite}).then(function(x){b.textContent=x.ok?'Done: '+x.j.pages+' pages':'Failed';if(!x.ok)alert(err(x,'Could not read the website.'));else setTimeout(function(){location.reload()},1200)})}});
+document.querySelectorAll('[data-t-del]').forEach(function(b){b.onclick=function(){if(!confirm('Delete the knowledge base for '+b.dataset.name+'? Everything in it is removed. This cannot be undone.'))return;post('/blog-admin/kb/tenants',{action:'delete',tenant:b.dataset.tDel}).then(function(x){if(x.ok)location.reload();else alert(err(x,'Could not delete.'))})}});`;
+  return new Response(shell('Knowledge base', body, nonce, script), { headers: headers(nonce) });
+}
+
 function leadsPage(nonce, ed, leads) {
   const rowsHtml = leads.map((l) => {
     let d = {}; try { d = JSON.parse(l.data); } catch {}
@@ -368,6 +421,27 @@ export async function handleAdmin(req, env, url, store, ctx, { pingNow, prod }) 
     await store.log(ed.email, `billing_${action}`, JSON.stringify({ email: b.email, id: b.id, result: r.data.invoice || r.status }).slice(0, 300));
     return json(r.ok ? r.data : { error: r.data.error || 'Billing request failed.' }, r.ok ? 200 : (r.status || 500));
   }
+  if (path === '/blog-admin/kb' && method === 'GET') {
+    const [st, qs, tn] = await Promise.all([backend(env, 'GET', '/api/admin/rag'), backend(env, 'GET', '/api/admin/rag/questions?days=30'),
+      backend(env, 'POST', '/api/admin/rag/tenants', { action: 'list' })]);
+    return kbPage(nonce, ed, st.ok ? st.data : { error: st.data.error || 'Could not load the knowledge base.' }, qs.ok ? qs.data : {}, tn.ok ? tn.data.tenants : []);
+  }
+  const kb = /^\/blog-admin\/kb\/(index|ask|eval|tenants)$/.exec(path);
+  if (kb && method === 'POST') {
+    let b = {}; try { b = await req.json(); } catch {}
+    if (!b || typeof b !== 'object' || JSON.stringify(b).length > 210000) return json({ error: 'Bad request.' }, 400);
+    const call = {
+      index: () => backend(env, 'POST', '/api/admin/rag/index', { source: 'ai' }, 280000),
+      eval: () => backend(env, 'POST', '/api/admin/rag/eval', {}, 280000),
+      ask: () => backend(env, 'POST', '/api/admin/rag/ask', { q: String(b.q || '').slice(0, 500), sources: ['ai'] }, 90000),
+      tenants: () => backend(env, 'POST', '/api/admin/rag/tenants', b, b.action === 'index-site' ? 280000 : 90000),
+    }[kb[1]];
+    const r = await call();
+    if (kb[1] !== 'ask' && !(kb[1] === 'tenants' && ['ask', 'list', 'docs'].includes(b.action))) {
+      await store.log(ed.email, `kb_${kb[1]}${b.action ? '_' + b.action : ''}`, JSON.stringify({ tenant: b.tenant, name: b.name, status: r.status }).slice(0, 300));
+    }
+    return json(r.ok ? r.data : { error: r.data.error || 'Knowledge base request failed.' }, r.ok ? 200 : (r.status || 500));
+  }
   if (path === '/blog-admin/new' && method === 'GET') {
     const cats = [...new Set((await store.listPosts({ all: true })).map((p) => p.category).filter(Boolean))];
     return editorPage(nonce, ed, null, cats);
@@ -395,6 +469,12 @@ export async function handleAdmin(req, env, url, store, ctx, { pingNow, prod }) 
       update: 'Live post updated.', schedule: 'Scheduled. It will go live automatically at the time you picked.' };
     if (prod && (v.action === 'publish' || v.action === 'update')) ctx.waitUntil(pingNow());
     if (v.action === 'publish') ctx.waitUntil(store.queueShare(r.slug).catch((e) => console.log('queue share', e.message)));
+    // keep the knowledge base current: re-read this post now (an unpublished post is removed from it)
+    if (prod && ['publish', 'update', 'unpublish'].includes(v.action)) {
+      const urls = [`${SITE}/blog/${r.slug}`, ...(v.originalSlug && v.originalSlug !== r.slug ? [`${SITE}/blog/${v.originalSlug}`] : [])];
+      ctx.waitUntil(Promise.all(urls.map((u) => backend(env, 'POST', '/api/admin/rag/index-url', { url: u }, 120000)))
+        .then((rs) => rs.forEach((x) => { if (!x.ok) console.log('kb re-index', x.status, JSON.stringify(x.data).slice(0, 200)); })));
+    }
     return json({ ok: true, slug: r.slug, status: r.status, message: messages[v.action] });
   }
   if (path === '/blog-admin/upload' && method === 'POST') {
@@ -414,4 +494,4 @@ export async function handleAdmin(req, env, url, store, ctx, { pingNow, prod }) 
   return new Response('Not found', { status: 404 });
 }
 
-export { mdToHtml, SITE };
+export { mdToHtml, SITE, kbPage };

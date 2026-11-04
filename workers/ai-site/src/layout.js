@@ -34,7 +34,7 @@ a{color:#0D5EC7}a:hover{color:#0B4FA8}
 .brand img{width:36px;height:36px;border-radius:9px;box-shadow:0 0 0 1px #DCE5EF}
 .brand small{display:block;font-family:Inter,sans-serif;font-weight:500;font-size:11.5px;color:#4A5B70;letter-spacing:.02em}
 .nav{display:flex;gap:20px;font-size:15px;white-space:nowrap}
-.nav a{color:#33445A;text-decoration:none;font-weight:500}.nav a:hover,.nav a[aria-current=page]{color:#0D5EC7}
+.nav a{color:#33445A;text-decoration:none;font-weight:500;display:inline-flex;align-items:center;min-height:44px}.nav a:hover,.nav a[aria-current=page]{color:#0D5EC7}
 .menu{display:none}
 .btn{white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:12px 20px;border-radius:12px;font-weight:700;font-size:15.5px;text-decoration:none;border:0;cursor:pointer;font-family:inherit}
 .btn.red{background:#C13A2A;color:#fff}.btn.red:hover{background:#A42F21;color:#fff}
@@ -77,6 +77,8 @@ textarea{min-height:120px;resize:vertical}
 .post-card img{border-radius:12px;aspect-ratio:16/9;object-fit:cover;width:100%}
 .post-card:hover h2,.post-card:hover h3{color:#0D5EC7}
 .filters{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}.filters a{padding:8px 14px;border-radius:99px;border:1px solid #DCE5EF;background:#fff;text-decoration:none;color:#33445A;font-weight:600;font-size:14.5px}.filters a[aria-current=page]{background:#0E1A2B;color:#fff;border-color:#0E1A2B}
+/* Tap targets: at least 24px tall for links that stand alone (breadcrumbs, table cells), per WCAG 2.2 target size */
+.crumbs a,nav[aria-label=Breadcrumb] a,table a{display:inline-block;min-height:24px;line-height:24px}
 @media (max-width:1260px){.brand small{display:none}.nav{gap:16px;font-size:14.5px}}
 @media (max-width:1000px){.nav{display:none}.menu{display:block}.top .btn.red{display:none}}@media (max-width:720px){.nav-cta .btn.ghost{display:none}}
 @media (max-width:420px){.brand small{display:none}}

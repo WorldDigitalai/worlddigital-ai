@@ -23,7 +23,7 @@ jobs:
         env:
           BUFFER_API_TOKEN: ${{ secrets.BUFFER_API_TOKEN }}
       - name: Tests
-        run: node --test test/*.test.mjs
+        run: npm test
       - name: Tool widget is built from tools-src/
         run: |
           npm i --no-save --no-audit --no-fund esbuild@0.25.12 >/dev/null

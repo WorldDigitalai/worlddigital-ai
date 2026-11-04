@@ -47,3 +47,21 @@ test('markdown for agents carries page metadata', () => {
   const hidden = htmlToMarkdown('<html lang="en"><title>T</title><meta name="robots" content="noindex, nofollow"><main><p>x</p></main>', 'https://worlddigital.ai/tools');
   assert.ok(hidden.includes('robots: noindex') && hidden.includes('type: product_page'));
 });
+
+test('public tools proxy refuses encoded paths and billing in any form', async () => {
+  const { toolsProxy } = await import('../src/tools-proxy.js');
+  const env = { TOOLS_API_URL: 'https://api.invalid', TOOLS_API_TOKEN: 't' };
+  const seen = [];
+  const orig = globalThis.fetch;
+  globalThis.fetch = async (u) => { seen.push(String(u)); return new Response('{}', { headers: { 'content-type': 'application/json' } }); };
+  try {
+    for (const p of ['/api/tools/%62illing', '/api/tools/%62illing/invoice', '/api/tools/billing', '/api/tools//billing/run', '/api/tools/BILLING', '/api/tools/bill%69ng']) {
+      const r = await toolsProxy(new Request('https://worlddigital.ai' + p), env, new URL('https://worlddigital.ai' + p));
+      assert.ok([400, 404].includes(r.status), p);
+    }
+    assert.equal(seen.length, 0);
+    const ok = await toolsProxy(new Request('https://worlddigital.ai/api/tools/health'), env, new URL('https://worlddigital.ai/api/tools/health'));
+    assert.equal(ok.status, 200);
+    assert.equal(seen.length, 1);
+  } finally { globalThis.fetch = orig; }
+});

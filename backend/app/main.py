@@ -100,6 +100,14 @@ def guard(request: Request) -> None:
         raise ApiError("bad internal token", 403, "Forbidden")
 
 
+def server_only(request: Request) -> None:
+    """Billing: only server-side callers (the site's form handler and admin, the billing workflows) send x-wd-server.
+    The public /api/tools proxy builds its own headers and never forwards it, so a browser cannot reach billing
+    even if a path trick gets past the proxy's own block."""
+    if request.headers.get("x-wd-server") != "1":
+        raise ApiError("billing from public proxy", 403, "Forbidden")
+
+
 def client_ip(request: Request) -> str:
     return request.headers.get("cf-connecting-ip") or (request.client.host if request.client else "unknown")
 
@@ -447,32 +455,32 @@ def billing() -> Billing:
     return _billing
 
 
-@app.post("/api/tools/billing/plan", dependencies=[Depends(guard)])
+@app.post("/api/tools/billing/plan", dependencies=[Depends(guard), Depends(server_only)])
 async def billing_plan(request: Request):
     return json_ok(await run_in_threadpool(_billing_call, "start_plan", await body_of(request)))
 
 
-@app.post("/api/tools/billing/invoice", dependencies=[Depends(guard)])
+@app.post("/api/tools/billing/invoice", dependencies=[Depends(guard), Depends(server_only)])
 async def billing_invoice(request: Request):
     return json_ok(await run_in_threadpool(_billing_call, "one_off", await body_of(request)))
 
 
-@app.post("/api/tools/billing/run", dependencies=[Depends(guard)])
+@app.post("/api/tools/billing/run", dependencies=[Depends(guard), Depends(server_only)])
 async def billing_run():
     return json_ok(await run_in_threadpool(_billing_call, "run"))
 
 
-@app.post("/api/tools/billing/cancel", dependencies=[Depends(guard)])
+@app.post("/api/tools/billing/cancel", dependencies=[Depends(guard), Depends(server_only)])
 async def billing_cancel(request: Request):
     return json_ok(await run_in_threadpool(_billing_call, "cancel_plan", str((await body_of(request)).get("id") or "")))
 
 
-@app.post("/api/tools/billing/cancel-invoice", dependencies=[Depends(guard)])
+@app.post("/api/tools/billing/cancel-invoice", dependencies=[Depends(guard), Depends(server_only)])
 async def billing_cancel_invoice(request: Request):
     return json_ok(await run_in_threadpool(_billing_call, "cancel_invoice", str((await body_of(request)).get("number") or "")))
 
 
-@app.get("/api/tools/billing", dependencies=[Depends(guard)])
+@app.get("/api/tools/billing", dependencies=[Depends(guard), Depends(server_only)])
 async def billing_overview():
     return json_ok(await run_in_threadpool(_billing_call, "overview"))
 

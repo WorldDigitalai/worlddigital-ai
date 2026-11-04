@@ -8,7 +8,9 @@ export async function toolsProxy(req, env, url) {
   }
   if (!['GET', 'POST'].includes(req.method)) return new Response('Method not allowed', { status: 405 });
   // Billing is never reachable from the browser: only the site's own form handler, the admin and the cron call it.
-  if (/^\/api\/tools\/billing/i.test(url.pathname)) return new Response(JSON.stringify({ error: 'Not found' }), { status: 404, headers: JSON_HEADERS });
+  // No tool route uses encoded characters; refusing them stops encoded paths (e.g. %62illing) slipping past the checks below.
+  if (url.pathname.includes('%')) return new Response(JSON.stringify({ error: 'Bad request' }), { status: 400, headers: JSON_HEADERS });
+  if (/^\/api\/tools\/+billing/i.test(url.pathname)) return new Response(JSON.stringify({ error: 'Not found' }), { status: 404, headers: JSON_HEADERS });
   const headers = new Headers({
     'x-internal-token': env.TOOLS_API_TOKEN || '',
     'cf-connecting-ip': req.headers.get('CF-Connecting-IP') || '',
@@ -36,7 +38,8 @@ export async function backend(env, method, path, body, timeoutMs = 60000) {
   if (!env.TOOLS_API_URL) return { ok: false, status: 503, data: { error: 'The backend is being set up. Please try again later.' } };
   try {
     const res = await fetch(env.TOOLS_API_URL.replace(/\/$/, '') + path, {
-      method, headers: { 'x-internal-token': env.TOOLS_API_TOKEN || '', 'content-type': 'application/json' },
+      // x-wd-server marks a server-side call: the public proxy above never sends it, so billing stays unreachable from browsers
+      method, headers: { 'x-internal-token': env.TOOLS_API_TOKEN || '', 'x-wd-server': '1', 'content-type': 'application/json' },
       body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(timeoutMs),
     });
     let data = {}; try { data = await res.json(); } catch {}

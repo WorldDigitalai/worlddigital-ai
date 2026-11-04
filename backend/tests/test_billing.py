@@ -59,7 +59,7 @@ def env(monkeypatch):
     main.settings.cache_clear()
 
 
-H = {"x-internal-token": TOKEN}
+H = {"x-internal-token": TOKEN, "x-wd-server": "1"}
 
 
 def test_plan_signup_creates_customer_and_emailed_invoice(env):
@@ -129,3 +129,11 @@ def test_cancel_invoice(env):
     r = c.post("/api/tools/billing/cancel-invoice", headers=H, json={"number": num})
     assert r.status_code == 200 and r.json()["status"] == "Cancelled"
     assert c.post("/api/tools/billing/cancel-invoice", headers=H, json={"number": "nope"}).status_code == 404
+
+
+def test_billing_needs_server_header(env):
+    c, _ = env
+    for path in ("/api/tools/billing", "/api/tools/%62illing"):
+        assert c.get(path, headers={"x-internal-token": TOKEN}).status_code == 403
+    assert c.post("/api/tools/billing/run", headers={"x-internal-token": TOKEN}).status_code == 403
+    assert c.get("/api/tools/billing", headers=H).status_code == 200

@@ -37,7 +37,7 @@ jobs:
             *) echo "::error::unknown action $ACTION"; exit 1;;
           esac
           curl -s -o /dev/null "$API/api/tools/health" || true   # wake the service
-          code=$(curl -s -o out.json -w "%{http_code}" -X POST "$API$path" -H "x-internal-token: $TOKEN" -H "content-type: application/json" -d "$body" --max-time 120)
+          code=$(curl -s -o out.json -w "%{http_code}" -X POST "$API$path" -H "x-internal-token: $TOKEN" -H "x-wd-server: 1" -H "content-type: application/json" -d "$body" --max-time 120)
           echo "HTTP $code"; cat out.json; echo
           echo "::notice title=$ACTION (HTTP $code)::$(head -c 600 out.json)"
           [ "$code" = "200" ]

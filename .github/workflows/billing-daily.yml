@@ -15,7 +15,7 @@ jobs:
           TOKEN: ${{ secrets.TOOLS_API_TOKEN }}
           API: https://worlddigital-ai-api-250920469327.us-central1.run.app
         run: |
-          code=$(curl -s -o out.json -w "%{http_code}" -X POST "$API/api/tools/billing/run" -H "x-internal-token: $TOKEN" --max-time 280)
+          code=$(curl -s -o out.json -w "%{http_code}" -X POST "$API/api/tools/billing/run" -H "x-internal-token: $TOKEN" -H "x-wd-server: 1" --max-time 280)
           cat out.json; echo
           if [ "$code" = "503" ]; then echo "::warning::Mercury is not connected yet (MERCURY_API_TOKEN / MERCURY_ACCOUNT_ID)."; exit 0; fi
           [ "$code" = "200" ] || { echo "::error::billing run returned $code"; exit 1; }

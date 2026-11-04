@@ -108,6 +108,23 @@ resource.labels.service_name="worlddigital-ai-api"
 (httpRequest.requestUrl:"illing" OR httpRequest.requestUrl:"%62" OR httpRequest.requestUrl:"%69")
 ```
 
+## 4. Mobile speed and responsive (2026-11-04, PERF-01 closed)
+
+| Change | Why |
+|---|---|
+| Cloudflare Google tag gateway switched **off** (API, `CLOUDFLARE_ZONE_TOKEN`) | It inserted the Google Ads tag at the top of every page even with its "set up tag" option off: about -21 best practices and -25 mobile speed on every page |
+| Google Ads tag loads from Google on the first interaction (like GA4 and GTM) | Conversion tracking kept, nothing third-party on the first view |
+| Home hero animations start on the first interaction; still frame until then | Animated glows were the home page's main-thread cost on phones |
+| `/social` cards use `content-visibility: auto` | 100 cards with blurred images were all painted up front |
+| Static marketing pages edge-cached for 5 minutes (like the blog) | Faster first byte for visitors |
+| Tap targets: header links 44 px, breadcrumbs, table, contact and social links ≥ 24 px; header tagline 12 px; long words in headings wrap | Responsive check findings |
+| New `responsive-ai.yml`: every sitemap page × 9 sizes, nightly and after every site deploy | Same check the .us site has |
+| Lighthouse workflow warms the edge cache and browser before measuring | The first page measured (home) was always measured cold |
+
+**Results (two Lighthouse runs after the changes):** accessibility, best practices and SEO **100 on every page**, mobile and
+desktop (best practices was 78-79). Desktop speed 100 on every page except `/social` (99). Mobile speed: home **100** (was
+69-92), the others 99-100 (LCP 1.7 s on simulated slow 4G). **Responsive: 50 pages x 9 sizes, all OK** (was 153 problems).
+
 ## Not changed (needs the owner)
 
 | Item | Why it needs you |
@@ -116,7 +133,6 @@ resource.labels.service_name="worlddigital-ai-api"
 | Revoke the Mercury token | In Mercury: Settings → API tokens |
 | CLD-01, SEC-04, CLD-08 | Run `tools/gcp/phase1-hardening.sh` from PR #3 in Cloud Shell, then merge PR #3 |
 | Cloudflare token | Give the CI token "Zone → Workers Routes: Edit" on worlddigital.ai so the crawl-file deploy can sync its routes |
-| PERF-01 mobile speed | The slow `/5cex/` script and the Google Ads tag are set in Cloudflare / Google Tag Manager, not in code |
 | BUG-02 switch-on | Create the webhook in Stripe and store its signing secret (steps in the chat reply) |
 | CLD-04, CLD-09 | Check the GCP project's billing account; check that the old NAT, router and static IP are deleted |
 | SEC-06 | Branch protection needs GitHub Team (paid) |

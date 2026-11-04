@@ -1,0 +1,40 @@
+name: Cloudflare tag settings (inspect / fix mobile speed)
+# Manual. Finds what injects the /5cex/ script and the Google Ads tag on worlddigital.ai (audit PERF-01).
+#   action=inspect : read-only. Shows which <script> tags the live home page has, and the zone's Zaraz and
+#                    Google tag gateway settings (on/off, tool names, triggers); never prints secrets.
+# Uses the CLOUDFLARE_ZONE_TOKEN secret if set (Zone > Zaraz: Edit, Zone > Zone Settings: Edit on worlddigital.ai),
+# otherwise the deploy token CLOUDFLARE_API_TOKEN.
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "inspect"
+        default: "inspect"
+permissions:
+  contents: read
+jobs:
+  tags:
+    runs-on: ubuntu-latest
+    env:
+      CF: ${{ secrets.CLOUDFLARE_ZONE_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
+      ZONE: 44cabb00d59301e37d10f9e0e2387111
+    steps:
+      - name: Scripts on the live home page
+        run: |
+          curl -s -A "Mozilla/5.0 (Linux; Android 11) Chrome/130 Mobile" https://worlddigital.ai/ -o home.html
+          grep -oE '<script[^>]*>' home.html | sed -E 's/nonce="[^"]*"//' | sort | uniq -c | while read -r l; do echo "::notice title=script tag::$l"; done
+          grep -oE '/5cex/[^"'"'"' ]*' home.html | sort -u | while read -r l; do echo "::notice title=5cex reference in HTML::$l"; done
+          grep -c "5cex" home.html | xargs -I{} echo "::notice title=5cex mentions in HTML::{}"
+          curl -sI "https://worlddigital.ai/5cex/" | grep -iE "^(HTTP|server|content-type|cf-|x-)" | while read -r l; do echo "::notice title=/5cex/ headers::$l"; done
+      - name: Zone settings (read-only)
+        run: |
+          get() { curl -s -o "$2" -w "%{http_code}" -H "Authorization: Bearer $CF" "https://api.cloudflare.com/client/v4$1"; }
+          for p in "/zones/$ZONE/settings/zaraz/config:zaraz.json" "/zones/$ZONE/settings/google-tag-gateway/config:gtg.json" "/zones/$ZONE/settings/google_tag_gateway:gtg2.json" "/zones/$ZONE:zone.json"; do
+            path=${p%%:*}; out=${p##*:}; code=$(get "$path" "$out")
+            echo "::notice title=GET ${path#/zones/$ZONE}::HTTP $code $(jq -c '{success, errors: [.errors[]?.message]}' "$out" 2>/dev/null | head -c 300)"
+          done
+          if jq -e '.success' zaraz.json >/dev/null 2>&1; then
+            jq -c '{zaraz_tools: [(.result.tools // {}) | to_entries[] | {id: .key, name: .value.name, type: .value.component, enabled: .value.enabled, firing: (.value.firingTriggers // []), blocking: (.value.blockingTriggers // [])}], autoInject: .result.settings.autoInjectScript, contextEnricher: .result.settings.contextEnricher, triggers: [(.result.triggers // {}) | to_entries[] | {id: .key, name: .value.name}]}' zaraz.json | head -c 3000 | sed 's/^/::notice title=Zaraz config::/'
+          fi
+          for f in gtg.json gtg2.json; do jq -e '.success' $f >/dev/null 2>&1 && jq -c '.result' $f | head -c 1500 | sed "s/^/::notice title=Google tag gateway ($f)::/"; done
+          jq -r '"::notice title=Zone plan::" + (.result.plan.name // "?")' zone.json 2>/dev/null || true

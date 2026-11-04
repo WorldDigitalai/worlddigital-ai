@@ -67,7 +67,7 @@ Before/after test results: backend 41 → **44**, site worker 20 → **23**, cra
 | SEC-10 | `anthropic-wif-test.yml` manual only, both repos | 2 workflows | – |
 | UX-01 | "Sign in" link removed from the menu (portal pages stay for old bookmarks) | `layout.js` | – |
 | AI-01, AI-02 | Every OpenAI call (chat, previews, blog, images, speech, embeddings) records feature, model, input and output tokens per day; calls on a model other than the configured one are counted as fallbacks and shown in red. New "AI usage" table on `/blog-admin/kb` | `services.py`, `main.py`, `rag.py`, `blog_ai.py`, `blog_video.py`, `admin.js` | `test_ai_usage_is_counted_per_feature_and_fallbacks_flagged` |
-| BUG-03, SEO-01 | Autopilot skips ideas and drafts whose title overlaps an existing post by 75% or more. The duplicate "…free-and-paid-options" post becomes an archived draft (kept, editable) and its address 301-redirects to the older "…free-and-paid-picks" post | `autopilot.js`, `store.js` | Similarity test |
+| BUG-03, SEO-01 | Autopilot skips ideas and drafts whose title overlaps an existing post by 75% or more. The newer duplicate ("…free-and-paid-picks") became an archived draft (kept, editable) and its address 301-redirects to the older "…free-and-paid-options" post (verified live) | `autopilot.js`, `store.js` | Similarity test |
 | SEC-05 | Tool previews require the Turnstile human check (widget renders it; the site verifies it through the existing report-worker binding before forwarding) | `tools-src/*`, `tools-widget.js`, `tools-proxy.js` | Preview human-check test |
 | BUG-02 | Signed Stripe webhook at `https://worlddigital.ai/api/stripe/webhook`: verifies the signature (5-minute window), re-checks the payment with Stripe, unlocks and emails once (shared guard with the order page). **Off until `STRIPE_WEBHOOK_SECRET` is set** (owner step) | `main.py`, `config.py`, `tools-proxy.js`, `index.js` | Webhook test: signature, age, idempotency, ignored events |
 | AI-04 | Plain summary of what the products do on `/tools`, and the platforms list on `/services` | `pages.js`, `services.html` | Nightly quality test |
@@ -79,6 +79,35 @@ Before/after test results: backend 41 → **44**, site worker 20 → **23**, cra
 | BUG-10 | Lint: unused import, `raise … from`, ambiguous names | `main.py`, `rag.py` | `ruff`: all checks passed (E, F, W, B) |
 | SEO-03 | **No change needed.** The image is the decorative logo inside an `aria-hidden` block with `alt=""`, which is correct. The audit check counted empty alt as missing (false positive) | – | – |
 
+## 3. Live verification (2026-11-04, after deploy `bd0f52e` / .us `a4e1770`)
+
+| Check | Result |
+|---|---|
+| Deploys | Tools API ✅, site ✅, .us website ✅, report API ✅, unsubscribe ✅. Crawl-file worker: code uploaded, **route sync refused** by the Cloudflare token (`/zones/…/workers/routes`: "No access"). It also failed on 2026-10-20; existing routes still serve (robots, llms and sitemap all 200) |
+| `GET /api/tools/health` (public) | `{"ok": true, "database": true}` only |
+| `/api/tools/%62illing` / `/api/tools/billing` | 400 / 404 |
+| `POST /api/site/plan` | 410 |
+| `/pricing` | 301 → `/tools` |
+| Tool preview without the human check | 403 "Please complete the quick human check"; Turnstile present in the tool form |
+| `/api/stripe/webhook` | No signature 400; signed but secret not set yet 503 (off, as intended) |
+| `/api/site/backup` without token | 403 |
+| CSP / Permissions-Policy on pages | Present |
+| "Sign in" in menu | Gone |
+| Duplicate post | `…free-and-paid-picks` 301 → `…free-and-paid-options` (the older one); only the kept post is in the sitemap |
+| `/tools` and `/services` summaries | Live |
+| Backup workflow, first run | ✅ 12 posts, 1 redirect, 4 leads, 3 media files; MongoDB: 17 tool jobs, 2 free-used, 1 audit, 1 billing customer, 1 invoice, 49 RAG pages, 4 meta, 3 questions, 1 sync run. Encrypted artifact, 30 days |
+| Knowledge-base quality test | **22/23 (96%)**, up from 21: right page found 100% (MRR 0.90), cited 95%, answers correct 100%, made-up answers 0%, avg 1.6 s |
+| Log search workflow | Ran, but the deploy account has **no permission to read logs**, so SEC-11 stays an owner step (Logs Explorer query below) |
+| Note | The nightly knowledge-base run (09:37 UTC) did not start on 2026-11-04 (GitHub occasionally skips scheduled runs); all runs that day were manual |
+
+Logs Explorer query for SEC-11 (Google Cloud console → Logging → Logs Explorer, last 30 days):
+
+```
+resource.type="cloud_run_revision"
+resource.labels.service_name="worlddigital-ai-api"
+(httpRequest.requestUrl:"illing" OR httpRequest.requestUrl:"%62" OR httpRequest.requestUrl:"%69")
+```
+
 ## Not changed (needs the owner)
 
 | Item | Why it needs you |
@@ -86,6 +115,7 @@ Before/after test results: backend 41 → **44**, site worker 20 → **23**, cra
 | SEC-02 least-privilege DB user | Creating a database user and its password is a credential change. Steps in CTO-RECOMMENDATIONS.md |
 | Revoke the Mercury token | In Mercury: Settings → API tokens |
 | CLD-01, SEC-04, CLD-08 | Run `tools/gcp/phase1-hardening.sh` from PR #3 in Cloud Shell, then merge PR #3 |
+| Cloudflare token | Give the CI token "Zone → Workers Routes: Edit" on worlddigital.ai so the crawl-file deploy can sync its routes |
 | PERF-01 mobile speed | The slow `/5cex/` script and the Google Ads tag are set in Cloudflare / Google Tag Manager, not in code |
 | BUG-02 switch-on | Create the webhook in Stripe and store its signing secret (steps in the chat reply) |
 | CLD-04, CLD-09 | Check the GCP project's billing account; check that the old NAT, router and static IP are deleted |

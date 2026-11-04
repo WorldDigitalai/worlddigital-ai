@@ -57,3 +57,8 @@ jobs:
           fi
           for f in gtg.json gtg2.json; do jq -e '.success' $f >/dev/null 2>&1 && jq -c '.result' $f | head -c 1500 | sed "s/^/::notice title=Google tag gateway ($f)::/"; done
           jq -r '"::notice title=Zone plan::" + (.result.plan.name // "?")' zone.json 2>/dev/null || true
+          # Other features that can add HTML to pages
+          for p in "/zones/$ZONE/snippets" "/zones/$ZONE/snippets/snippet_rules" "/zones/$ZONE/workers/routes" "/zones/$ZONE/rulesets" "/zones/$ZONE/settings/zaraz/workflow"; do
+            code=$(curl -s -o x.json -w "%{http_code}" -H "Authorization: Bearer $CF" "https://api.cloudflare.com/client/v4$p")
+            echo "::notice title=GET ${p#/zones/$ZONE}::HTTP $code $(jq -c '.result // .errors' x.json 2>/dev/null | head -c 900)"
+          done

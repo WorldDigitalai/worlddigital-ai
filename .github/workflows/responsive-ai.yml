@@ -29,13 +29,22 @@ jobs:
         run: |
           set +e
           args=""; [ -n "$PAGES" ] && args="--pages $PAGES"
-          python tools/responsive_check.py https://worlddigital.ai $args --out resp.json > out.txt 2> err.txt; code=$?
+          python tools/responsive_check.py https://worlddigital.ai $args --out resp.json --max-problems 500 > out.txt 2> err.txt; code=$?
           if [ ! -s resp.json ]; then tail -15 err.txt | while IFS= read -r l; do echo "::error title=Responsive check crashed::$l"; done; exit 1; fi
           python3 - <<'PY'
           import json
           d = json.load(open("resp.json"))
           print("::notice title=Responsive check::" + d["checked"] + (" - all OK" if d["ok"] else f" - {len(d['problems'])} problems"))
-          for p in d["problems"][:50]:
-              print("::warning title=Responsive::" + p)
+          import re
+          from collections import defaultdict
+          groups = defaultdict(set)  # problem without page/size -> pages@sizes
+          for p in d["problems"]:
+              m = re.match(r"(\S+) at (\S+) \(\d+x\d+\): (.*)", p)
+              if not m:
+                  groups[p].add("?"); continue
+              key = re.sub(r"\b\d+x\d+\b|\+?\d+px", "", m.group(3)).strip()
+              groups[key].add(f"{m.group(1)}@{m.group(2)}")
+          lines = [f"[{len(v)}x] {k} :: " + ", ".join(sorted(v)[:12]) for k, v in sorted(groups.items(), key=lambda kv: -len(kv[1]))]
+          print("::warning title=Responsive (grouped)::" + " ||| ".join(lines)[:3800])
           PY
           exit $code

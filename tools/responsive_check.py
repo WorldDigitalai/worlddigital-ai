@@ -114,6 +114,7 @@ def main():
     ap.add_argument("--out")
     ap.add_argument("--shots")
     ap.add_argument("--pages", help="comma-separated paths instead of the sitemap")
+    ap.add_argument("--max-problems", type=int, default=60)
     a = ap.parse_args()
     if a.pages:
         PAGES.extend(p.strip() for p in a.pages.split(",") if p.strip())
@@ -126,7 +127,7 @@ def main():
         PAGES.extend(dict.fromkeys(re.sub(r"^https?://[^/]+", "", u) or "/" for u in re.findall(r"<loc>\s*([^<\s]+)\s*</loc>", xml)))
     results, problems = asyncio.run(run(a.base, a.shots))
     summary = {"ok": not problems, "checked": f"{len(PAGES)} pages x {len(SIZES)} sizes",
-               "sizes": [f"{n} {w}x{h}" for n, w, h, _ in SIZES], "problems": problems[:60]}
+               "sizes": [f"{n} {w}x{h}" for n, w, h, _ in SIZES], "problems": problems[:a.max_problems]}
     if a.out:
         with open(a.out, "w") as f:
             json.dump({**summary, "details": results}, f, indent=1)

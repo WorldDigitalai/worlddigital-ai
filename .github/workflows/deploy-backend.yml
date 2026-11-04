@@ -29,6 +29,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
+      - run: sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends ffmpeg  # blog video tests
       - run: uv sync --frozen || uv sync
       - run: uv run pytest -q
 

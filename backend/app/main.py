@@ -18,6 +18,7 @@ Blog editor only (the site forwards these from /blog-admin/ai/* for a signed-in 
   POST /api/admin/blog/draft         {title, keyword, type, competitors, notes, country, words} -> full post
   POST /api/admin/blog/social        {title, excerpt, url, keyword, category} -> one caption per platform
   POST /api/admin/blog/image         {title, keyword, idea}               -> cover image (JPEG, base64)
+  POST /api/admin/blog/video         {title, excerpt, body, cover_url}    -> Shorts/TikTok video WITH sound (MP4, base64)
   POST /api/tools/billing/plan       {name, email, company, website, plan}  -> Mercury customer + first invoice (emailed)
   POST /api/tools/billing/invoice    {name, email, company, items[], due_days, memo} -> one-off Mercury invoice
   POST /api/tools/billing/run        daily: renewal invoices, paid-status sync, receipts
@@ -41,7 +42,7 @@ from fastapi.responses import JSONResponse, Response
 from starlette.concurrency import run_in_threadpool
 from pymongo import MongoClient
 
-from . import blog_ai, chat
+from . import blog_ai, blog_video, chat
 from .rag import Rag
 from .billing import Billing
 from .config import Settings
@@ -352,6 +353,14 @@ async def blog_image(request: Request):
     b = await body_of(request)
     return json_ok(await run_in_threadpool(blog_ai.cover_image, settings(), title=str(b.get("title") or "")[:140],
                                            keyword=str(b.get("keyword") or "")[:100], idea=str(b.get("idea") or "")[:200]))
+
+
+@app.post("/api/admin/blog/video", dependencies=[Depends(guard)])
+async def blog_video_make(request: Request):
+    b = await body_of(request)
+    return json_ok(await run_in_threadpool(blog_video.make_video, settings(), title=str(b.get("title") or "")[:140],
+                                           excerpt=str(b.get("excerpt") or "")[:500], body=str(b.get("body") or "")[:4000],
+                                           cover_url=str(b.get("cover_url") or "")[:300]))
 
 
 # ── Site audit (our own domains only) ───────────────────────────────────────

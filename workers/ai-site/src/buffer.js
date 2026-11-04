@@ -1,6 +1,7 @@
 // Shares new blog posts to every connected Buffer channel (Buffer GraphQL API, https://api.buffer.com).
 // Secret: BUFFER_API_TOKEN (Buffer > Settings > API). Channels: BUFFER_CHANNELS var, JSON {channelId: service}.
-// YouTube needs a video, so it is skipped for blog posts.
+// YouTube Shorts and TikTok get the post's short video (voiceover + music, made by backend/app/blog_video.py);
+// without a video, YouTube is skipped and TikTok falls back to the image.
 
 const API = 'https://api.buffer.com';
 
@@ -23,10 +24,11 @@ export function channelsOf(env) {
 }
 
 // One createPost input per channel. texts: {linkedin, facebook, instagram, x, google, tiktok}
-export function buildInputs(channels, { url, title, texts, imageUrl, mode = 'shareNow' }) {
+export function buildInputs(channels, { url, title, texts, imageUrl, videoUrl, mode = 'shareNow' }) {
   const base = (channelId) => ({ channelId, schedulingType: 'automatic', mode });
   const img = imageUrl ? [{ image: { url: imageUrl, metadata: { altText: `Illustration for ${title}`.slice(0, 200) } } }] : null;
   const link = { url, title };
+  const vid = videoUrl ? [{ video: { url: videoUrl, metadata: { title: title.slice(0, 90), thumbnailOffset: 1500 } } }] : null;
   const out = [];
   for (const [id, svc] of channels) {
     if (svc === 'linkedin') out.push({ svc, input: { ...base(id), text: texts.linkedin, metadata: { linkedin: { linkAttachment: link } } } });
@@ -35,7 +37,10 @@ export function buildInputs(channels, { url, title, texts, imageUrl, mode = 'sha
     else if (svc === 'googlebusiness') out.push({ svc, input: { ...base(id), text: texts.google, ...(img ? { assets: img } : {}),
       metadata: { google: { type: 'whats_new', detailsWhatsNew: { button: 'learn_more', link: url } } } } });
     else if (svc === 'instagram' && img) out.push({ svc, input: { ...base(id), text: texts.instagram, assets: img, metadata: { instagram: { type: 'post', shouldShareToFeed: true, isAiGenerated: true } } } });
-    else if (svc === 'tiktok' && img) out.push({ svc, input: { ...base(id), text: texts.tiktok, assets: img, metadata: { tiktok: { title: title.slice(0, 90) } } } });
+    else if (svc === 'tiktok' && (vid || img)) out.push({ svc, input: { ...base(id), text: texts.tiktok, assets: vid || img,
+      metadata: { tiktok: vid ? { title: title.slice(0, 90), isAiGenerated: true } : { title: title.slice(0, 90) } } } });
+    else if (svc === 'youtube' && vid) out.push({ svc, input: { ...base(id), text: `${title}\n\nRead the full post: ${url}\n\n#Shorts #SmallBusiness #SEO`.slice(0, 4900),
+      assets: vid, metadata: { youtube: { title: `${title}`.slice(0, 90) + ' #Shorts', categoryId: '28', isAiGenerated: true } } } });
   }
   return out;
 }

@@ -43,3 +43,16 @@ test('shareToBuffer posts each channel and reports per-channel results', async (
   } finally { globalThis.fetch = orig; }
   assert.deepEqual(await shareToBuffer({}, {}), { skipped: 'BUFFER_API_TOKEN is not set' });
 });
+
+test('with a video: YouTube Short and TikTok video (sound is checked by the backend)', () => {
+  const v = 'https://worlddigital.ai/media/0123456789abcdef0123.mp4';
+  const ins = buildInputs(channelsOf({ BUFFER_CHANNELS: CH }), { url: 'https://worlddigital.ai/blog/a', title: 'Local SEO guide', texts, imageUrl: 'https://worlddigital.ai/media/abc', videoUrl: v });
+  const by = Object.fromEntries(ins.map((x) => [x.svc, x.input]));
+  assert.equal(by.youtube.assets[0].video.url, v);
+  assert.equal(by.youtube.metadata.youtube.title, 'Local SEO guide #Shorts');
+  assert.equal(by.youtube.metadata.youtube.categoryId, '28');
+  assert.ok(by.youtube.text.includes('https://worlddigital.ai/blog/a'));
+  assert.equal(by.tiktok.assets[0].video.url, v);
+  assert.equal(by.instagram.assets[0].image.url, 'https://worlddigital.ai/media/abc');
+  assert.ok(gqlLiteral(by.youtube).includes('video: {url: "' + v + '"'));
+});

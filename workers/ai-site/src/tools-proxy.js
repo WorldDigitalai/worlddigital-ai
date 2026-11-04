@@ -45,3 +45,29 @@ export async function backend(env, method, path, body, timeoutMs = 60000) {
     return { ok: false, status: 502, data: { error: 'The backend is busy right now. Please try again in a minute.' } };
   }
 }
+
+// Public answer API: POST /api/rag/answer {query} -> grounded answer from worlddigital.ai pages, with source links.
+// Only the public site is searchable here (never private or customer knowledge). Limited per IP per day by the backend.
+const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Max-Age': '86400' };
+export async function ragAnswer(req, env) {
+  const out = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { ...JSON_HEADERS, ...CORS, 'X-Content-Type-Options': 'nosniff' } });
+  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
+  if (req.method !== 'POST') return out({ error: 'Use POST with JSON: {"query": "your question"}' }, 405);
+  if (!env.TOOLS_API_URL) return out({ error: 'The knowledge API is being set up. Please try again later.' }, 503);
+  let b; try { b = JSON.parse((await req.text()).slice(0, 4000)); } catch { return out({ error: 'Send JSON: {"query": "your question"}' }, 400); }
+  const query = String((b && (b.query || b.q)) || '').trim();
+  if (!query) return out({ error: 'Send JSON: {"query": "your question"}' }, 400);
+  if (query.length > 500) return out({ error: 'Please keep the question under 500 characters.' }, 400);
+  const types = Array.isArray(b.types) ? b.types.slice(0, 5).map(String) : undefined;
+  try {
+    const res = await fetch(env.TOOLS_API_URL.replace(/\/$/, '') + '/api/rag/answer', {
+      method: 'POST', signal: AbortSignal.timeout(60000),
+      headers: { 'x-internal-token': env.TOOLS_API_TOKEN || '', 'content-type': 'application/json', 'cf-connecting-ip': req.headers.get('CF-Connecting-IP') || '' },
+      body: JSON.stringify({ query, types }),
+    });
+    let d = {}; try { d = await res.json(); } catch {}
+    return out(res.ok ? d : { error: d.error || 'Could not answer right now.' }, res.status);
+  } catch {
+    return out({ error: 'The knowledge API is busy right now. Please try again in a minute.' }, 502);
+  }
+}

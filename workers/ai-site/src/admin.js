@@ -247,33 +247,65 @@ document.querySelectorAll('[data-cancel]').forEach(function(b){b.onclick=functio
   return new Response(shell('Billing', body, nonce, script), { headers: headers(nonce) });
 }
 
-function kbPage(nonce, ed, st, qs, tenants) {
-  const n = (v) => Number(v || 0).toLocaleString('en-US');
+function kbPage(nonce, ed, st, qs, tenants, internal) {
+  const n = (v) => (v == null ? '–' : Number(v).toLocaleString('en-US'));
+  const ms = (v) => (v == null ? '–' : `${(v / 1000).toFixed(1)} s`);
   const ai = (st.sites || {}).ai || {};
-  const ev = st.eval && st.eval.total ? st.eval : null;
+  const ct = st.content || {}; const sy = st.sync || {}; const us = st.usage_30d || {}; const cf = st.config || {};
+  const ev = st.eval && st.eval.total ? st.eval : null; const em = (ev && ev.metrics) || {};
+  const pc = (v) => (v == null ? '–' : `${v}%`);
   const idx = Object.entries(st.search_indexes || {}).map(([k, v]) => `${k === 'vector' ? 'meaning' : 'keywords'}: ${esc(v)}`).join(' · ') || 'unknown';
-  const qrows = (qs.questions || []).slice(0, 60).map((q) => `<tr><td style="white-space:nowrap">${esc(fmt(q.at))}</td><td>${esc(q.q)}</td><td>${q.covered ? '<span class="status published">answered</span>' : '<span class="status scheduled">not covered</span>'}</td><td style="font-size:13px">${q.top_url ? esc(q.top_url.replace('https://worlddigital.ai', '') || '/') : ''}</td></tr>`).join('');
+  const stat = (label, value, sub = '') => `<div><div class="muted" style="font-size:13px">${label}</div><div style="font-size:20px;font-weight:700">${value}</div>${sub ? `<div class="muted" style="font-size:13px">${sub}</div>` : ''}</div>`;
+  const grid = (items) => `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-top:10px">${items.join('')}</div>`;
+  const badge = (s) => `<span class="status ${s === 'ok' ? 'published' : s === 'running' ? '' : 'scheduled'}">${esc(s || '')}</span>`;
+  const hist = (sy.history || []).map((r) => `<tr><td style="white-space:nowrap">${esc(fmt(r.started))}</td><td>${esc(r.mode === 'page' ? 'one page' : r.mode)}<div class="muted" style="font-size:12px">${esc(r.trigger || '')}</div></td><td>${badge(r.status)}</td>
+<td>${r.mode === 'page' ? esc((r.url || '').replace('https://worlddigital.ai', '') || '/') : `${n(r.done)}/${n(r.total)} read · ${n(r.updated)} updated · ${n(r.unchanged)} unchanged`}${r.removed ? ` · ${n(r.removed)} removed` : ''}</td><td>${r.errors ? `<b style="color:#B42318">${n(r.errors)}</b>` : '0'}</td><td>${ms(r.duration_ms)}</td></tr>`).join('');
+  const errs = (sy.recent_errors || []).map((e) => `<li>${esc(e)}</li>`).join('');
+  const removed = (sy.removed_30d || []).map((u) => `<li>${esc(u.replace('https://worlddigital.ai', '') || '/')}</li>`).join('');
+  const qrows = (qs.questions || []).slice(0, 60).map((q) => `<tr><td style="white-space:nowrap">${esc(fmt(q.at))}</td><td>${esc(q.q)}<div class="muted" style="font-size:12px">${q.channel === 'api' ? 'public API' : 'website chat'}</div></td><td>${q.covered ? '<span class="status published">answered</span>' : '<span class="status scheduled">not covered</span>'}</td><td style="font-size:13px">${q.top_url ? esc(q.top_url.replace('https://worlddigital.ai', '') || '/') : ''}</td></tr>`).join('');
   const trows = (tenants || []).map((t) => `<tr><td><b>${esc(t.name)}</b><div class="muted" style="font-size:13px">${esc(t.website || 'no website')}</div></td><td>${n(t.pages)} pages · ${n(t.docs)} docs · ${n(t.chunks)} chunks</td>
 <td style="white-space:nowrap"><button type="button" data-t-ask="${esc(t.id)}" data-name="${esc(t.name)}">Ask</button> <button type="button" data-t-doc="${esc(t.id)}" data-name="${esc(t.name)}">Add document</button> ${t.website ? `<button type="button" data-t-site="${esc(t.id)}">Re-read website</button>` : ''} <button type="button" data-t-del="${esc(t.id)}" data-name="${esc(t.name)}">Delete</button></td></tr>`).join('');
+  const irows = (internal || []).map((d) => `<tr><td><b>${esc(d.title)}</b></td><td>${n(d.chunks)} chunks</td><td style="white-space:nowrap">${esc(fmt(d.updated))}</td><td><button type="button" data-i-del="${esc(d.url)}" data-name="${esc(d.title)}">Remove</button></td></tr>`).join('');
+  const table = (head, rows, empty, cols) => `<div style="overflow-x:auto;border:1px solid #DCE5EF;border-radius:14px;margin-top:10px"><table class="list"><thead><tr>${head.map((h) => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows || `<tr><td colspan="${cols}">${empty}</td></tr>`}</tbody></table></div>`;
   const body = `${topbar(ed.email, ed.csrf)}<main class="wrap" style="padding-top:36px;padding-bottom:60px"><h1 class="h" style="font-size:32px">Knowledge base</h1>
-<p class="muted">What AI Ahmad and the blog assistant know about worlddigital.ai. It refreshes every night and whenever you publish or update a post.${st.error ? ` <b style="color:#B42318">${esc(st.error)}</b>` : ''}</p>
-<div class="card" style="margin-top:14px"><div class="two"><div><b>worlddigital.ai</b><div>${n(ai.pages)} pages · ${n(ai.chunks)} chunks</div><div class="muted" style="font-size:14px">Last update: ${esc(fmt(ai.last_update) || 'never')}</div></div>
-<div><b>Answer quality test</b><div>${ev ? `${ev.passed}/${ev.total} passed (${ev.score}%)` : 'not run yet'}</div><div class="muted" style="font-size:14px">${ev ? 'Run ' + esc(fmt(ev.at)) : ''}</div></div></div>
-<div class="muted" style="font-size:14px;margin-top:8px">Search indexes: ${idx}</div>
-<p style="margin-top:12px"><button type="button" id="rebuild">Refresh from the website now</button> <button type="button" id="evalb">Run quality test</button> <span id="smsg" class="muted"></span></p>
-<div id="evout"></div></div>
+<p class="muted">What AI Ahmad, the blog assistant and the public answer API know about worlddigital.ai. It refreshes every night and whenever you publish, update or unpublish a post.${st.error ? ` <b style="color:#B42318">${esc(st.error)}</b>` : ''}</p>
+<div class="card" style="margin-top:14px"><h2 class="h" style="font-size:20px">Content</h2>${grid([
+    stat('Found in sitemap', n(ct.discovered)), stat('Website pages', n(ct.website_pages)), stat('Blog posts', n(ct.blog_posts)),
+    stat('Chunks', n(ct.chunks != null ? ct.chunks : ai.chunks)), stat('Last successful sync', esc(fmt(sy.last_success) || 'never')),
+    stat('Waiting to sync', n(sy.pending)), stat('Failed syncs (30 days)', n(sy.failed_30d)), stat('Embedding errors (30 days)', n(us.embed_errors))])}
+<p style="margin-top:14px"><button type="button" id="quick">Sync changed pages</button> <button type="button" id="full">Full rebuild (re-reads and re-embeds every page)</button> <span id="smsg" class="muted"></span></p>
+${errs ? `<details style="margin-top:8px"><summary>Errors in the last sync (${(sy.recent_errors || []).length})</summary><ul style="font-size:14px">${errs}</ul></details>` : ''}
+${removed ? `<details style="margin-top:8px"><summary>Pages removed in the last 30 days (${(sy.removed_30d || []).length})</summary><ul style="font-size:14px">${removed}</ul></details>` : ''}</div>
+<div class="card" style="margin-top:14px"><h2 class="h" style="font-size:20px">Answer quality</h2>${ev ? grid([
+    stat('Test questions passed', `${n(ev.passed)}/${n(ev.total)}`, `${ev.score}% · ${esc(fmt(ev.at))}`), stat('Right page found', pc(em.retrieval_hit_rate), `rank score ${em.mrr == null ? '–' : em.mrr}`),
+    stat('Right page cited', pc(em.citation_accuracy)), stat('Answer correct', pc(em.answer_accuracy)),
+    stat('Made-up answers', pc(em.unsupported_answer_rate), 'to questions the site does not cover'), stat('Answer time', ms(em.avg_ms), `slowest 5%: ${ms(em.p95_ms)}`)]) : '<p class="muted">Not run yet.</p>'}
+<p style="margin-top:12px"><button type="button" id="evalb">Run quality test</button> <span id="emsg" class="muted"></span></p><div id="evout"></div></div>
+<div class="card" style="margin-top:14px"><h2 class="h" style="font-size:20px">Use (last 30 days)</h2>${grid([
+    stat('Searches', n(us.searches), `avg ${ms(us.avg_search_ms)}`), stat('Answers (admin and tests)', n(us.answers), `avg ${ms(us.avg_answer_ms)}`),
+    stat('Public API answers', n(us.public_answers)), stat('Chat questions', n(qs.total), `${n(qs.uncovered)} not covered`)])}
+<p class="muted" style="font-size:13px;margin-top:10px">Search indexes: ${idx} · Model: ${esc(cf.embedding_model || '')} (${n(cf.embedding_dims)} dimensions) · Chunks: about ${n(cf.chunk_tokens)} tokens, ${n(cf.overlap_tokens)} overlap</p></div>
 <h2 class="h" style="font-size:22px;margin-top:28px">Ask the knowledge base</h2>
 <form id="ask" class="card" style="margin-top:10px"><label>Question</label><input name="q" maxlength="500" required placeholder="e.g. How much is the content pack?">
-<input type="hidden" name="tenant" value=""><p class="muted" id="askwho" style="font-size:14px;margin:6px 0 0">Searching: worlddigital.ai</p>
+<div class="two"><div><label>Search in</label><select name="scope"><option value="ai">Public website</option><option value="ai+internal">Public website + private company knowledge</option><option value="internal">Private company knowledge only</option></select></div>
+<div><label>Content type</label><select name="type"><option value="">Everything</option><option value="website_page">Website pages</option><option value="product_page">Product pages</option><option value="blog_post">Blog posts</option></select></div></div>
+<input type="hidden" name="tenant" value=""><p class="muted" id="askwho" style="font-size:14px;margin:6px 0 0"></p>
 <p style="margin-top:12px"><button class="btn" type="submit" id="askb">Ask</button> <span id="amsg" class="muted"></span></p><div id="aout"></div></form>
+<h2 class="h" style="font-size:22px;margin-top:28px">Sync history</h2>${table(['When', 'Type', 'Result', 'Pages', 'Errors', 'Time'], hist, 'No syncs yet.', 6)}
 <h2 class="h" style="font-size:22px;margin-top:28px">Chat questions (last 30 days)</h2>
-<p class="muted">${n(qs.total)} questions · ${n(qs.uncovered)} the knowledge base could not answer. Those are ideas for new pages or posts. Emails and phone numbers are removed, and questions are deleted after 180 days.</p>
-<div style="overflow-x:auto;border:1px solid #DCE5EF;border-radius:14px;margin-top:10px"><table class="list"><thead><tr><th>When</th><th>Question</th><th>Result</th><th>Best page</th></tr></thead><tbody>${qrows || '<tr><td colspan="4">No questions yet.</td></tr>'}</tbody></table></div>
+<p class="muted">Questions the knowledge base could not answer are ideas for new pages or posts. Emails and phone numbers are removed, and questions are deleted after 180 days.</p>
+${table(['When', 'Question', 'Result', 'Best page'], qrows, 'No questions yet.', 4)}
+<h2 class="h" style="font-size:22px;margin-top:32px">Private company knowledge</h2>
+<p class="muted">Internal documents (processes, approved answers, technical notes). Only searchable here: never used by the website chat or the public API.</p>
+<form id="inew" class="card" style="margin-top:10px"><label>Title</label><input name="title" maxlength="160" required placeholder="e.g. Onboarding checklist">
+<label>Text</label><textarea name="text" rows="8" maxlength="200000" required placeholder="Paste the document text here"></textarea>
+<p style="margin-top:12px"><button class="btn" type="submit">Add</button> <span id="imsg" class="muted"></span></p></form>
+${table(['Document', 'Size', 'Added', ''], irows, 'No private documents yet.', 4)}
 <h2 class="h" style="font-size:22px;margin-top:32px">Customer knowledge bases</h2>
 <p class="muted">A private knowledge base per customer, built from their website and documents you add. Each one is kept separate: it never mixes with ours or with another customer's.</p>
 <form id="tnew" class="card" style="margin-top:10px"><div class="two"><div><label>Customer name *</label><input name="name" required maxlength="120"></div><div><label>Website</label><input name="website" maxlength="200" placeholder="clinic.com"></div></div>
 <p style="margin-top:12px"><button class="btn" type="submit">Create</button> <span id="tmsg" class="muted"></span></p></form>
-<div style="overflow-x:auto;border:1px solid #DCE5EF;border-radius:14px;margin-top:14px"><table class="list"><thead><tr><th>Customer</th><th>Contents</th><th></th></tr></thead><tbody>${trows || '<tr><td colspan="3">No customers yet.</td></tr>'}</tbody></table></div>
+${table(['Customer', 'Contents', ''], trows, 'No customers yet.', 3)}
 <form id="tdoc" class="card" style="margin-top:14px;display:none"><h3 class="h" style="font-size:19px" id="tdoch">Add document</h3><label>Title</label><input name="title" maxlength="160" placeholder="e.g. Price list 2026">
 <label>Text</label><textarea name="text" rows="10" maxlength="200000" required placeholder="Paste the document text here"></textarea><input type="hidden" name="tenant">
 <p style="margin-top:12px"><button class="btn" type="submit">Add to knowledge base</button> <button type="button" id="tdocx">Close</button> <span id="dmsg" class="muted"></span></p></form></main>`;
@@ -281,17 +313,26 @@ function kbPage(nonce, ed, st, qs, tenants) {
 function post(u,b){return fetch(u,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF':CSRF},body:JSON.stringify(b||{})}).then(function(r){return r.json().catch(function(){return {}}).then(function(j){return {ok:r.ok,j:j}})}).catch(function(){return {ok:false,j:{error:'Network problem. Try again.'}}})}
 function el(tag,txt,css){var e=document.createElement(tag);if(txt!=null)e.textContent=txt;if(css)e.style.cssText=css;return e}
 function err(x,d){return (x.j&&(x.j.error||x.j.detail))||d}
-$('rebuild').onclick=function(){$('smsg').textContent='Reading the website… this can take a minute.';post('/blog-admin/kb/index',{}).then(function(x){$('smsg').textContent=x.ok?('Done: '+x.j.updated+' pages updated, '+x.j.unchanged+' unchanged, '+x.j.removed+' removed.'+(x.j.errors&&x.j.errors.length?' Problems: '+x.j.errors.length:'')):err(x,'Refresh failed.');if(x.ok)setTimeout(function(){location.reload()},1500)})};
-$('evalb').onclick=function(){$('smsg').textContent='Testing '+'answers… about a minute.';post('/blog-admin/kb/eval',{}).then(function(x){if(!x.ok){$('smsg').textContent=err(x,'Test failed.');return}$('smsg').textContent=x.j.passed+'/'+x.j.total+' passed ('+x.j.score+'%).';var o=$('evout');o.textContent='';(x.j.results||[]).filter(function(r){return !r.ok}).forEach(function(r){o.appendChild(el('div','✗ '+r.q+(r.why?' ('+r.why+')':r.missing&&r.missing.length?' (missing: '+r.missing.join(', ')+')':''),'font-size:14px;color:#B42318;margin-top:4px'))})})};
+function sync(full){var b1=$('quick'),b2=$('full');b1.disabled=b2.disabled=true;$('smsg').textContent='Starting…';
+(function step(run){post('/blog-admin/kb/index',{full:full,run:run,batch:15}).then(function(x){if(!x.ok){b1.disabled=b2.disabled=false;$('smsg').textContent=err(x,'Sync failed.');return}var d=x.j;
+$('smsg').textContent=(full?'Rebuilding: ':'Syncing: ')+d.done+' of '+d.total+' pages…';if(!d.finished)return step(d.run);
+$('smsg').textContent='Done: '+d.updated+' updated, '+d.unchanged+' unchanged, '+d.removed+' removed'+(d.errors&&d.errors.length?', '+d.errors.length+' errors':'')+'.';setTimeout(function(){location.reload()},1800)})})(null)}
+$('quick').onclick=function(){sync(false)};
+$('full').onclick=function(){if(confirm('Re-read and re-embed every page? It takes a few minutes and costs a few cents of OpenAI usage.'))sync(true)};
+$('evalb').onclick=function(){$('emsg').textContent='Testing answers… one to two minutes.';post('/blog-admin/kb/eval',{}).then(function(x){if(!x.ok){$('emsg').textContent=err(x,'Test failed.');return}$('emsg').textContent=x.j.passed+'/'+x.j.total+' passed ('+x.j.score+'%).';var o=$('evout');o.textContent='';(x.j.results||[]).filter(function(r){return !r.ok}).forEach(function(r){o.appendChild(el('div','✗ '+r.q+(r.why?' ('+r.why+')':r.missing&&r.missing.length?' (missing: '+r.missing.join(', ')+')':!r.source_ok?' (expected page not cited)':' (expected page not found)'),'font-size:14px;color:#B42318;margin-top:4px'))});setTimeout(function(){location.reload()},4000)})};
 function showAnswer(x){var o=$('aout');o.textContent='';$('askb').disabled=false;if(!x.ok){$('amsg').textContent=err(x,'Could not answer.');return}$('amsg').textContent=x.j.covered===false?'Not covered by the knowledge base.':'';
-o.appendChild(el('p',x.j.answer,'margin-top:12px;font-size:16.5px;line-height:1.6'));if(x.j.method)o.appendChild(el('div','Search: '+x.j.method,'font-size:13px;color:#4A5B70'));
-(x.j.sources||[]).forEach(function(s,i){var d=el('div',null,'font-size:14px;margin-top:4px');d.appendChild(el('b','['+(s.n||i+1)+'] '));if(/^https:/.test(s.url)){var a=el('a',s.title||s.url);a.href=s.url;a.target='_blank';a.rel='noopener';d.appendChild(a)}else d.appendChild(el('span',s.title||s.url));o.appendChild(d)});
-if((x.j.passages||[]).length){var det=el('details',null,'margin-top:10px');det.appendChild(el('summary','Passages found ('+x.j.passages.length+')'));x.j.passages.forEach(function(p){var b=el('div',null,'border-top:1px solid #DCE5EF;padding:8px 0;font-size:14px;white-space:pre-wrap');b.appendChild(el('b',(p.title||p.url)+(p.score!=null?' · '+Number(p.score).toFixed(3):'')+'\\n'));b.appendChild(document.createTextNode(p.text||''));det.appendChild(b)});o.appendChild(det)}}
+o.appendChild(el('p',x.j.answer,'margin-top:12px;font-size:16.5px;line-height:1.6'));if(x.j.undocumented)o.appendChild(el('p','Not documented: '+x.j.undocumented,'font-size:14px;color:#92400E'));
+o.appendChild(el('div','Search: '+(x.j.method||'–')+(x.j.ms!=null?' · '+(x.j.ms/1000).toFixed(1)+' s':''),'font-size:13px;color:#4A5B70'));
+(x.j.sources||[]).forEach(function(s,i){var d=el('div',null,'font-size:14px;margin-top:4px');d.appendChild(el('b','['+(s.n||i+1)+'] '));if(/^https:/.test(s.url)){var a=el('a',s.title||s.url);a.href=s.url;a.target='_blank';a.rel='noopener';d.appendChild(a)}else d.appendChild(el('span',(s.title||s.url)+' (private document)'));o.appendChild(d)});
+if((x.j.passages||[]).length){var det=el('details',null,'margin-top:10px');det.appendChild(el('summary','Passages found ('+x.j.passages.length+')'));x.j.passages.forEach(function(p){var b=el('div',null,'border-top:1px solid #DCE5EF;padding:8px 0;font-size:14px;white-space:pre-wrap');b.appendChild(el('b',(p.title||p.url)+(p.section&&p.section!==p.title?' › '+p.section:'')+(p.content_type?' · '+p.content_type:'')+(p.score!=null?' · '+Number(p.score).toFixed(3):'')+'\\n'));b.appendChild(document.createTextNode(p.text||''));det.appendChild(b)});o.appendChild(det)}}
 $('ask').onsubmit=function(e){e.preventDefault();var f=e.target,t=f.tenant.value;$('askb').disabled=true;$('amsg').textContent='Thinking…';
-(t?post('/blog-admin/kb/tenants',{action:'ask',tenant:t,q:f.q.value}):post('/blog-admin/kb/ask',{q:f.q.value})).then(showAnswer)};
+var sc=f.scope.value==='ai+internal'?['ai','internal']:[f.scope.value];
+(t?post('/blog-admin/kb/tenants',{action:'ask',tenant:t,q:f.q.value}):post('/blog-admin/kb/ask',{q:f.q.value,sources:sc,types:f.type.value?[f.type.value]:null})).then(showAnswer)};
+$('inew').onsubmit=function(e){e.preventDefault();var f=e.target;$('imsg').textContent='Adding…';post('/blog-admin/kb/internal',{action:'add-doc',title:f.title.value,text:f.text.value}).then(function(x){$('imsg').textContent=x.ok?'Added ('+x.j.chunks+' chunks).':err(x,'Could not add.');if(x.ok)setTimeout(function(){location.reload()},1200)})};
+document.querySelectorAll('[data-i-del]').forEach(function(b){b.onclick=function(){if(!confirm('Remove "'+b.dataset.name+'" from private company knowledge?'))return;post('/blog-admin/kb/internal',{action:'remove-doc',url:b.dataset.iDel}).then(function(x){if(x.ok)location.reload();else alert(err(x,'Could not remove.'))})}});
 $('tnew').onsubmit=function(e){e.preventDefault();var f=e.target;$('tmsg').textContent='Creating…';post('/blog-admin/kb/tenants',{action:'create',name:f.name.value,website:f.website.value}).then(function(x){if(!x.ok){$('tmsg').textContent=err(x,'Could not create.');return}
 if(!f.website.value){location.reload();return}$('tmsg').textContent='Created. Reading the website…';post('/blog-admin/kb/tenants',{action:'index-site',tenant:x.j.id}).then(function(y){$('tmsg').textContent=y.ok?'Done: '+y.j.pages+' pages read.':err(y,'Created, but the website could not be read.');setTimeout(function(){location.reload()},1500)})})};
-document.querySelectorAll('[data-t-ask]').forEach(function(b){b.onclick=function(){var f=$('ask');f.tenant.value=b.dataset.tAsk;$('askwho').textContent='Searching: '+b.dataset.name+' (customer knowledge base) · ';var r=el('a','switch back to worlddigital.ai');r.href='#';r.onclick=function(e){e.preventDefault();f.tenant.value='';$('askwho').textContent='Searching: worlddigital.ai'};$('askwho').appendChild(r);f.scrollIntoView({behavior:'smooth'});f.q.focus()}});
+document.querySelectorAll('[data-t-ask]').forEach(function(b){b.onclick=function(){var f=$('ask');f.tenant.value=b.dataset.tAsk;f.scope.disabled=f.type.disabled=true;$('askwho').textContent='Searching: '+b.dataset.name+' (customer knowledge base) · ';var r=el('a','switch back');r.href='#';r.onclick=function(e){e.preventDefault();f.tenant.value='';f.scope.disabled=f.type.disabled=false;$('askwho').textContent=''};$('askwho').appendChild(r);f.scrollIntoView({behavior:'smooth'});f.q.focus()}});
 document.querySelectorAll('[data-t-doc]').forEach(function(b){b.onclick=function(){var f=$('tdoc');f.style.display='block';f.tenant.value=b.dataset.tDoc;$('tdoch').textContent='Add document for '+b.dataset.name;f.scrollIntoView({behavior:'smooth'})}});
 $('tdocx').onclick=function(){$('tdoc').style.display='none'};
 $('tdoc').onsubmit=function(e){e.preventDefault();var f=e.target;$('dmsg').textContent='Adding…';post('/blog-admin/kb/tenants',{action:'add-doc',tenant:f.tenant.value,title:f.title.value,text:f.text.value}).then(function(x){$('dmsg').textContent=x.ok?'Added ('+x.j.chunks+' chunks).':err(x,'Could not add.');if(x.ok)setTimeout(function(){location.reload()},1200)})};
@@ -422,23 +463,29 @@ export async function handleAdmin(req, env, url, store, ctx, { pingNow, prod }) 
     return json(r.ok ? r.data : { error: r.data.error || 'Billing request failed.' }, r.ok ? 200 : (r.status || 500));
   }
   if (path === '/blog-admin/kb' && method === 'GET') {
-    const [st, qs, tn] = await Promise.all([backend(env, 'GET', '/api/admin/rag'), backend(env, 'GET', '/api/admin/rag/questions?days=30'),
-      backend(env, 'POST', '/api/admin/rag/tenants', { action: 'list' })]);
-    return kbPage(nonce, ed, st.ok ? st.data : { error: st.data.error || 'Could not load the knowledge base.' }, qs.ok ? qs.data : {}, tn.ok ? tn.data.tenants : []);
+    const [st, qs, tn, it] = await Promise.all([backend(env, 'GET', '/api/admin/rag'), backend(env, 'GET', '/api/admin/rag/questions?days=30'),
+      backend(env, 'POST', '/api/admin/rag/tenants', { action: 'list' }), backend(env, 'POST', '/api/admin/rag/internal', { action: 'list' })]);
+    return kbPage(nonce, ed, st.ok ? st.data : { error: st.data.error || 'Could not load the knowledge base.' }, qs.ok ? qs.data : {},
+      tn.ok ? tn.data.tenants : [], it.ok ? it.data.docs : []);
   }
-  const kb = /^\/blog-admin\/kb\/(index|ask|eval|tenants)$/.exec(path);
+  const kb = /^\/blog-admin\/kb\/(index|ask|eval|tenants|internal)$/.exec(path);
   if (kb && method === 'POST') {
     let b = {}; try { b = await req.json(); } catch {}
     if (!b || typeof b !== 'object' || JSON.stringify(b).length > 210000) return json({ error: 'Bad request.' }, 400);
+    const SCOPES = ['ai', 'internal'];
     const call = {
-      index: () => backend(env, 'POST', '/api/admin/rag/index', { source: 'ai' }, 280000),
+      index: () => backend(env, 'POST', '/api/admin/rag/index', { source: 'ai', full: b.full === true, run: typeof b.run === 'string' ? b.run.slice(0, 40) : null,
+        batch: Math.max(1, Math.min(Number(b.batch) || 15, 40)), trigger: 'admin' }, 280000),
       eval: () => backend(env, 'POST', '/api/admin/rag/eval', {}, 280000),
-      ask: () => backend(env, 'POST', '/api/admin/rag/ask', { q: String(b.q || '').slice(0, 500), sources: ['ai'] }, 90000),
+      ask: () => backend(env, 'POST', '/api/admin/rag/ask', { q: String(b.q || '').slice(0, 500),
+        sources: (Array.isArray(b.sources) ? b.sources : ['ai']).filter((x) => SCOPES.includes(x)), types: Array.isArray(b.types) ? b.types.slice(0, 3) : null }, 90000),
+      internal: () => backend(env, 'POST', '/api/admin/rag/internal', { action: b.action, title: b.title, text: b.text, url: b.url }, 120000),
       tenants: () => backend(env, 'POST', '/api/admin/rag/tenants', b, b.action === 'index-site' ? 280000 : 90000),
     }[kb[1]];
     const r = await call();
-    if (kb[1] !== 'ask' && !(kb[1] === 'tenants' && ['ask', 'list', 'docs'].includes(b.action))) {
-      await store.log(ed.email, `kb_${kb[1]}${b.action ? '_' + b.action : ''}`, JSON.stringify({ tenant: b.tenant, name: b.name, status: r.status }).slice(0, 300));
+    const quiet = kb[1] === 'ask' || (kb[1] === 'index' && b.run) || (['tenants', 'internal'].includes(kb[1]) && ['ask', 'list', 'docs'].includes(b.action));
+    if (!quiet) {
+      await store.log(ed.email, `kb_${kb[1]}${b.action ? '_' + b.action : ''}${b.full ? '_full' : ''}`, JSON.stringify({ tenant: b.tenant, name: b.name || b.title, status: r.status }).slice(0, 300));
     }
     return json(r.ok ? r.data : { error: r.data.error || 'Knowledge base request failed.' }, r.ok ? 200 : (r.status || 500));
   }

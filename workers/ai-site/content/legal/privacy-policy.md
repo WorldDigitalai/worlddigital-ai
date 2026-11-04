@@ -14,12 +14,12 @@ We collect information in the following ways:
 - **Usage data:** Log files, pages visited, features used, and timestamps of interactions.
 - **Ad platform data:** Campaign performance metrics and audience data from your connected Google, Meta, and Snapchat accounts.
 - **Communications:** Support tickets, email correspondence, and chat logs.
-- **Website chat questions:** When you use the chat assistant on our website, we store the question you typed and the answer it gave, so we can improve our pages and answers. We remove email addresses and phone numbers before storing them, we do not store your IP address with them, and we delete them automatically after 180 days.
+- **Website chat questions:** When you use the chat assistant on our website or our public answer API, we store the question you typed and the answer it gave, so we can improve our pages and answers. We remove email addresses and phone numbers before storing them, we do not store your IP address with them, and we delete them automatically after 180 days.
 - **Device and technical data:** IP address, browser type, operating system, and device identifiers.
 
 ## 3. How We Use Your Information
 
-- To provide, operate, and improve our AI marketing platform.
+- To provide, operate, and improve our software and services.
 - To process payments and manage subscriptions.
 - To optimize and automate your advertising campaigns.
 - To send transactional emails, billing notices, and product updates.

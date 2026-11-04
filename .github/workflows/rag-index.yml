@@ -11,6 +11,10 @@ on:
       question:
         description: "Optional test question (answered from the index with sources)"
         default: ""
+      full:
+        description: "Full rebuild: re-read and re-embed every page"
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -20,13 +24,32 @@ jobs:
       TOKEN: ${{ secrets.TOOLS_API_TOKEN }}
       API: https://worlddigital-ai-api-250920469327.us-central1.run.app
     steps:
-      - name: Index the site
+      - name: Sync the site (incremental, in batches)
+        env:
+          FULL: ${{ inputs.full == true }}
+          TRIGGER: ${{ github.event_name == 'schedule' && 'nightly' || 'manual' }}
         run: |
           curl -s -o /dev/null "$API/api/tools/health" || true
-          code=$(curl -s -o out.json -w "%{http_code}" -X POST "$API/api/admin/rag/index" -H "x-internal-token: $TOKEN" -H "content-type: application/json" -d '{"source":"ai"}' --max-time 290)
-          cat out.json; echo
-          [ "$code" = "200" ] || { echo "::error::index returned $code: $(head -c 300 out.json)"; exit 1; }
-          python3 -c "import json;d=json.load(open('out.json'));print(f\"::notice title=Knowledge base::{d['pages']} pages read, {d['updated']} updated, {d['unchanged']} unchanged, {d['removed']} removed, {d['total_chunks']} chunks, {d.get('duplicates',0)} repeated sections skipped, search indexes: {d.get('search_indexes')}\");[print('::warning::'+e) for e in d.get('errors',[])[:10]]"
+          run=""
+          for i in $(seq 1 40); do
+            body=$(jq -nc --arg run "$run" --argjson full "$FULL" --arg trig "$TRIGGER" '{source:"ai", batch:20, trigger:$trig, full:$full} + (if $run=="" then {} else {run:$run} end)')
+            code=$(curl -s -o out.json -w "%{http_code}" -X POST "$API/api/admin/rag/index" -H "x-internal-token: $TOKEN" -H "content-type: application/json" -d "$body" --max-time 290)
+            [ "$code" = "200" ] || { echo "::error::sync returned $code: $(head -c 300 out.json)"; exit 1; }
+            run=$(jq -r .run out.json); echo "batch $i: $(jq -r '"\(.done)/\(.total)"' out.json)"
+            [ "$(jq -r .finished out.json)" = "true" ] && break
+          done
+          python3 - <<'PY'
+          import json
+          d = json.load(open("out.json"))
+          print(f"::notice title=Knowledge base::{d['mode']} sync {d.get('status')}: {d['discovered']} found, {d['pages']} read, {d['updated']} updated, "
+                f"{d['unchanged']} unchanged, {d['removed']} removed, {d['total_chunks']} chunks; skipped: {d['skipped_noindex']} noindex, "
+                f"{d['skipped_canonical']} non-canonical, {d['skipped_robots']} robots.txt, {d.get('duplicates', 0)} repeated sections; "
+                f"search indexes: {d.get('search_indexes')}")
+          for e in d.get("errors", [])[:10]:
+              print("::warning::" + e)
+          if d.get("status") != "ok":
+              raise SystemExit("::error::sync finished with problems")
+          PY
       - name: Answer-quality test
         run: |
           code=$(curl -s -o ev.json -w "%{http_code}" -X POST "$API/api/admin/rag/eval" -H "x-internal-token: $TOKEN" --max-time 290)
@@ -34,7 +57,10 @@ jobs:
           python3 - <<'PY'
           import json
           d = json.load(open("ev.json"))
-          print(f"::notice title=Answer quality::{d['passed']}/{d['total']} passed ({d['score']}%)")
+          m = d.get("metrics", {})
+          print(f"::notice title=Answer quality::{d['passed']}/{d['total']} passed ({d['score']}%) | right page found {m.get('retrieval_hit_rate')}% "
+                f"(MRR {m.get('mrr')}) | right page cited {m.get('citation_accuracy')}% | answers correct {m.get('answer_accuracy')}% | "
+                f"made-up answers {m.get('unsupported_answer_rate')}% | avg {m.get('avg_ms')} ms, p95 {m.get('p95_ms')} ms")
           for r in d.get("results", []):
               if not r.get("ok"):
                   why = r.get("why") or (("missing: " + ", ".join(r["missing"])) if r.get("missing") else "wrong source page")

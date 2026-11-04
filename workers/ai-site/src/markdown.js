@@ -25,7 +25,19 @@ export function htmlToMarkdown(html, url) {
     .replace(/<t[dh][^>]*>/gi, ' | ')
     .replace(/<[^>]+>/g, '');
   m = decode(m).split('\n').map((l) => l.replace(/[ \t]+/g, ' ').trim()).join('\n').replace(/\n{3,}/g, '\n\n').trim();
-  return `---\ntitle: ${title}\ndescription: ${desc}\nurl: ${url}\n---\n\n${m}\n`;
+  // page facts for AI agents and our knowledge base (one line each, no line breaks inside values)
+  const one = (v) => String(v || '').replace(/\s+/g, ' ').trim();
+  const canonical = (/<link rel="canonical" href="([^"]+)"/i.exec(html) || [, url])[1];
+  const lang = (/<html[^>]*\blang="([^"]+)"/i.exec(html) || [, 'en'])[1];
+  const noindex = /<meta name="robots" content="[^"]*noindex/i.test(html);
+  const ld = (k) => decode((new RegExp(`"${k}":"([^"]*)"`).exec(html) || [, ''])[1]);
+  const blog = /"@type":"BlogPosting"/.test(html);
+  const type = blog ? 'blog_post' : /\/(tools|free-seo-report|keyword-research|content-marketing)\b/.test(url) ? 'product_page'
+    : /\/blog(\/topic\/|$|\?)/.test(url) ? 'blog_index' : 'website_page';
+  const meta = [['title', title], ['description', desc], ['url', url], ['canonical', decode(canonical)], ['language', lang], ['type', type],
+    ['published', blog ? ld('datePublished') : ''], ['modified', blog ? ld('dateModified') : ''], ['category', blog ? ld('articleSection') : ''],
+    ['robots', noindex ? 'noindex' : '']].filter(([, v]) => one(v)).map(([k, v]) => `${k}: ${one(v)}`).join('\n');
+  return `---\n${meta}\n---\n\n${m}\n`;
 }
 
 export const wantsMarkdown = (req) => /text\/markdown/i.test(req.headers.get('Accept') || '') && !/text\/html/i.test(req.headers.get('Accept') || '');

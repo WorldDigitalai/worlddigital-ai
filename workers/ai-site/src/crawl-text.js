@@ -103,6 +103,8 @@ Clients include Murfreesboro Kabob, RPM Auto Group and Bean Loft Coffee Company 
 
 ## Optional
 - [Full knowledge file](${SITE}/llms-full.txt) — Detailed reference on the company, services, process and common questions
+- [Answer API](${SITE}/api/rag/answer) — POST JSON {"query": "your question"}; returns an answer grounded in this website with source links (30 questions a day per IP)
+- Any page as Markdown — send \`Accept: text/markdown\`; the front matter lists title, description, canonical URL, language, type and, for blog posts, dates and category
 `;
 
 export const LLMS_FULL = `# WorldDigital.ai — Full Reference

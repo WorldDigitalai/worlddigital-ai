@@ -8,7 +8,7 @@ import { handleAdmin, sendEmail, sha256 } from './admin.js';
 import { ROBOTS, LLMS, LLMS_FULL, UPDATED } from './crawl-text.js';
 import { SOCIAL_UPDATED } from './social.js';
 import { INDEXNOW_KEY, PROD_HOSTS, isAppPath } from './routing.js';
-import { toolsProxy, backend } from './tools-proxy.js';
+import { toolsProxy, backend, ragAnswer } from './tools-proxy.js';
 import { withTool } from './tools-widget.js';
 import { humanOk } from './human.js';
 import { htmlToMarkdown, wantsMarkdown } from './markdown.js';
@@ -187,6 +187,8 @@ async function handle(req, env, ctx) {
 
   // Paid keyword/content tools: Python API in backend/ (Cloud Run + MongoDB).
   if (lower.startsWith('/api/tools/')) return toolsProxy(req, env, url);
+  // Public knowledge API (answers from our own pages, with sources): docs/rag.md
+  if (lower === '/api/rag/answer') return ragAnswer(req, env);
 
   // Old customer app: retired. LEGACY_APP=1 sends these addresses to it again.
   const legacy = env.LEGACY_APP === '1';

@@ -468,12 +468,16 @@ async def billing_overview():
     return json_ok(await run_in_threadpool(_billing_call, "overview"))
 
 
-# ── RAG: knowledge bases (our sites + per-customer) ──────────────────────────
-# Internal only (token-guarded; the public /api/tools proxy never reaches /api/admin/*):
-#   GET  /api/admin/rag                 status          POST /api/admin/rag/index      {source: ai}   
-#   POST /api/admin/rag/index-url       {url}           POST /api/admin/rag/search     {q, k, sources}
-#   POST /api/admin/rag/ask             {q, sources}    POST /api/admin/rag/eval       golden questions
-#   GET  /api/admin/rag/questions?days= chat questions  POST /api/admin/rag/tenants    {action, ...}
+# ── RAG: knowledge base (docs/rag.md) ──────────────────────────────────────
+# Internal, token-guarded (the public /api/tools proxy never reaches these):
+#   GET  /api/admin/rag                  monitoring          POST /api/admin/rag/index    {full, run, batch, trigger}
+#   POST /api/admin/rag/index-url        {url}               POST /api/admin/rag/search   {q, k, sources, types, categories, language}
+#   POST /api/admin/rag/ask              {q, sources, ...}   POST /api/admin/rag/eval     golden questions
+#   GET  /api/admin/rag/questions?days=  chat questions      GET  /api/admin/rag/history  sync runs
+#   POST /api/admin/rag/internal         {action: list|add-doc|remove-doc}   private company knowledge
+#   POST /api/admin/rag/tenants          {action, ...}       customer knowledge bases
+#   POST /api/rag/search                 {query, limit, types, categories, language}   for our own agents
+#   POST /api/rag/answer                 {query}   public site knowledge only; the worker exposes it, rate-limited per IP
 def rag() -> Rag:
     return Rag(settings(), store().db)
 
@@ -498,34 +502,58 @@ def _rag_facts(query: str, k: int = 5, chars: int = 900):
         return "", []
 
 
+def _rag_filters(b: dict) -> dict:
+    return {"types": b.get("types") or b.get("content_types"), "categories": b.get("categories"), "language": b.get("language")}
+
+
+def _rag_query(b: dict) -> str:
+    q = " ".join(str(b.get("q") or b.get("query") or "").split())
+    if not q:
+        raise ApiError("empty query", 400, "Type a question first.")
+    if len(q) > 500:
+        raise ApiError("long query", 400, "Please keep the question under 500 characters.")
+    return q
+
+
 @app.get("/api/admin/rag", dependencies=[Depends(guard)])
 async def rag_status():
     return json_ok(await run_in_threadpool(_rag_call, lambda: rag().status()))
 
 
+@app.get("/api/admin/rag/history", dependencies=[Depends(guard)])
+async def rag_history(limit: int = 30):
+    return json_ok({"runs": await run_in_threadpool(_rag_call, lambda: rag().sync_history(max(1, min(int(limit), 100))))})
+
+
 @app.post("/api/admin/rag/index", dependencies=[Depends(guard)])
 async def rag_index(request: Request):
     b = await body_of(request)
-    return json_ok(await run_in_threadpool(_rag_call, lambda: rag().index(str(b.get("source") or "ai"))))
+    if str(b.get("source") or "ai") != "ai":
+        raise ApiError("bad source", 400, "Unknown site.")
+    trigger = str(b.get("trigger") or "manual")[:20]
+    return json_ok(await run_in_threadpool(_rag_call, lambda: rag().index(
+        "ai", full=b.get("full") is True, run_id=b.get("run") or None, batch=max(0, min(int(b.get("batch") or 0), 100)), trigger=trigger)))
 
 
 @app.post("/api/admin/rag/index-url", dependencies=[Depends(guard)])
 async def rag_index_url(request: Request):
     b = await body_of(request)
-    return json_ok(await run_in_threadpool(_rag_call, lambda: rag().index_url(str(b.get("url") or ""))))
+    return json_ok(await run_in_threadpool(_rag_call, lambda: rag().index_url(str(b.get("url") or ""), str(b.get("trigger") or "publish")[:20])))
 
 
 @app.post("/api/admin/rag/search", dependencies=[Depends(guard)])
 async def rag_search(request: Request):
     b = await body_of(request)
+    q = _rag_query(b)
     return json_ok({"hits": await run_in_threadpool(_rag_call, lambda: rag().search(
-        str(b.get("q") or ""), max(1, min(int(b.get("k") or 6), 12)), b.get("sources")))})
+        q, max(1, min(int(b.get("k") or 6), 12)), b.get("sources"), allow_internal=True, **_rag_filters(b)))})
 
 
 @app.post("/api/admin/rag/ask", dependencies=[Depends(guard)])
 async def rag_ask(request: Request):
     b = await body_of(request)
-    return json_ok(await run_in_threadpool(_rag_call, lambda: rag().answer(str(b.get("q") or ""), sources=b.get("sources"))))
+    q = _rag_query(b)
+    return json_ok(await run_in_threadpool(_rag_call, lambda: rag().answer(q, sources=b.get("sources"), allow_internal=True, **_rag_filters(b))))
 
 
 @app.post("/api/admin/rag/eval", dependencies=[Depends(guard)])
@@ -536,6 +564,20 @@ async def rag_eval():
 @app.get("/api/admin/rag/questions", dependencies=[Depends(guard)])
 async def rag_questions(days: int = 30):
     return json_ok(await run_in_threadpool(_rag_call, lambda: rag().questions_report(days)))
+
+
+@app.post("/api/admin/rag/internal", dependencies=[Depends(guard)])
+async def rag_internal(request: Request):
+    b = await body_of(request)
+    ops = {
+        "list": lambda r: {"docs": r.internal_docs()},
+        "add-doc": lambda r: r.internal_add_doc(b.get("title") or "", b.get("text") or ""),
+        "remove-doc": lambda r: r.internal_remove_doc(str(b.get("url") or "")),
+    }
+    a = str(b.get("action") or "list")
+    if a not in ops:
+        raise ApiError("bad action", 400, "Unknown action.")
+    return json_ok(await run_in_threadpool(_rag_call, lambda: ops[a](rag())))
 
 
 @app.post("/api/admin/rag/tenants", dependencies=[Depends(guard)])
@@ -550,11 +592,37 @@ async def rag_tenants(request: Request):
         "remove-doc": lambda r: r.tenant_remove_doc(t, str(b.get("url") or "")),
         "index-site": lambda r: r.tenant_index_site(t),
         "delete": lambda r: r.tenant_delete(t),
-        "ask": lambda r: r.answer(str(b.get("q") or ""), sources=[f"tenant:{t}"]),
+        "ask": lambda r: r.answer(_rag_query(b), sources=[f"tenant:{t}"]),
     }
     if a not in ops:
         raise ApiError("bad action", 400, "Unknown action.")
     return json_ok(await run_in_threadpool(_rag_call, lambda: ops[a](rag())))
+
+
+@app.post("/api/rag/search", dependencies=[Depends(guard)])
+async def rag_api_search(request: Request):
+    """Retrieval over the public site for our own agents (spec: POST /api/rag/search)."""
+    b = await body_of(request)
+    q = _rag_query(b)
+    hits = await run_in_threadpool(_rag_call, lambda: rag().search(q, max(1, min(int(b.get("limit") or 5), 12)), ["ai"], **_rag_filters(b)))
+    return json_ok({"query": q, "results": [{"url": h["url"], "title": h["title"], "section": h.get("section"),
+                                             "content_type": h.get("content_type"), "score": h.get("score"),
+                                             "content": h["text"]} for h in hits]})
+
+
+@app.post("/api/rag/answer", dependencies=[Depends(guard)])
+async def rag_api_answer(request: Request):
+    """Grounded answers from the public site only, with source links. Reached through the site worker."""
+    s = settings()
+    b = await body_of(request)
+    q = _rag_query(b)
+    ip = client_ip(request)
+    if not store().hit("rag:" + ip, s.rag_api_daily_limit) or not store().hit("rag:all", s.rag_api_daily_total):
+        raise ApiError("rate limited", 429, "Daily question limit reached. Please try again tomorrow, or see https://worlddigital.ai/contact.")
+    out = await run_in_threadpool(_rag_call, lambda: rag().answer(q, 6, ["ai"], public=True, **_rag_filters(b)))
+    await run_in_threadpool(lambda: rag().log_question(q, out["answer"], out["covered"],
+                                                       [{"url": x["url"]} for x in out["sources"]], channel="api"))
+    return json_ok({"query": q, **out})
 
 
 # ── Site chat (AI Ahmad) ────────────────────────────────────────────────────

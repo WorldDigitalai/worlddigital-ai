@@ -27,7 +27,15 @@ jobs:
         env:
           PAGES: ${{ inputs.pages }}
         run: |
+          set +e
           args=""; [ -n "$PAGES" ] && args="--pages $PAGES"
-          code=0; python tools/responsive_check.py https://worlddigital.ai $args --out resp.json > /dev/null || code=$?
-          python3 -c "import json;d=json.load(open('resp.json'));print('::notice title=Responsive check::'+d['checked']+(' - all OK' if d['ok'] else f\" - {len(d['problems'])} problems\"));[print('::warning title=Responsive::'+p) for p in d['problems'][:50]]"
+          python tools/responsive_check.py https://worlddigital.ai $args --out resp.json > out.txt 2> err.txt; code=$?
+          if [ ! -s resp.json ]; then tail -15 err.txt | while IFS= read -r l; do echo "::error title=Responsive check crashed::$l"; done; exit 1; fi
+          python3 - <<'PY'
+          import json
+          d = json.load(open("resp.json"))
+          print("::notice title=Responsive check::" + d["checked"] + (" - all OK" if d["ok"] else f" - {len(d['problems'])} problems"))
+          for p in d["problems"][:50]:
+              print("::warning title=Responsive::" + p)
+          PY
           exit $code

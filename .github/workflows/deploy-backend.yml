@@ -29,6 +29,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
+      - run: sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends ffmpeg  # blog video tests
       - run: uv sync --frozen || uv sync
       - run: uv run pytest -q
 
@@ -49,7 +50,7 @@ jobs:
           region: ${{ env.REGION }}
           project_id: ${{ env.GCP_PROJECT }}
           source: backend
-          flags: "--allow-unauthenticated --min-instances=0 --max-instances=3 --memory=512Mi --timeout=300 --clear-network"
+          flags: "--allow-unauthenticated --min-instances=0 --max-instances=3 --memory=1Gi --timeout=300 --clear-network"
           env_vars: |
             MONGODB_DB=worlddigital_ai
             PUBLIC_ORIGIN=https://worlddigital.ai

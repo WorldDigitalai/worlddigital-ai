@@ -234,7 +234,7 @@ async function handle(req, env, ctx) {
       if (!p.live) return notFound(prod);
       return html(blogPost(p, posts, { prod }), 200, 'public, max-age=0, s-maxage=60');
     }
-    const media = /^\/media\/([a-f0-9]{20})$/.exec(path);
+    const media = /^\/media\/([a-f0-9]{20})(?:\.(?:mp4|jpg|png|webp))?$/.exec(path);
     if (media) {
       const m = await store(env).getMedia(media[1]);
       if (!m) return new Response('Not found', { status: 404 });

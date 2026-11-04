@@ -259,8 +259,19 @@ export class Store extends DurableObject {
     }
     const imageUrl = coverId ? `https://worlddigital.ai/media/${coverId}` : 'https://worlddigital.ai/og.png';
     const texts = await callAi(this.env, 'social', { title: p.title, excerpt: p.excerpt || p.description || '', url, category: p.category || '', keyword: '' });
-    const results = await shareToBuffer(this.env, { url, title: p.title, texts, imageUrl });
-    const out = { state: 'done', at: nowIso(), image: imageUrl, imageNote, results };
+    // Short video with voiceover + music for YouTube Shorts and TikTok (the backend refuses silent videos).
+    let videoUrl = null, videoNote = null;
+    try {
+      const v = await callAi(this.env, 'video', { title: p.title, excerpt: p.excerpt || p.description || '',
+        body: String(p.body || '').slice(0, 4000), cover_url: coverId ? imageUrl : '' });
+      const bytes = Uint8Array.from(atob(v.b64), (ch) => ch.charCodeAt(0));
+      if (bytes.byteLength > 1900 * 1024) throw new Error('video too large');
+      const vid = this.putMedia(bytes.buffer, 'video/mp4', `Video for ${p.title}`.slice(0, 200), 'ai');
+      videoUrl = `https://worlddigital.ai/media/${vid}.mp4`;
+      this.sql.exec(`UPDATE posts SET shared=? WHERE slug=?`, JSON.stringify({ state: 'queued', video: videoUrl }), p.slug);
+    } catch (e) { videoNote = 'No video: ' + e.message; console.log('blog video failed', e.message); }
+    const results = await shareToBuffer(this.env, { url, title: p.title, texts, imageUrl, videoUrl });
+    const out = { state: 'done', at: nowIso(), image: imageUrl, imageNote, video: videoUrl, videoNote, results };
     this.sql.exec(`UPDATE posts SET shared=? WHERE slug=?`, JSON.stringify(out), p.slug);
     return out;
   }

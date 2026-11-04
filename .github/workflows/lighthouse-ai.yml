@@ -29,6 +29,10 @@ jobs:
           preset=""; [ "${{ matrix.device }}" = "desktop" ] && preset="--preset=desktop"
           echo "| Page | Performance | Accessibility | Best practices | SEO |" > summary.md
           echo "|---|---|---|---|---|" >> summary.md
+          # Warm-up (not measured): load each page once so the edge cache is warm as for normal visitors, and run one
+          # throwaway Lighthouse pass so the first measured page does not pay for the cold browser start.
+          for p in $pages; do curl -s -o /dev/null -A "Mozilla/5.0" -H "Accept: text/html" "https://worlddigital.ai$p"; done
+          npx --yes lighthouse@12.8.2 "https://worlddigital.ai/about" $preset --quiet --chrome-flags="--headless=new --no-sandbox" --output=json --output-path=/tmp/warmup.json >/dev/null 2>&1 || true
           for p in $pages; do
             name=$(echo "$p" | sed 's#^/##; s#/#_#g'); [ -z "$name" ] && name=home
             block=""; [ "${{ inputs.block_tags }}" = "true" ] && block='--blocked-url-patterns=*5cex* --blocked-url-patterns=*googletagmanager.com* --blocked-url-patterns=*google-analytics.com* --blocked-url-patterns=*doubleclick.net*'

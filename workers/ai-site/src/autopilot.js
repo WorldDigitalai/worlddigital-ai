@@ -82,18 +82,33 @@ async function notify(env, subject, html, sendEmail) {
 }
 const escH = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+// Word overlap between two titles (0..1). Ideas this close to an existing post are the same article reworded.
+const STOP = new Set(['a', 'an', 'and', 'the', 'for', 'of', 'to', 'in', 'on', 'with', 'vs', 'how', 'what', 'your', 'best', 'top', 'guide', '2025', '2026', '2027']);
+const words = (t) => new Set(String(t || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter((w) => w.length > 1 && !STOP.has(w)));
+export function titleSimilarity(a, b) {
+  const x = words(a), y = words(b);
+  if (!x.size || !y.size) return 0;
+  let both = 0;
+  for (const w of x) if (y.has(w)) both++;
+  return both / Math.min(x.size, y.size);
+}
+export const DUPLICATE_AT = 0.75;
+const isDuplicate = (title, existing) => existing.some((t) => titleSimilarity(title, t) >= DUPLICATE_AT);
+
 export async function runAutopilot(store, env, cfg, deps) {
   const n = cfg.runs || 0;
   const list = cfg.topics.length ? cfg.topics : DEFAULT_TOPICS;
   const topic = list[n % list.length];
   const r = await callAi(env, 'research', { topic, country: cfg.country, competitors: cfg.competitors });
   const used = new Set(cfg.used || []);
-  const cands = (r.ideas || []).filter((i) => i.title && !used.has(i.keyword) && !store.slugTaken(slugify(i.title)));
+  const existing = store.listPosts({ all: true }).map((p) => p.title);
+  const cands = (r.ideas || []).filter((i) => i.title && !used.has(i.keyword) && !store.slugTaken(slugify(i.title)) && !isDuplicate(i.title, existing));
   const preferVs = cfg.mix_vs && n % 2 === 1;
   const pick = (preferVs && cands.find((i) => i.type === 'vs' || i.type === 'alternatives')) || cands[0];
   if (!pick) return { skipped: true, topic, message: 'No new idea this time (all top ideas were already written).' };
   const d = await callAi(env, 'draft', { title: pick.title, keyword: pick.keyword, type: pick.type,
     competitors: pick.competitors, country: cfg.country, words: cfg.words });
+  if (isDuplicate(d.title, existing)) return { skipped: true, topic, message: `Skipped: the draft "${d.title}" repeats an existing post.` };
   const saved = savePost(store, d, cfg.mode === 'publish' ? 'publish' : 'save', 'autopilot', deps);
   const live = cfg.mode === 'publish';
   let social = null;

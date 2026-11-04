@@ -374,3 +374,16 @@ def test_every_cited_number_is_listed(env, monkeypatch):
     monkeypatch.setattr(rag_mod, "openai_json", lambda s, **kw: {"answer": "Yes [3], and also [1]. Not [99].", "used": [1], "covered": True})
     a = c.post("/api/admin/rag/ask", headers=H, json={"q": "Epic FHIR keyword research"}).json()
     assert [s["n"] for s in a["sources"]] == [3, 1] or sorted({s["n"] for s in a["sources"]}) >= [1, 3]
+
+
+def test_ai_usage_is_counted_per_feature_and_fallbacks_flagged(env, monkeypatch):
+    c, w = env
+    c.post("/api/admin/rag/index", headers=H, json={})
+    c.post("/api/admin/rag/ask", headers=H, json={"q": "keyword research 9.99"})
+    u = c.get("/api/admin/rag", headers=H).json()["ai_usage_30d"]
+    feats = {r["feature"]: r for r in u["features"]}
+    assert feats["rag_embed"]["calls"] >= 1 and feats["rag_answer"]["calls"] == 1 and u["fallbacks"] == 0
+    from app import services
+    services.record_usage("test.feature", "gpt-5.5", {"prompt_tokens": 10, "completion_tokens": 5}, fallback=True)
+    u = c.get("/api/admin/rag", headers=H).json()["ai_usage_30d"]
+    assert u["fallbacks"] == 1 and {r["feature"]: r for r in u["features"]}["test_feature"]["in"] == 10 and u["models"]["gpt-5_5"] >= 1

@@ -44,6 +44,7 @@ export function toolWidget(type) {
   <div class="wdt-head"><span class="eyebrow">${head.eyebrow}</span><h2 class="h" id="wdt-h">${head.h2}</h2><p>${head.lead}</p></div>
   <form class="wdt-form" novalidate>
     ${type === "keywords" ? keywordsForm() : contentForm()}
+    <div class="cf-turnstile" data-sitekey="0x4AAAAAAFRt-4be4VSc7r_H" data-size="flexible" data-theme="light" style="margin:12px 0 0"></div>
     <p class="wdt-note"><b>Free preview:</b> ${p.free} of ${p.total}. <b>Full ${type === "keywords" ? "report" : "pack"}:</b> ${price} one-time, delivered as PDF, Excel or Word.</p>
   </form>
   <div class="wdt-status" role="status" aria-live="polite"></div>

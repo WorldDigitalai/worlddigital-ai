@@ -65,3 +65,43 @@ test('public tools proxy refuses encoded paths and billing in any form', async (
     assert.equal(seen.length, 1);
   } finally { globalThis.fetch = orig; }
 });
+
+test('Autopilot treats reworded titles as duplicates but not related topics', async () => {
+  const { titleSimilarity, DUPLICATE_AT } = await import('../src/autopilot.js');
+  assert.ok(titleSimilarity('Best AI SEO Tools for 2026: Free and Paid Picks', 'Best AI SEO Tools for 2026: Free and Paid Options') >= DUPLICATE_AT);
+  assert.ok(titleSimilarity('Google Ads for plumbers', 'Google Ads for dentists') < DUPLICATE_AT);
+  assert.ok(titleSimilarity('Local SEO checklist', 'TikTok vs Instagram ads') === 0);
+});
+
+test('tool previews need the human check before reaching the backend', async () => {
+  const { toolsProxy } = await import('../src/tools-proxy.js');
+  const seen = [];
+  const orig = globalThis.fetch;
+  globalThis.fetch = async (u) => { seen.push(String(u)); return new Response('{}', { headers: { 'content-type': 'application/json' } }); };
+  const env = (ok) => ({ TOOLS_API_URL: 'https://api.invalid', TOOLS_API_TOKEN: 't', TS_REQUIRED: '1',
+    REPORT: { fetch: async (_u, init) => new Response(JSON.stringify({ ok: ok && JSON.parse(init.body).token === 'good' })) } });
+  const post = (e, body, p = '/api/tools/keywords/preview') => toolsProxy(new Request('https://worlddigital.ai' + p, { method: 'POST', body: JSON.stringify(body) }), e, new URL('https://worlddigital.ai' + p));
+  try {
+    assert.equal((await post(env(true), { url: 'a.com' })).status, 403);
+    assert.equal((await post(env(true), { url: 'a.com', turnstile: 'bad' })).status, 403);
+    assert.equal((await post(env(false), { url: 'a.com', turnstile: 'good' }, '/api/tools/content/preview')).status, 403);
+    assert.equal(seen.length, 0);
+    assert.equal((await post(env(true), { url: 'a.com', turnstile: 'good' })).status, 200);
+    assert.equal((await post(env(true), { id: 'x' }, '/api/tools/checkout')).status, 200); // other tool calls are not gated
+    assert.equal(seen.length, 2);
+  } finally { globalThis.fetch = orig; }
+});
+
+test('Stripe webhook route passes the raw body and signature through', async () => {
+  const { stripeWebhook } = await import('../src/tools-proxy.js');
+  const seen = [];
+  const orig = globalThis.fetch;
+  globalThis.fetch = async (u, init) => { seen.push({ u: String(u), sig: init.headers['stripe-signature'], body: new TextDecoder().decode(init.body) }); return new Response('{"ok":true}'); };
+  const env = { TOOLS_API_URL: 'https://api.invalid', TOOLS_API_TOKEN: 't' };
+  try {
+    assert.equal((await stripeWebhook(new Request('https://worlddigital.ai/api/stripe/webhook', { method: 'POST', body: '{}' }), env)).status, 400);
+    const r = await stripeWebhook(new Request('https://worlddigital.ai/api/stripe/webhook', { method: 'POST', body: '{"a": 1}', headers: { 'Stripe-Signature': 't=1,v1=x' } }), env);
+    assert.equal(r.status, 200);
+    assert.deepEqual(seen, [{ u: 'https://api.invalid/api/stripe/webhook', sig: 't=1,v1=x', body: '{"a": 1}' }]);
+  } finally { globalThis.fetch = orig; }
+});

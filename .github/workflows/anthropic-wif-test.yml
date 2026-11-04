@@ -1,5 +1,6 @@
 name: anthropic-wif-test
-on: push
+# Manual only: this tests the GitHub -> Anthropic token exchange and has no production use.
+on: workflow_dispatch
 permissions:
   id-token: write
   contents: read

@@ -35,9 +35,36 @@ def _json(res: httpx.Response, service: str):
 _MODELS = ["gpt-5.4-mini", "gpt-5.5", "gpt-6-luna", "gpt-5.4", "gpt-5.2"]
 _working_model: list[str] = []  # remembered after the first model the project is allowed to use
 
+# AI usage: every OpenAI call reports (feature, model, input tokens, output tokens, fallback) here.
+# main.py points it at MongoDB (daily counters shown on the admin knowledge-base page). Never raises.
+_usage_sink = None
+
+
+def set_usage_sink(fn) -> None:
+    global _usage_sink
+    _usage_sink = fn
+
+
+def record_usage(feature: str, model: str, usage: dict | None = None, *, fallback: bool = False, units: int = 0) -> None:
+    if not _usage_sink:
+        return
+    try:
+        u = usage or {}
+        _usage_sink(feature=feature, model=model, tokens_in=int(u.get("prompt_tokens") or u.get("input_tokens") or 0),
+                    tokens_out=int(u.get("completion_tokens") or u.get("output_tokens") or 0), fallback=fallback, units=units)
+    except Exception:  # noqa: BLE001  usage tracking must never break a request
+        pass
+
+
+def _caller() -> str:
+    import sys
+    f = sys._getframe(2)
+    return f"{f.f_globals.get('__name__', '').rsplit('.', 1)[-1]}.{f.f_code.co_name}"
+
 
 def openai_json(s: Settings, *, system: str, user: str, max_tokens: int = 2500, temperature: float = 0.4,
-                timeout: float = 90, effort: str | None = None) -> dict:
+                timeout: float = 90, effort: str | None = None, feature: str | None = None) -> dict:
+    feature = feature or _caller()
     if not s.openai_api_key:
         raise ApiError("OPENAI_API_KEY missing", 503, "The generator is being set up. Please try again later.")
     candidates = _working_model or [s.openai_model] + [m for m in _MODELS if m != s.openai_model]
@@ -66,6 +93,8 @@ def openai_json(s: Settings, *, system: str, user: str, max_tokens: int = 2500, 
         if not _working_model:
             _working_model.append(model)
             print(f"openai model in use: {model}")
+        # a model other than the configured one is a fallback: counted, so a pricier model never runs unnoticed
+        record_usage(feature, model, data.get("usage"), fallback=model != s.openai_model)
         content = ((data.get("choices") or [{}])[0].get("message") or {}).get("content") or "{}"
         try:
             return json.loads(content)

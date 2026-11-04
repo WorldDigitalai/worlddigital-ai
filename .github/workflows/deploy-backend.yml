@@ -27,23 +27,29 @@ jobs:
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: backend } }
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
       - run: sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends ffmpeg  # blog video tests
       - run: uv sync --frozen || uv sync
       - run: uv run pytest -q
+      - name: Production image uses the tested versions
+        run: |
+          uv export --frozen --no-dev --no-hashes --no-emit-project -o /tmp/req.lock --quiet
+          diff <(grep -v '^#' requirements.lock) <(grep -v '^#' /tmp/req.lock) || { echo "::error::requirements.lock is stale: run uv export --frozen --no-dev --no-hashes --no-emit-project -o requirements.lock"; exit 1; }
+      - name: Dependency vulnerability scan
+        run: uvx pip-audit -r requirements.lock --progress-spinner off || echo "::warning::pip-audit found advisories (see log)"
 
   deploy:
     needs: test
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: google-github-actions/auth@v2
+      - uses: actions/checkout@v5
+      - uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: ${{ env.WIF_PROVIDER }}
           service_account: ${{ env.DEPLOY_SA }}
-      - uses: google-github-actions/deploy-cloudrun@v2
+      - uses: google-github-actions/deploy-cloudrun@v3
         id: run
         with:
           service: ${{ env.SERVICE }}
@@ -57,9 +63,6 @@ jobs:
             PREVIEW_DAILY_LIMIT=6
             TOOLS_API_TOKEN=${{ secrets.TOOLS_API_TOKEN }}
             GH_RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}
-            MERCURY_API_TOKEN=${{ secrets.MERCURY_API_TOKEN }}
-            MERCURY_ACCOUNT_ID=71c24162-9749-11f0-a7b3-97416dbdabcd
-            BILLING_NOTIFY=support@worlddigital.ai
           secrets: |
             MONGODB_URI=MONGODB_URI:5
             INTERNAL_TOKEN=INTERNAL_TOKEN:latest
@@ -70,6 +73,6 @@ jobs:
             RESEND_API_KEY=RESEND_API_KEY:latest
       - name: Health check
         run: |
-          curl -fsS "${{ steps.run.outputs.url }}/api/tools/health" | tee /tmp/h.json
-          python3 -c "import json;h=json.load(open('/tmp/h.json'));c=h.get('configured',{});print('::notice title=Mercury::'+('connected' if c.get('mercury') else 'NOT configured (MERCURY_API_TOKEN secret missing?)'))"
+          curl -fsS "${{ steps.run.outputs.url }}/api/tools/health" -H "x-internal-token: ${{ secrets.TOOLS_API_TOKEN }}" -o /tmp/h.json
+          python3 -c "import json;h=json.load(open('/tmp/h.json'));c=h.get('configured',{});print('::notice title=Health::token '+str(h.get('site_token_match'))+' · '+', '.join(k+('' if v else ' MISSING') for k,v in c.items() if k!='stripe_mode'));exit(0 if h.get('site_token_match') and c.get('mongodb') else 1)"
           echo "::notice title=API URL::${{ steps.run.outputs.url }} (set as TOOLS_API_URL in workers/ai-site/wrangler.jsonc)"

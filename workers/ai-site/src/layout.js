@@ -158,7 +158,7 @@ function header(path) {
 <a class="brand" href="/"><img src="/icon-72.webp" alt="" width="36" height="36"><span>WorldDigital.ai<small>Software company · Serving the US &amp; Canada</small></span></a>
 <nav class="nav" aria-label="Main">${links}</nav>
 <div class="nav-cta"><a class="btn ghost" href="${CONTACT}">Contact</a><a class="btn red" href="${START}">Start free</a></div>
-<details class="menu"><summary aria-label="Menu">Menu</summary><nav aria-label="Mobile">${links}<a href="${START}">Start free</a><a href="${CONTACT}">Contact</a><a href="/login">Sign in</a></nav></details>
+<details class="menu"><summary aria-label="Menu">Menu</summary><nav aria-label="Mobile">${links}<a href="${START}">Start free</a><a href="${CONTACT}">Contact</a></nav></details>
 </div></header>`;
 }
 

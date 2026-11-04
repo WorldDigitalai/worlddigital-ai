@@ -15,7 +15,7 @@ jobs:
       matrix:
         device: [mobile, desktop]
     steps:
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with: { node-version: 22 }
       - name: Run Lighthouse (Google's open-source auditor) on key pages
         run: |
@@ -62,7 +62,7 @@ jobs:
           jq -rs '[.[] as $r | ($r.finalDisplayedUrl|sub("https://worlddigital.ai";"")) as $u | ($r.audits["inspector-issues"].details.items // [])[] | "\($u) \(.issueType): " + ([(.subItems.items // [])[] | (.url // .violatedDirective // .blockedURL // (.|tostring))] | unique | join(" , ") | .[0:300])] | unique | .[0:8][] | "::notice title=LH100 issue '"$d"'::" + .' reports/*-$d.report.json || true
           { echo "## Lighthouse (${{ matrix.device }})"; cat summary.md; } >> "$GITHUB_STEP_SUMMARY"
           cat summary.md
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: lighthouse-${{ matrix.device }}
           path: reports/

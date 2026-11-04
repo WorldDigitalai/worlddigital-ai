@@ -46,6 +46,12 @@ export class Store extends DurableObject {
         this.putAutopilot(c);
         this.sql.exec(`INSERT INTO kv (k,v) VALUES ('autopilot_daily_v1', ?)`, nowIso());
       }
+      // 2026-11-04 audit: Autopilot published the same article twice. Keep the older one; the newer one becomes an
+      // archived draft (nothing deleted) and its address redirects to the one kept.
+      if (!one(this.sql.exec(`SELECT v FROM kv WHERE k = 'dedupe_ai_seo_tools_2026'`))) {
+        this.mergeDuplicate(['best-ai-seo-tools-for-2026-free-and-paid-picks', 'best-ai-seo-tools-for-2026-free-and-paid-options']);
+        this.sql.exec(`INSERT INTO kv (k,v) VALUES ('dedupe_ai_seo_tools_2026', ?)`, nowIso());
+      }
     });
   }
 
@@ -92,6 +98,61 @@ export class Store extends DurableObject {
     p.live = p.status === 'published' || (p.status === 'scheduled' && p.publish_at && p.publish_at <= n);
     if (p.live && p.status === 'scheduled') p.published_at = p.publish_at;
     return p;
+  }
+
+  // ---- backup (nightly backup.yml through /api/site/backup) ----
+  // Everything that can't be rebuilt, except sign-in secrets: login tokens, sessions and the HMAC key are never exported.
+  exportData() {
+    const kv = rows(this.sql.exec(`SELECT k, v FROM kv WHERE k NOT IN ('hmac')`));
+    const media = rows(this.sql.exec(`SELECT id, type, size, alt, created_at FROM media ORDER BY created_at`));
+    return { format: 'worlddigital-site-v1', created: nowIso(), posts: rows(this.sql.exec(`SELECT * FROM posts`)),
+      redirects: rows(this.sql.exec(`SELECT * FROM redirects`)), leads: rows(this.sql.exec(`SELECT * FROM leads`)),
+      audit: rows(this.sql.exec(`SELECT * FROM audit ORDER BY id DESC LIMIT 5000`)), kv, media };
+  }
+
+  exportMedia(offset = 0, limit = 10) {
+    const list = rows(this.sql.exec(`SELECT id, type, size, alt, created_at, bytes FROM media ORDER BY created_at LIMIT ? OFFSET ?`, limit, offset));
+    const b64 = (buf) => { const u = new Uint8Array(buf); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000)); return btoa(s); };
+    return list.map((m) => ({ ...m, bytes: b64(m.bytes) }));
+  }
+
+  // Restore: adds what is missing (INSERT OR IGNORE), never overwrites or deletes.
+  importData(d) {
+    if (!d || d.format !== 'worlddigital-site-v1') throw new Error('not a site backup');
+    const cols = (t) => new Set(rows(this.sql.exec(`PRAGMA table_info(${t})`)).map((c) => c.name));
+    const put = (table, list) => {
+      const have = cols(table); let n = 0;
+      for (const r of list || []) {
+        const keys = Object.keys(r).filter((k) => have.has(k));
+        if (!keys.length) continue;
+        n += this.sql.exec(`INSERT OR IGNORE INTO ${table} (${keys.join(',')}) VALUES (${keys.map(() => '?').join(',')})`, ...keys.map((k) => r[k])).rowsWritten || 0;
+      }
+      return n;
+    };
+    return { posts: put('posts', d.posts), redirects: put('redirects', d.redirects), leads: put('leads', d.leads), kv: put('kv', (d.kv || []).filter((r) => r.k !== 'hmac')) };
+  }
+
+  importMedia(list) {
+    let n = 0;
+    for (const m of list || []) {
+      const bin = Uint8Array.from(atob(m.bytes), (c) => c.charCodeAt(0));
+      n += this.sql.exec(`INSERT OR IGNORE INTO media (id, type, bytes, size, alt, created_at) VALUES (?,?,?,?,?,?)`, m.id, m.type, bin.buffer, m.size || bin.length, m.alt || '', m.created_at).rowsWritten || 0;
+    }
+    return n;
+  }
+
+  // Keep the first-published of two duplicate posts; archive the other as a draft and redirect its address.
+  mergeDuplicate(slugs) {
+    const ps = slugs.map((s) => one(this.sql.exec(`SELECT slug, published_at, created_at FROM posts WHERE slug = ?`, s))).filter(Boolean);
+    if (ps.length < 2) return null;
+    ps.sort((a, b) => String(a.published_at || a.created_at).localeCompare(String(b.published_at || b.created_at)));
+    const keep = ps[0].slug;
+    for (const p of ps.slice(1)) {
+      const archived = `${p.slug}-archived`.slice(0, 90);
+      this.sql.exec(`UPDATE posts SET slug = ?, status = 'draft', updated_at = ? WHERE slug = ?`, archived, nowIso(), p.slug);
+      this.sql.exec(`INSERT OR REPLACE INTO redirects (old_slug,new_slug) VALUES (?,?)`, p.slug, keep);
+    }
+    return keep;
   }
 
   slugTaken(slug) { return !!one(this.sql.exec(`SELECT 1 AS x FROM posts WHERE slug = ?`, slug)); }

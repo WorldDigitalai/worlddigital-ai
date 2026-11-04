@@ -36,7 +36,7 @@ from urllib.parse import urlparse
 import httpx
 
 from .config import Settings
-from .services import ApiError, _fetch_page, openai_json
+from .services import ApiError, _fetch_page, openai_json, record_usage
 
 log = logging.getLogger("worlddigital.rag")
 
@@ -115,6 +115,7 @@ def embed(s: Settings, texts: list[str]) -> list[list[float]]:
             detail = f"{r.status_code}: {r.text[:200]}" if r is not None else last
             raise ApiError(f"embeddings {detail}", 502, "The knowledge base is busy. Please try again.")
         vecs = [d["embedding"] for d in sorted(r.json()["data"], key=lambda d: d["index"])]
+        record_usage("rag.embed", EMBED_MODEL, r.json().get("usage"))
         if len(vecs) != len(batch) or any(len(v) != DIMS for v in vecs):
             got = sorted({len(v) for v in vecs})
             raise ApiError(f"embedding size {got} != {DIMS} for {EMBED_MODEL}", 500,
@@ -192,7 +193,7 @@ def html_to_md(html: str, url: str) -> str:
     body = re.sub(r"(?i)</(p|div|section|article|details|tr|ul|ol|blockquote|table|dd|dt)>|<br\s*/?>", "\n\n", body)
     body = re.sub(r"(?i)<t[dh][^>]*>", " | ", body)
     text = unescape(re.sub(r"<[^>]+>", " ", body))
-    text = "\n".join(re.sub(r"[ \t]+", " ", l).strip() for l in text.split("\n"))
+    text = "\n".join(re.sub(r"[ \t]+", " ", line).strip() for line in text.split("\n"))
     text = re.sub(r"\n{3,}", "\n\n", text).strip()
     one = lambda v: unescape(re.sub(r"\s+", " ", v)).strip()  # noqa: E731
     meta = [("title", one(title.group(1)) if title else url), ("description", one(desc.group(1)) if desc else ""), ("url", url),
@@ -340,6 +341,7 @@ class Rag:
             self.pages.create_index([("source", 1), ("sections", 1)])
             self.pages.create_index([("source", 1), ("content_type", 1)])
             self.syncs.create_index([("started", -1)])
+            self.syncs.create_index("finished", expireAfterSeconds=180 * 86400)  # keep 180 days of sync history
         except Exception:  # noqa: BLE001
             pass
         res = {}
@@ -369,6 +371,24 @@ class Rag:
                                  {"$inc": inc, "$setOnInsert": {"day": now().strftime("%Y-%m-%d")}}, upsert=True)
         except Exception:  # noqa: BLE001  metrics must never break a request
             pass
+
+    def ai_usage(self, days: int = 30) -> dict:
+        """AI calls and tokens per feature, calls per model and fallbacks, summed over the last `days`."""
+        since = (now() - timedelta(days=days)).strftime("%Y-%m-%d")
+        feats: dict[str, dict] = {}
+        models: dict[str, int] = {}
+        fallbacks = 0
+        for d in self.meta.find({"_id": {"$regex": "^ai:"}, "day": {"$gte": since}}):
+            for f, v in (d.get("features") or {}).items():
+                t = feats.setdefault(f, {"calls": 0, "in": 0, "out": 0, "units": 0})
+                for x in t:
+                    t[x] += int(v.get(x) or 0)
+            for m, n in (d.get("models") or {}).items():
+                models[m] = models.get(m, 0) + int(n or 0)
+            fallbacks += int(d.get("fallbacks") or 0)
+        rows = sorted(({"feature": f, **v} for f, v in feats.items()), key=lambda r: -(r["in"] + r["out"]))
+        return {"days": days, "features": rows, "models": models, "fallbacks": fallbacks,
+                "tokens_in": sum(r["in"] for r in rows), "tokens_out": sum(r["out"] for r in rows)}
 
     def _usage(self, days: int = 30) -> dict:
         since = (now() - timedelta(days=days)).strftime("%Y-%m-%d")
@@ -479,7 +499,7 @@ class Rag:
                 self.syncs.insert_one({"_id": uuid.uuid4().hex[:12], "source": source, "mode": "full" if full else "incremental",
                                        "trigger": trigger, "started": now(), "finished": now(), "status": "failed",
                                        "urls": [], "done": 0, "stats": {**stats, "errors": [f"sitemap: {type(e).__name__}"]}})
-                raise ApiError(f"sitemap {e}", 502, f"Could not read the sitemap of {base}.")
+                raise ApiError(f"sitemap {e}", 502, f"Could not read the sitemap of {base}.") from e
             rules = robots_rules(base)
             urls = [u for u in found if robots_allowed(u, rules)]
             stats["skipped_robots"] = len(found) - len(urls)
@@ -546,7 +566,7 @@ class Rag:
             r = httpx.get(url, headers={"Accept": "text/markdown", "User-Agent": "WorldDigitalRAG/1.0"},
                           timeout=30, follow_redirects=True)
         except httpx.HTTPError as e:
-            raise ApiError(f"fetch {e}", 502, "Could not read that page.")
+            raise ApiError(f"fetch {e}", 502, "Could not read that page.") from e
         if r.status_code in (404, 410) or (r.history and _norm(str(r.url)) != _norm(url)):  # gone or redirected: drop it
             n = self._drop_page(source, url)
             stats.update(removed=1 if n else 0, removed_urls=[url] if n else [])
@@ -933,6 +953,7 @@ class Rag:
                      "recent_errors": (((last_run or {}).get("stats") or {}).get("errors") or [])[:20],
                      "history": self.sync_history(15)},
             "usage_30d": self._usage(30),
+            "ai_usage_30d": self.ai_usage(30),
             "internal": {"docs": self.pages.count_documents({"source": INTERNAL}), "chunks": self.chunks.count_documents({"source": INTERNAL})},
             "tenants": self.tenants.count_documents({}),
             "config": {"embedding_model": EMBED_MODEL, "embedding_dims": DIMS, "chunk_tokens": CHUNK_TOKENS,

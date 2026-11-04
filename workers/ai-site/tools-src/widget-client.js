@@ -137,13 +137,19 @@
     if (KW) body.country = fd.get("country"); else { body.platform = fd.get("platform"); body.kind = fd.get("kind"); body.offer = fd.get("offer"); }
     if (!body.url) { setStatus("Enter your website address.", true); return; }
     if (!KW && !body.platform) { setStatus("Choose a platform.", true); return; }
-    var ts = form.querySelector("[name='cf-turnstile-response']");
-    if (ts) body.turnstile = ts.value;
     res.innerHTML = "";
     busy(true);
+    // Quick human check (Cloudflare Turnstile): wait up to 8 s for its token if it isn't ready yet.
+    var tries = 0;
+    (function send() {
+      var ts = form.querySelector("[name='cf-turnstile-response']");
+      if ((!ts || !ts.value) && tries++ < 16) { setStatus("Running a quick check that you're human…"); return setTimeout(send, 500); }
+      if (ts) body.turnstile = ts.value;
+      setStatus("");
     api(C.type + "/preview", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
       .then(function (d) { busy(false); ev("tool_preview", { tool: C.type }); renderPreview(d); try { history.replaceState(null, "", "?preview=" + d.id + "#tool"); } catch (e) {} })
       .catch(function (err) { busy(false); setStatus(esc(err.message), true); if (window.turnstile) try { window.turnstile.reset(); } catch (e) {} });
+    })();
   });
 
   // ── Returning from Stripe ────────────────────────────────────────────────

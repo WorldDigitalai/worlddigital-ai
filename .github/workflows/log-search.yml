@@ -1,0 +1,30 @@
+name: Security log search (billing path, 2026-11-04 audit)
+# Manual: searches the Cloud Run request logs (last 30 days, the default retention) for requests that reached the
+# billing API from outside: encoded paths like /api/tools/%62illing and any /api/tools/billing call.
+# Prints only time, status, method and path (no IP addresses or bodies).
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  search:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/250920469327/locations/global/workloadIdentityPools/github/providers/github
+          service_account: github-deploy@cs-poc-0zqkvyxapah85tnxz2byzqa.iam.gserviceaccount.com
+      - uses: google-github-actions/setup-gcloud@v3
+      - name: Search request logs
+        run: |
+          set +e
+          gcloud logging read \
+            'resource.type="cloud_run_revision" AND resource.labels.service_name="worlddigital-ai-api" AND (httpRequest.requestUrl:"illing" OR httpRequest.requestUrl:"%62" OR httpRequest.requestUrl:"%69")' \
+            --project cs-poc-0zqkvyxapah85tnxz2byzqa --freshness=30d --limit=500 \
+            --format='value(timestamp,httpRequest.status,httpRequest.requestMethod,httpRequest.requestUrl)' > hits.txt 2> err.txt
+          code=$?
+          if [ $code -ne 0 ]; then echo "::warning title=Log search::could not read logs: $(head -c 300 err.txt)"; exit 0; fi
+          n=$(grep -c . hits.txt || true)
+          echo "::notice title=Billing requests in the last 30 days::$n request(s) (includes our own admin and form calls)"
+          sed -E 's#https?://[^/]+##' hits.txt | head -100 | while IFS= read -r l; do echo "::notice::$l"; done

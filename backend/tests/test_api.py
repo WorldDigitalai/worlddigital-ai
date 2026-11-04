@@ -302,3 +302,62 @@ def test_blog_video_refuses_silence(env, monkeypatch):
         r2.post("https://openai.test/v1/audio/speech").mock(side_effect=_tone_wav)
         r = c.post("/api/admin/blog/video", json={"title": "Local SEO guide", "excerpt": "x", "body": "y"})
     assert r.status_code == 503 and "without sound" in r.json()["error"]
+
+
+def test_health_hides_configuration_from_the_public(env):
+    c, _ = env
+    full = c.get("/api/tools/health").json()  # token, not through the public proxy (deploy check)
+    assert full["site_token_match"] is True and "configured" in full
+    for headers in ({"x-wd-public": "1"}, {"x-internal-token": "wrong"}):
+        h = c.get("/api/tools/health", headers=headers).json()
+        assert set(h) == {"ok", "database"} and h["ok"] is True
+    assert set(TestClient(main.app).get("/api/tools/health").json()) == {"ok", "database"}
+
+
+def _signed(secret, payload: bytes, ts=None):
+    import hashlib as _h, hmac as _m, time as _t
+    ts = ts or int(_t.time())
+    return f"t={ts},v1={_m.new(secret.encode(), f'{ts}.'.encode() + payload, _h.sha256).hexdigest()}"
+
+
+def test_stripe_webhook_fulfils_without_the_buyer_returning(env, monkeypatch):
+    c, m = env
+    assert c.post("/api/stripe/webhook", content=b"{}").status_code == 503  # off until the secret is set
+    monkeypatch.setenv("STRIPE_WEBHOOK_SECRET", "whsec_test")
+    main.settings.cache_clear()
+    d = c.post("/api/tools/keywords/preview", json={"url": "bayoucityplumbing.com", "country": "us"}).json()
+    sid = c.post("/api/tools/checkout", json={"id": d["id"], "format": "pdf"}).json()["url"].rsplit("/", 1)[-1]
+    ev = json.dumps({"type": "checkout.session.completed", "data": {"object": {"id": sid, "payment_status": "paid",
+                                                                               "metadata": {"job_id": d["id"]}}}}).encode()
+    assert c.post("/api/stripe/webhook", content=ev, headers={"stripe-signature": "t=1,v1=nope"}).status_code == 400
+    assert c.post("/api/stripe/webhook", content=ev, headers={"stripe-signature": _signed("whsec_test", ev, ts=1)}).status_code == 400  # too old
+    r = c.post("/api/stripe/webhook", content=ev, headers={"stripe-signature": _signed("whsec_test", ev)})
+    assert r.status_code == 200 and r.json()["fulfilled"] == d["id"]
+    assert len(m.emails) == 1 and m.emails[0]["to"] == ["buyer@example.com"]
+    # Stripe retries and the buyer opening the order page later never email twice
+    c.post("/api/stripe/webhook", content=ev, headers={"stripe-signature": _signed("whsec_test", ev)})
+    assert c.get(f"/api/tools/order?session={sid}").status_code == 200 and len(m.emails) == 1
+    other = json.dumps({"type": "customer.created", "data": {"object": {"id": "cus_1"}}}).encode()
+    assert c.post("/api/stripe/webhook", content=other, headers={"stripe-signature": _signed("whsec_test", other)}).json()["ignored"] == "customer.created"
+    assert TestClient(main.app).post("/api/stripe/webhook", content=ev).status_code in (401, 403)  # needs the site token
+
+
+def test_backup_round_trip(env):
+    import mongomock
+    from app import backup
+    c, _ = env
+    c.post("/api/tools/keywords/preview", json={"url": "bayoucityplumbing.com", "country": "us"})
+    db = main.store().db
+    db["rag_chunks"].insert_many([{"_id": "internal|doc:a#0", "kind": "doc", "text": "private", "embedding": [0.1] * 4},
+                                  {"_id": "ai|https://worlddigital.ai/#0", "kind": "page", "text": "public", "embedding": [0.2] * 4}])
+    assert TestClient(main.app).get("/api/admin/backup").status_code in (401, 403)
+    r = c.get("/api/admin/backup")
+    assert r.status_code == 200
+    raw = r.text
+    assert "private" in raw and "public" not in raw and "embedding" not in raw
+    fresh = mongomock.MongoClient()["restored"]
+    counts = backup.restore(fresh, raw)
+    assert counts["tool_jobs"] == db["tool_jobs"].count_documents({}) >= 1 and fresh["rag_chunks"].count_documents({}) == 1
+    job = db["tool_jobs"].find_one()
+    assert fresh["tool_jobs"].find_one({"_id": job["_id"]})["created"] == job["created"]  # dates survive
+    assert backup.restore(fresh, raw) == counts  # restoring twice is harmless

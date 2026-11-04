@@ -55,7 +55,7 @@
 |---|---|---|---|
 | SEO-01 | MEDIUM | Two near-duplicate Autopilot posts with the same title | Redirect one to the other; add the Autopilot similarity guard (BUG-03) |
 | SEO-02 | LOW | `/pricing` 404 | 301 to `/tools` |
-| SEO-03 | LOW | worlddigital.us home: 1 image without `alt` | Add `alt=""` if decorative, or describe it |
+| SEO-03 | – | ~~worlddigital.us home: 1 image without `alt`~~ **Corrected:** it is a decorative logo with `alt=""` inside an `aria-hidden` block, which is correct | No change |
 | SEO-04 | LOW | Sign-in link and portal pages (`/login`, `/signup`, `/dashboard`, `/onboarding`) answer 200 with a placeholder | They are `noindex`, so no SEO harm. A UX issue (PRODUCT-UX-AUDIT.md) |
 | SEO-05 | INFO | Knowledge base shows `/tools` and the ads pages aren't the best answer for "products" and "advertising platforms" questions | Short summary paragraph at the top of those pages; helps AI answers too |
 

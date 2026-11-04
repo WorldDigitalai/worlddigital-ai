@@ -19,12 +19,6 @@ Blog editor only (the site forwards these from /blog-admin/ai/* for a signed-in 
   POST /api/admin/blog/social        {title, excerpt, url, keyword, category} -> one caption per platform
   POST /api/admin/blog/image         {title, keyword, idea}               -> cover image (JPEG, base64)
   POST /api/admin/blog/video         {title, excerpt, body, cover_url}    -> Shorts/TikTok video WITH sound (MP4, base64)
-  POST /api/tools/billing/plan       {name, email, company, website, plan}  -> Mercury customer + first invoice (emailed)
-  POST /api/tools/billing/invoice    {name, email, company, items[], due_days, memo} -> one-off Mercury invoice
-  POST /api/tools/billing/run        daily: renewal invoices, paid-status sync, receipts
-  POST /api/tools/billing/cancel     {id}
-  GET  /api/tools/billing            subscriptions + invoices
-  (billing paths are blocked on the public site proxy; only the site's own form handler, admin and cron call them)
 """
 from __future__ import annotations
 
@@ -34,6 +28,7 @@ import html
 import json
 import logging
 import re
+import time
 import uuid
 from functools import lru_cache
 
@@ -42,12 +37,11 @@ from fastapi.responses import JSONResponse, Response
 from starlette.concurrency import run_in_threadpool
 from pymongo import MongoClient
 
-from . import blog_ai, blog_video, chat
+from . import blog_ai, blog_video, chat, services
 from .rag import Rag
-from .billing import Billing
 from .config import Settings
 from .exports import FORMATS, build_file
-from .products import COUNTRIES, PLATFORMS, PRODUCTS, generate_content, generate_keywords, report_title
+from .products import COUNTRIES, PLATFORMS, PRODUCTS, generate_content, generate_keywords
 from .services import ApiError, create_checkout_session, get_checkout_session, parse_site_url, send_email, verify_turnstile
 from .store import Store, now
 
@@ -76,6 +70,18 @@ def store() -> Store:
     return _store
 
 
+def _record_ai_usage(*, feature: str, model: str, tokens_in: int, tokens_out: int, fallback: bool, units: int) -> None:
+    """Daily AI usage counters (rag_meta "ai:YYYY-MM-DD"): calls and tokens per feature, calls per model, fallbacks."""
+    k = lambda v: str(v or "unknown").replace(".", "_").replace("$", "_")[:60]  # noqa: E731  (no dots in field names)
+    day = now().strftime("%Y-%m-%d")
+    inc = {f"features.{k(feature)}.calls": 1, f"features.{k(feature)}.in": tokens_in, f"features.{k(feature)}.out": tokens_out,
+           f"features.{k(feature)}.units": units, f"models.{k(model)}": 1, "fallbacks": 1 if fallback else 0}
+    store().db["rag_meta"].update_one({"_id": f"ai:{day}"}, {"$inc": inc, "$setOnInsert": {"day": day}}, upsert=True)
+
+
+services.set_usage_sink(_record_ai_usage)
+
+
 def set_store(st: Store | None) -> None:
     """Tests inject a mongomock-backed store here."""
     global _store
@@ -98,14 +104,6 @@ def guard(request: Request) -> None:
     if not hmac.compare_digest(got.encode(), want.encode()):
         log.warning("bad internal token (got %d chars, want %d)", len(got), len(want))
         raise ApiError("bad internal token", 403, "Forbidden")
-
-
-def server_only(request: Request) -> None:
-    """Billing: only server-side callers (the site's form handler and admin, the billing workflows) send x-wd-server.
-    The public /api/tools proxy builds its own headers and never forwards it, so a browser cannot reach billing
-    even if a path trick gets past the proxy's own block."""
-    if request.headers.get("x-wd-server") != "1":
-        raise ApiError("billing from public proxy", 403, "Forbidden")
 
 
 def client_ip(request: Request) -> str:
@@ -321,6 +319,40 @@ def download(session: str = "", format: str = ""):
         "Content-Disposition": f'attachment; filename="{filename}"', "Cache-Control": "private, no-store"})
 
 
+def stripe_signature_ok(secret: str, payload: bytes, header: str, tolerance: int = 300) -> bool:
+    """Stripe-Signature check: HMAC-SHA256 of "{t}.{payload}" with the endpoint secret, within 5 minutes."""
+    parts = [p.split("=", 1) for p in (header or "").split(",") if "=" in p]
+    ts = next((v for k, v in parts if k.strip() == "t"), "")
+    sigs = [v.strip() for k, v in parts if k.strip() == "v1"]
+    if not (secret and ts.isdigit() and sigs) or abs(time.time() - int(ts)) > tolerance:
+        return False
+    want = hmac.new(secret.encode(), f"{ts}.".encode() + payload, hashlib.sha256).hexdigest()
+    return any(hmac.compare_digest(want, s) for s in sigs)
+
+
+@app.post("/api/stripe/webhook", dependencies=[Depends(guard)])
+async def stripe_webhook(request: Request, background: BackgroundTasks):
+    """Paid Checkout sessions are fulfilled even if the buyer never returns to the site. Reached through the site
+    worker (which forwards Stripe's signature). The payment is re-checked with Stripe before anything is unlocked."""
+    s = settings()
+    if not s.stripe_webhook_secret:
+        raise ApiError("webhook secret missing", 503, "Webhook not configured.")
+    payload = await request.body()
+    if not stripe_signature_ok(s.stripe_webhook_secret, payload, request.headers.get("stripe-signature", "")):
+        raise ApiError("bad stripe signature", 400, "Bad signature.")
+    try:
+        event = json.loads(payload)
+    except ValueError as e:
+        raise ApiError("bad webhook json", 400, "Bad payload.") from e
+    obj = ((event.get("data") or {}).get("object")) or {}
+    if event.get("type") in ("checkout.session.completed", "checkout.session.async_payment_succeeded") and obj.get("id", "").startswith("cs_"):
+        if obj.get("payment_status") == "paid" and (obj.get("metadata") or {}).get("job_id"):
+            job = await run_in_threadpool(paid_job, obj["id"])  # verifies with Stripe again, then marks paid
+            background.add_task(deliver_email, job)  # emails the file once (shared guard with the order page)
+            return json_ok({"ok": True, "fulfilled": job["_id"]})
+    return json_ok({"ok": True, "ignored": event.get("type")})
+
+
 MONGO_USER = "ahmadawwad_db_user"
 MONGO_HOST = "worlddigital-ai.dfgex0b.mongodb.net"
 
@@ -422,69 +454,6 @@ def clean_mongo_uri(raw: str) -> str:
     return f"{scheme}://{quote_plus(unquote_plus(user.strip()))}:{quote_plus(unquote_plus(pw))}@{host.strip()}"
 
 
-_billing: Billing | None = None
-
-
-def _billing_call(name, *args):
-    """Billing endpoints are internal (token-guarded), so unexpected errors are returned with their cause."""
-    # A freshly started instance can take a while to open its first MongoDB connection through the NAT:
-    # make sure the database answers before anything is sent to Mercury, so a slow start never half-creates an invoice.
-    import time
-    for attempt in range(3):
-        try:
-            store().db.command("ping")
-            break
-        except Exception as e:  # noqa: BLE001
-            if attempt == 2:
-                raise ApiError(f"billing db {type(e).__name__}: {e}", 503, "Billing is busy right now. Please try again in a minute.")
-            time.sleep(2)
-    try:
-        return getattr(billing(), name)(*args)
-    except ApiError:
-        raise
-    except Exception as e:  # noqa: BLE001
-        log.exception("billing error")
-        raise ApiError(f"billing {type(e).__name__}: {e}", 500, f"Billing error: {type(e).__name__}: {str(e)[:300]}")
-
-
-def billing() -> Billing:
-    global _billing
-    if _billing is None:
-        _billing = Billing(settings(), store().db)
-        _billing.ensure_indexes()
-    return _billing
-
-
-@app.post("/api/tools/billing/plan", dependencies=[Depends(guard), Depends(server_only)])
-async def billing_plan(request: Request):
-    return json_ok(await run_in_threadpool(_billing_call, "start_plan", await body_of(request)))
-
-
-@app.post("/api/tools/billing/invoice", dependencies=[Depends(guard), Depends(server_only)])
-async def billing_invoice(request: Request):
-    return json_ok(await run_in_threadpool(_billing_call, "one_off", await body_of(request)))
-
-
-@app.post("/api/tools/billing/run", dependencies=[Depends(guard), Depends(server_only)])
-async def billing_run():
-    return json_ok(await run_in_threadpool(_billing_call, "run"))
-
-
-@app.post("/api/tools/billing/cancel", dependencies=[Depends(guard), Depends(server_only)])
-async def billing_cancel(request: Request):
-    return json_ok(await run_in_threadpool(_billing_call, "cancel_plan", str((await body_of(request)).get("id") or "")))
-
-
-@app.post("/api/tools/billing/cancel-invoice", dependencies=[Depends(guard), Depends(server_only)])
-async def billing_cancel_invoice(request: Request):
-    return json_ok(await run_in_threadpool(_billing_call, "cancel_invoice", str((await body_of(request)).get("number") or "")))
-
-
-@app.get("/api/tools/billing", dependencies=[Depends(guard), Depends(server_only)])
-async def billing_overview():
-    return json_ok(await run_in_threadpool(_billing_call, "overview"))
-
-
 # ── RAG: knowledge base (docs/rag.md) ──────────────────────────────────────
 # Internal, token-guarded (the public /api/tools proxy never reaches these):
 #   GET  /api/admin/rag                  monitoring          POST /api/admin/rag/index    {full, run, batch, trigger}
@@ -507,7 +476,7 @@ def _rag_call(fn):
         raise
     except Exception as e:  # noqa: BLE001
         log.exception("rag error")
-        raise ApiError(f"rag {type(e).__name__}: {e}", 500, f"Knowledge base error: {type(e).__name__}: {str(e)[:300]}")
+        raise ApiError(f"rag {type(e).__name__}: {e}", 500, f"Knowledge base error: {type(e).__name__}: {str(e)[:300]}") from e
 
 
 def _rag_facts(query: str, k: int = 5, chars: int = 900):
@@ -655,6 +624,13 @@ async def chat_reply(request: Request):
     return json_ok({"reply": text})
 
 
+@app.get("/api/admin/backup", dependencies=[Depends(guard)])
+def admin_backup():
+    """Nightly backup (backup.yml). Token-guarded; the public proxy never forwards /api/admin/*."""
+    from . import backup
+    return Response(backup.export(store().db), media_type="application/json", headers={"Cache-Control": "no-store"})
+
+
 @app.get("/api/tools/health")
 def health(request: Request):
     s = settings()
@@ -668,6 +644,9 @@ def health(request: Request):
         log.warning("mongodb ping failed: %s", type(e).__name__)
         # Never echo the message: it can contain the host or credentials.
         mongo_error = "wrong password" if type(e).__name__ == "OperationFailure" else type(e).__name__
+    if not token_match or request.headers.get("x-wd-public") == "1":
+        # Public (or through the site's public proxy): say only whether the service works, never what is configured.
+        return {"ok": True, "database": mongo}
     key = s.stripe_secret_key
     return {"ok": True, "site_token_match": token_match, "mongodb_error": mongo_error, "configured": {
         "mongodb": mongo,
@@ -676,6 +655,5 @@ def health(request: Request):
         "dataforseo": bool(s.dataforseo_password) and "@" in s.dataforseo_login,
         "stripe": key.startswith(("sk_test_", "sk_live_", "rk_test_", "rk_live_")),
         "stripe_mode": ("live" if key.startswith(("sk_live", "rk_live")) else "test") if key else None,
-        "mercury": bool(s.mercury_api_token and s.mercury_account_id),
         "resend": s.resend_api_key.startswith("re_"), "turnstile": bool(s.turnstile_secret),
         "internal_token": bool(s.internal_token)}}

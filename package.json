@@ -6,7 +6,7 @@
     "doc": "docs"
   },
   "scripts": {
-    "test:site": "cd workers/ai-site && node --test test/*.test.mjs",
+    "test:site": "cd workers/ai-site && npm test",
     "build:widget": "node workers/ai-site/tools-src/build.mjs",
     "test:api": "cd backend && uv run pytest -q"
   },

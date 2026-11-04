@@ -20,7 +20,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from .config import Settings
-from .services import ApiError, _dfs, _num, openai_json
+from .services import ApiError, _dfs, _num, openai_json, record_usage
 
 COUNTRIES = {"us": ("United States", 2840), "ca": ("Canada", 2124)}
 
@@ -421,6 +421,7 @@ def cover_image(s: Settings, *, title: str, keyword: str = "", idea: str = "") -
         b64 = ((res.json().get("data") or [{}])[0]).get("b64_json")
         if not b64:
             raise ApiError("no image returned", 502, "The cover image could not be made.")
+        record_usage("blog_ai.cover_image", model, res.json().get("usage"), units=1)
         return {"b64": b64, "type": "image/jpeg", "alt": f"Illustration for {title[:120]}", "model": model}
     raise ApiError(f"no image model available: {last.status_code if last else '-'} {last.text[:200] if last else ''}", 502,
                    "The cover image could not be made.")

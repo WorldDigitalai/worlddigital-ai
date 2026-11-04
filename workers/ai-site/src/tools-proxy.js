@@ -1,3 +1,4 @@
+import { humanOk } from './human.js';
 // Forwards /api/tools/* to the Python tools API (backend/, deployed on Cloud Run).
 // vars: TOOLS_API_URL (e.g. https://worlddigital-ai-api-xxxx.run.app)   secret: TOOLS_API_TOKEN
 const JSON_HEADERS = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
@@ -13,15 +14,28 @@ export async function toolsProxy(req, env, url) {
   if (/^\/api\/tools\/+billing/i.test(url.pathname)) return new Response(JSON.stringify({ error: 'Not found' }), { status: 404, headers: JSON_HEADERS });
   const headers = new Headers({
     'x-internal-token': env.TOOLS_API_TOKEN || '',
+    'x-wd-public': '1', // marks requests that came through this public proxy (the health check then hides its details)
     'cf-connecting-ip': req.headers.get('CF-Connecting-IP') || '',
     'user-agent': req.headers.get('User-Agent') || '',
   });
   if (req.method === 'POST') headers.set('content-type', 'application/json');
+  // Free previews cost real DataForSEO and OpenAI credits: require the human check before they reach the backend.
+  let body;
+  if (req.method === 'POST') {
+    body = await req.text();
+    if (/^\/api\/tools\/(keywords|content)\/preview$/.test(url.pathname)) {
+      let tok = '';
+      try { tok = String(JSON.parse(body).turnstile || ''); } catch {}
+      if (!(await humanOk(env, tok, req.headers.get('CF-Connecting-IP') || ''))) {
+        return new Response(JSON.stringify({ error: 'Please complete the quick human check and try again.' }), { status: 403, headers: JSON_HEADERS });
+      }
+    }
+  }
   try {
     const res = await fetch(env.TOOLS_API_URL.replace(/\/$/, '') + url.pathname + url.search, {
       method: req.method,
       headers,
-      body: req.method === 'POST' ? await req.text() : undefined,
+      body,
       signal: AbortSignal.timeout(90000),
     });
     const out = new Headers();
@@ -72,5 +86,26 @@ export async function ragAnswer(req, env) {
     return out(res.ok ? d : { error: d.error || 'Could not answer right now.' }, res.status);
   } catch {
     return out({ error: 'The knowledge API is busy right now. Please try again in a minute.' }, 502);
+  }
+}
+
+// Stripe webhook: Stripe calls https://worlddigital.ai/api/stripe/webhook. The raw body and Stripe-Signature are passed
+// through unchanged (the backend verifies the signature and re-checks the payment with Stripe before unlocking).
+export async function stripeWebhook(req, env) {
+  const out = (o, status) => new Response(JSON.stringify(o), { status, headers: JSON_HEADERS });
+  if (req.method !== 'POST') return out({ error: 'POST only' }, 405);
+  if (!env.TOOLS_API_URL) return out({ error: 'not configured' }, 503);
+  const sig = req.headers.get('Stripe-Signature') || '';
+  if (!sig) return out({ error: 'missing signature' }, 400);
+  const body = await req.arrayBuffer();
+  if (body.byteLength > 512 * 1024) return out({ error: 'too large' }, 413);
+  try {
+    const res = await fetch(env.TOOLS_API_URL.replace(/\/$/, '') + '/api/stripe/webhook', {
+      method: 'POST', body, signal: AbortSignal.timeout(60000),
+      headers: { 'x-internal-token': env.TOOLS_API_TOKEN || '', 'content-type': 'application/json', 'stripe-signature': sig },
+    });
+    return new Response(res.body, { status: res.status, headers: JSON_HEADERS });
+  } catch {
+    return out({ error: 'busy' }, 502); // Stripe retries failed deliveries for up to 3 days
   }
 }

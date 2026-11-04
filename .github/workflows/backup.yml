@@ -1,0 +1,55 @@
+name: Backup (MongoDB + blog store)
+# Nightly: exports the data that cannot be rebuilt, encrypts it, and keeps 30 days of copies as private artifacts
+# of this repository (Actions > Backup > a run > Artifacts).
+#   MongoDB (Cloud Run /api/admin/backup): orders, paid reports, billing history, knowledge-base pages,
+#     private and customer documents (without embeddings), questions, metrics, sync history
+#   Blog store (worlddigital.ai /api/site/backup): posts, redirects, media, form leads, settings, admin log
+#     (never sign-in tokens, sessions or the signing key)
+# Encrypted with AES-256 (openssl, PBKDF2) using the TOOLS_API_TOKEN secret as the password.
+# Restore: tools/restore_backup.py (instructions at the top of that file).
+on:
+  schedule:
+    - cron: "17 8 * * *"   # ~2-3 am Chicago
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    env:
+      TOKEN: ${{ secrets.TOOLS_API_TOKEN }}
+      API: https://worlddigital-ai-api-250920469327.us-central1.run.app
+      SITE: https://worlddigital.ai
+    steps:
+      - name: Export MongoDB
+        run: |
+          mkdir -p b
+          curl -s -o /dev/null "$API/api/tools/health" || true
+          code=$(curl -s -o b/mongo.json -w "%{http_code}" "$API/api/admin/backup" -H "x-internal-token: $TOKEN" --max-time 280)
+          [ "$code" = "200" ] || { echo "::error::MongoDB export returned $code: $(head -c 300 b/mongo.json)"; exit 1; }
+          python3 -c "import json;d=json.load(open('b/mongo.json'));print('::notice title=MongoDB backup::'+', '.join(f'{k} {v}' for k,v in d['counts'].items()))"
+      - name: Export blog store and media
+        run: |
+          code=$(curl -s -o b/site.json -w "%{http_code}" "$SITE/api/site/backup?part=data" -H "x-internal-token: $TOKEN" --max-time 120)
+          [ "$code" = "200" ] || { echo "::error::site export returned $code: $(head -c 300 b/site.json)"; exit 1; }
+          off=0
+          while :; do
+            code=$(curl -s -o "b/media-$off.json" -w "%{http_code}" "$SITE/api/site/backup?part=media&offset=$off" -H "x-internal-token: $TOKEN" --max-time 120)
+            [ "$code" = "200" ] || { echo "::error::media export returned $code at $off"; exit 1; }
+            n=$(jq '.items|length' "b/media-$off.json")
+            [ "$n" -gt 0 ] || { rm "b/media-$off.json"; break; }
+            off=$((off+n))
+            [ "$off" -lt 5000 ] || break
+          done
+          python3 -c "import json;d=json.load(open('b/site.json'));print(f\"::notice title=Blog backup::{len(d['posts'])} posts, {len(d['redirects'])} redirects, {len(d['leads'])} leads, {len(d['media'])} media files ($off exported)\")"
+      - name: Encrypt
+        run: |
+          tar czf backup.tar.gz -C b .
+          openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -in backup.tar.gz -out backup.tar.gz.enc -pass env:TOKEN
+          rm -rf b backup.tar.gz
+          ls -l backup.tar.gz.enc
+      - uses: actions/upload-artifact@v5
+        with:
+          name: backup-${{ github.run_id }}
+          path: backup.tar.gz.enc
+          retention-days: 30

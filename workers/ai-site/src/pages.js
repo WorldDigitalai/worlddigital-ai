@@ -85,6 +85,7 @@ const TOOLS_BODY = `<section style="background:#fff;border-bottom:1px solid #DCE
 <div class="eyebrow" style="margin-top:14px">Products</div>
 <h1 class="h hero-h" style="font-size:52px;line-height:1.08;margin-top:14px;max-width:900px">SEO &amp; AI marketing software, <span style="color:#0D5EC7">free to start.</span></h1>
 <p style="font-size:19px;line-height:1.6;color:#33445A;margin:20px 0 0;max-width:760px">Check your website, find the keywords you can win and get ready-to-post content, all from real Google data. Every tool has a free version; pay only if you want the full result.</p>
+<p style="font-size:16.5px;line-height:1.6;color:#33445A;margin:14px 0 0;max-width:760px"><b>What our products do:</b> the <a href="/free-seo-report">free SEO &amp; AI visibility report</a> scores your on-page SEO, mobile speed, Google rankings, backlinks and whether AI assistants cite you; <a href="/services/keyword-research">keyword research</a> gives your top 3 keywords free and all 10 with search volume, cost per click, competition and intent for $9.99; the <a href="/services/content-marketing">content generator</a> writes ads and posts for Google Search Ads, Facebook, Instagram, LinkedIn, X, TikTok, YouTube Shorts and Snapchat (1 free, 5 for $24.99). Files come as PDF, Excel or Word, no account needed.</p>
 </div></section>
 <section class="sec"><div class="wrap">
 <h2 class="h" style="font-size:30px">Pick a tool</h2>
@@ -279,6 +280,6 @@ export const REDIRECTS = {
   '/services/ai-seo': '/ai-seo-agency', '/services/google-ads': '/google-ads-agency',
   // common alternates
   '/seo-ai-visibility': '/ai-seo-agency', '/paid-media': '/google-ads-agency', '/sem-paid-media': '/google-ads-agency',
-  '/website-build-management': '/build', '/privacy': '/privacy-policy', '/terms': '/terms-and-conditions', '/careers': '/career',
+  '/website-build-management': '/build', '/privacy': '/privacy-policy', '/pricing': '/tools', '/terms': '/terms-and-conditions', '/careers': '/career',
   '/reviews': '/testimonials', '/contact-us': '/contact', '/software-development': '/custom-software', '/products': '/tools',
 };

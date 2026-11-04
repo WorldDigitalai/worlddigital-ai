@@ -24,7 +24,7 @@ import httpx
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 from .config import Settings
-from .services import ApiError, openai_json
+from .services import ApiError, openai_json, record_usage
 
 W, H, FPS = 720, 1280, 24
 MAX_BYTES = 1_850_000
@@ -76,6 +76,7 @@ def speak(s: Settings, text: str) -> bytes:
             continue
         if res.status_code >= 400:
             raise ApiError(f"OpenAI speech {res.status_code}: {res.text[:300]}", 502, "The voiceover could not be made.")
+        record_usage("blog_video.voiceover", model, None, units=len(text))  # billed per character
         return res.content
     raise ApiError(f"no speech model: {last.text[:200] if last else ''}", 502, "The voiceover could not be made.")
 

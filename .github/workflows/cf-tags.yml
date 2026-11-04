@@ -8,8 +8,11 @@ on:
   workflow_dispatch:
     inputs:
       action:
-        description: "inspect"
+        description: "inspect, or gtg-set (writes the Google tag gateway config given in gtg_config)"
         default: "inspect"
+      gtg_config:
+        description: 'JSON for gtg-set, e.g. {"enabled":true,"endpoint":"/5cex","hideOriginalIp":true,"measurementId":"AW-16853962405","setUpTag":false}'
+        default: ""
 permissions:
   contents: read
 jobs:
@@ -33,6 +36,15 @@ jobs:
               print(f"::notice title=inline script {i}::{len(body)} chars: {body[:160]}")
           PY
           curl -sI "https://worlddigital.ai/5cex/" | grep -iE "^(HTTP|server|content-type|cf-|x-)" | while read -r l; do echo "::notice title=/5cex/ headers::$l"; done
+      - name: Write Google tag gateway config
+        if: inputs.action == 'gtg-set'
+        env:
+          BODY: ${{ inputs.gtg_config }}
+        run: |
+          echo "$BODY" | jq -e . >/dev/null || { echo "::error::gtg_config is not JSON"; exit 1; }
+          code=$(curl -s -o put.json -w "%{http_code}" -X PUT -H "Authorization: Bearer $CF" -H "Content-Type: application/json" --data "$BODY" "https://api.cloudflare.com/client/v4/zones/$ZONE/settings/google-tag-gateway/config")
+          echo "::notice title=PUT google-tag-gateway::HTTP $code $(jq -c '{success, errors: [.errors[]?.message], result}' put.json | head -c 600)"
+          sleep 20
       - name: Zone settings (read-only)
         run: |
           get() { curl -s -o "$2" -w "%{http_code}" -H "Authorization: Bearer $CF" "https://api.cloudflare.com/client/v4$1"; }

@@ -49,7 +49,7 @@ jobs:
           region: ${{ env.REGION }}
           project_id: ${{ env.GCP_PROJECT }}
           source: backend
-          flags: "--allow-unauthenticated --min-instances=0 --max-instances=3 --memory=512Mi --timeout=300 --network=default --subnet=default --vpc-egress=all-traffic"
+          flags: "--allow-unauthenticated --min-instances=0 --max-instances=3 --memory=512Mi --timeout=300 --clear-network"
           env_vars: |
             MONGODB_DB=worlddigital_ai
             PUBLIC_ORIGIN=https://worlddigital.ai

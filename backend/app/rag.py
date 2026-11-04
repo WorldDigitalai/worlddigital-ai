@@ -30,6 +30,8 @@ DIMS = 1536
 INDEX_NAME = "rag_vector"
 CHUNK_CHARS = 2200
 OVERLAP = 250
+# Sections repeated on most pages (site-wide bands): indexed once from their own page, not 40 times.
+BOILERPLATE = re.compile(r"^(Try our SEO tools, no sign-up|Start free, or tell us what to build\.?|Let.s grow your business\.?)$", re.I)
 SKIP = re.compile(r"/(media|blog-admin|api)/|\.(xml|txt|png|jpg|webp|pdf)$")
 
 
@@ -89,7 +91,7 @@ def chunk(md: str) -> list[str]:
         sections.append((head, "\n".join(cur).strip()))
     out, buf = [], ""
     for head, text in sections:
-        if not text:
+        if not text or (head and BOILERPLATE.match(head)):
             continue
         while len(text) > CHUNK_CHARS:  # long section: split with overlap, keep the heading
             cut = text.rfind("\n", 0, CHUNK_CHARS)
@@ -129,8 +131,13 @@ class Rag:
 
     def index(self, base: str = SITE, extra: list[str] | None = None) -> dict:
         urls = site_pages(base) + [f"{base}/llms-full.txt"] + list(extra or [])
-        stats = {"pages": 0, "updated": 0, "unchanged": 0, "chunks": 0, "removed": 0, "errors": []}
+        stats = {"pages": 0, "updated": 0, "unchanged": 0, "chunks": 0, "removed": 0, "duplicates": 0, "errors": []}
         seen = set()
+        if self.pages.find_one({"_id": "__version"}, {"v": 1}) != {"_id": "__version", "v": 2}:
+            self.pages.delete_many({})  # chunking rules changed: rebuild everything once
+            self.chunks.delete_many({})
+            self.pages.insert_one({"_id": "__version", "v": 2})
+        seen.add("__version")
         for url in urls:
             try:
                 md = _get(url, md=True)
@@ -144,15 +151,21 @@ class Rag:
             if prev and prev.get("hash") == h:
                 stats["unchanged"] += 1
                 continue
-            parts = chunk(md)
             title = _title(md, url)
+            parts = []
+            for p in chunk(md):  # identical text already indexed from another page adds nothing but noise
+                ph = hashlib.sha256(" ".join(p.split()).encode()).hexdigest()
+                if self.chunks.find_one({"text_hash": ph, "url": {"$ne": url}}, {"_id": 1}):
+                    stats["duplicates"] += 1
+                    continue
+                parts.append((p, ph))
             if not parts:
                 self.pages.replace_one({"_id": url}, {"_id": url, "hash": h, "title": title, "chunks": 0, "updated": now()}, upsert=True)
                 continue
-            vecs = embed(self.s, [f"{title}\n{p}" for p in parts])
+            vecs = embed(self.s, [f"{title}\n{p}" for p, _ in parts])
             self.chunks.delete_many({"url": url})
-            self.chunks.insert_many([{"_id": f"{url}#{i}", "url": url, "title": title, "text": p, "embedding": v,
-                                      "source": "site", "updated": now()} for i, (p, v) in enumerate(zip(parts, vecs))])
+            self.chunks.insert_many([{"_id": f"{url}#{i}", "url": url, "title": title, "text": p, "text_hash": ph, "embedding": v,
+                                      "source": "site", "updated": now()} for i, ((p, ph), v) in enumerate(zip(parts, vecs))])
             self.pages.replace_one({"_id": url}, {"_id": url, "hash": h, "title": title, "chunks": len(parts), "updated": now()}, upsert=True)
             stats["updated"] += 1
             stats["chunks"] += len(parts)
@@ -221,6 +234,6 @@ class Rag:
         return "\n".join(out)
 
     def status(self) -> dict:
-        return {"pages": self.pages.count_documents({}), "chunks": self.chunks.count_documents({}),
+        return {"pages": self.pages.count_documents({"_id": {"$ne": "__version"}}), "chunks": self.chunks.count_documents({}),
                 "vector_index": self.ensure_vector_index(),
-                "last_update": (lambda d: d.isoformat() if d else None)(max((p.get("updated") for p in self.pages.find({}, {"updated": 1})), default=None))}
+                "last_update": (lambda d: d.isoformat() if d else None)(max((p["updated"] for p in self.pages.find({"updated": {"$exists": True}}, {"updated": 1})), default=None))}

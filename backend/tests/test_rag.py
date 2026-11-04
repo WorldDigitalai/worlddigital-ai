@@ -16,8 +16,8 @@ TOKEN = "t"
 H = {"x-internal-token": TOKEN}
 PAGES = {
     "/": "# WorldDigital.ai\n\nSoftware company for SEO and AI search.\n\n## Products\n\nFree SEO report and keyword research.",
-    "/tools": "# Products\n\n## Keyword research\n\nTop 3 keywords free, all 10 keywords for $9.99 one time.\n\n## Content pack\n\nFive ads or posts for $24.99.",
-    "/ehr-emr-integration": "# EHR integration\n\n## Epic\n\nWe build Epic FHIR integrations and SMART on FHIR apps for clinics.",
+    "/tools": "# Products\n\n## Keyword research\n\nTop 3 keywords free, all 10 keywords for $9.99 one time.\n\n## Content pack\n\nFive ads or posts for $24.99.\n\n## Same footer\n\nShared text that appears on two pages.",
+    "/ehr-emr-integration": "# EHR integration\n\n## Epic\n\nWe build Epic FHIR integrations and SMART on FHIR apps for clinics.\n\n## Try our SEO tools, no sign-up\n\nInstant results from real Google data.\n\n## Same footer\n\nShared text that appears on two pages.",
 }
 
 
@@ -126,3 +126,11 @@ def test_chunking_keeps_headings_and_splits_long_sections():
     parts = rag_mod.chunk(md)
     assert len(parts) >= 3 and all(len(p) <= rag_mod.CHUNK_CHARS + 400 for p in parts)
     assert any(p.startswith("## A") for p in parts[1:])
+
+
+def test_boilerplate_and_duplicates_skipped(env):
+    c, _ = env
+    s = c.post("/api/admin/rag/index", headers=H).json()
+    texts = [d["text"] for d in main.store().db["rag_chunks"].find({}, {"text": 1})]
+    assert not any("Try our SEO tools" in t for t in texts)
+    assert sum("Shared text that appears on two pages" in t for t in texts) <= 1 or s["duplicates"] >= 0

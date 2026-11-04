@@ -1,9 +1,8 @@
 name: Billing (Mercury) daily
 # Every morning: send monthly plan invoices that are due, check which Mercury invoices are paid,
 # email receipts and flag past-due plans. Safe to run any number of times (each invoice number is unique).
+# Paused: the plan is billed through Stripe again (Mercury invoicing switched off). Run manually if needed.
 on:
-  schedule:
-    - cron: "7 13 * * *"   # ~7-8am Chicago
   workflow_dispatch:
 permissions:
   contents: read

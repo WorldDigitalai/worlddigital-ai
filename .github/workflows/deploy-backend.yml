@@ -70,7 +70,6 @@ jobs:
             DATAFORSEO_LOGIN=DATAFORSEO_LOGIN:latest
             DATAFORSEO_PASSWORD=DATAFORSEO_PASSWORD:latest
             STRIPE_SECRET_KEY=STRIPE_SECRET_KEY:latest
-            STRIPE_WEBHOOK_SECRET=STRIPE_WEBHOOK_SECRET:latest
             RESEND_API_KEY=RESEND_API_KEY:latest
       - name: Health check
         run: |

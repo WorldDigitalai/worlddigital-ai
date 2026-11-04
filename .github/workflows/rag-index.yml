@@ -49,4 +49,4 @@ jobs:
         run: |
           curl -s -o a.json -X POST "$API/api/admin/rag/ask" -H "x-internal-token: $TOKEN" -H "content-type: application/json" -d "$(jq -n --arg q "$Q" '{q:$q}')"
           cat a.json; echo
-          python3 -c "import json;d=json.load(open('a.json'));print('::notice title=Answer::'+d.get('answer','')[:600].replace(chr(10),' ')+' | sources: '+', '.join(s['url'] for s in d.get('sources',[])))"
+          python3 -c "import json;d=json.load(open('a.json'));print('::notice title=Answer::'+d.get('answer','')[:600].replace(chr(10),' ')+' | search: '+str(d.get('method'))+' | sources: '+', '.join(s['url'] for s in d.get('sources',[])))"

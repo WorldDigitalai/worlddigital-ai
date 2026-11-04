@@ -277,7 +277,9 @@ export default {
     // Edge cache for pages built from the blog database (blog, sitemap, llms.txt, feed): crawlers get them
     // without a database round trip. Signed-in editors (cookie) always get a fresh copy.
     const cacheable = prod && req.method === 'GET' && !req.headers.get('Cookie') && !wantsMarkdown(req) &&
-      (/^\/blog(\/|$)/.test(url.pathname) || ['/sitemap.xml', '/sitemap.txt', '/llms.txt', '/llms-full.txt'].includes(url.pathname));
+      (/^\/blog(\/|$)/.test(url.pathname) || ['/sitemap.xml', '/sitemap.txt', '/llms.txt', '/llms-full.txt'].includes(url.pathname) ||
+       // static marketing pages (same HTML for everyone): served from the edge for 5 minutes, like the blog
+       (!url.search && !!PAGES[url.pathname] && !PAGES[url.pathname].noindex));
     const cache = caches.default;
     if (cacheable) {
       const hit = await cache.match(req.url);

@@ -366,3 +366,11 @@ def test_evaluation_metrics(env, monkeypatch, tmp_path):
     assert r["passed"] == 2 and m["retrieval_hit_rate"] == 100 and m["mrr"] > 0 and m["citation_accuracy"] == 100
     assert m["unsupported_answer_rate"] == 0 and m["avg_ms"] is not None
     assert c.get("/api/admin/rag", headers=H).json()["eval"]["metrics"]["answer_accuracy"] == 100
+
+
+def test_every_cited_number_is_listed(env, monkeypatch):
+    c, w = env
+    c.post("/api/admin/rag/index", headers=H, json={})
+    monkeypatch.setattr(rag_mod, "openai_json", lambda s, **kw: {"answer": "Yes [3], and also [1]. Not [99].", "used": [1], "covered": True})
+    a = c.post("/api/admin/rag/ask", headers=H, json={"q": "Epic FHIR keyword research"}).json()
+    assert [s["n"] for s in a["sources"]] == [3, 1] or sorted({s["n"] for s in a["sources"]}) >= [1, 3]

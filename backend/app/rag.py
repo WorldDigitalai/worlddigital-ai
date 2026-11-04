@@ -793,13 +793,15 @@ class Rag:
         out = openai_json(self.s, max_tokens=900, temperature=0.2, system=system,
                           user=f"<sources>\n{ctx}\n</sources>\n\nQuestion: {question}\n\n"
                                'JSON: {"answer":"","used":[1],"covered":true,"undocumented":""}')
-        used = [int(n) for n in (out.get("used") or []) if str(n).isdigit() and 0 < int(n) <= len(hits)]
+        text = str(out.get("answer") or "").strip()
+        cited = [int(n) for n in re.findall(r"\[(\d{1,2})\]", text)]  # every [n] in the text is listed, plus "used"
+        used = list(dict.fromkeys(int(n) for n in cited + list(out.get("used") or []) if str(n).isdigit() and 0 < int(n) <= len(hits)))
         srcl, seen = [], set()
         for n in used or range(1, len(hits) + 1):
             h = hits[n - 1]
             if h["url"] not in seen:
                 seen.add(h["url"]); srcl.append({"n": n, "title": h["title"], "url": h["url"]})
-        res = {"answer": str(out.get("answer") or "").strip(), "sources": srcl, "covered": bool(out.get("covered", True)),
+        res = {"answer": text, "sources": srcl, "covered": bool(out.get("covered", True)),
                "undocumented": str(out.get("undocumented") or "").strip()[:400]}
         ms = _ms(t0)
         self._metric("public_answer" if public else "answer", ms)

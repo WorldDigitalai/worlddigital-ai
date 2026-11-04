@@ -26,13 +26,13 @@ a{color:#0D5EC7}a:hover{color:#0B4FA8}
 :focus-visible{outline:3px solid #93C5FD;outline-offset:2px}
 .skip{position:absolute;left:-999px;top:8px;background:#fff;padding:10px 14px;border-radius:8px;z-index:50}.skip:focus{left:8px}
 .wrap{max-width:1180px;margin:0 auto;padding:0 24px}
-.h{font-family:Sora,Inter,sans-serif;letter-spacing:-0.02em;margin:0}
+.h{font-family:Sora,Inter,sans-serif;letter-spacing:-0.02em;margin:0;overflow-wrap:break-word}
 .eyebrow{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#0B4FA8}
 .top{background:#fff;border-bottom:1px solid #DCE5EF;position:sticky;top:0;z-index:20}
 .topin{display:flex;align-items:center;justify-content:space-between;gap:14px;min-height:72px}
 .brand{font-family:Sora,Inter,sans-serif;font-weight:800;font-size:21px;color:#0E1A2B;text-decoration:none;display:flex;align-items:center;gap:10px}
 .brand img{width:36px;height:36px;border-radius:9px;box-shadow:0 0 0 1px #DCE5EF}
-.brand small{display:block;font-family:Inter,sans-serif;font-weight:500;font-size:11.5px;color:#4A5B70;letter-spacing:.02em}
+.brand small{display:block;font-family:Inter,sans-serif;font-weight:500;font-size:12px;color:#4A5B70;letter-spacing:.01em}
 .nav{display:flex;gap:20px;font-size:15px;white-space:nowrap}
 .nav a{color:#33445A;text-decoration:none;font-weight:500;display:inline-flex;align-items:center;min-height:44px}.nav a:hover,.nav a[aria-current=page]{color:#0D5EC7}
 .menu{display:none}

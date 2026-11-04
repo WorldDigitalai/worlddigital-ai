@@ -6,6 +6,11 @@ on:
   schedule:
     - cron: "41 11 * * 1"   # Mondays ~6:41am Chicago
   workflow_dispatch:
+    inputs:
+      block_tags:
+        description: "Diagnosis: block Google tags (gateway /5cex/, GTM, GA, Ads) to see the site's own score"
+        type: boolean
+        default: false
 jobs:
   lighthouse:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
@@ -26,7 +31,8 @@ jobs:
           echo "|---|---|---|---|---|" >> summary.md
           for p in $pages; do
             name=$(echo "$p" | sed 's#^/##; s#/#_#g'); [ -z "$name" ] && name=home
-            npx --yes lighthouse@12.8.2 "https://worlddigital.ai$p" $preset --quiet --chrome-flags="--headless=new --no-sandbox" \
+            block=""; [ "${{ inputs.block_tags }}" = "true" ] && block='--blocked-url-patterns=*5cex* --blocked-url-patterns=*googletagmanager.com* --blocked-url-patterns=*google-analytics.com* --blocked-url-patterns=*doubleclick.net*'
+            npx --yes lighthouse@12.8.2 "https://worlddigital.ai$p" $preset $block --quiet --chrome-flags="--headless=new --no-sandbox" \
               --output=json --output=html --output-path="reports/${name}-${{ matrix.device }}" || { echo "| $p | failed | | | |" >> summary.md; continue; }
             s=$(jq -r '[.categories.performance.score,.categories.accessibility.score,.categories["best-practices"].score,.categories.seo.score] | map((. // 0) * 100 | round) | join(" | ")' "reports/${name}-${{ matrix.device }}.report.json")
             echo "| $p | $s |" >> summary.md

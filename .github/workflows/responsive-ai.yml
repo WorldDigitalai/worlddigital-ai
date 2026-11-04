@@ -1,0 +1,33 @@
+name: Responsive check (worlddigital.ai)
+# Every sitemap page at 9 sizes (360-1920 px): sideways scrolling, elements off screen, small tap targets,
+# text under 12 px, header menu wrapping, cut-off headings, main button below the first phone screen, JS errors.
+on:
+  workflow_run:
+    workflows: ["Deploy worlddigital.ai site"]
+    types: [completed]
+  schedule:
+    - cron: "11 4 * * *"   # nightly ~10-11 pm Chicago
+  workflow_dispatch:
+    inputs:
+      pages:
+        description: "Optional comma-separated paths (default: whole sitemap)"
+        default: ""
+permissions:
+  contents: read
+jobs:
+  responsive:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.12" }
+      - run: pip install -q playwright==1.48.0 && python -m playwright install --with-deps chromium >/dev/null
+      - name: Check every page at 9 sizes
+        env:
+          PAGES: ${{ inputs.pages }}
+        run: |
+          args=""; [ -n "$PAGES" ] && args="--pages $PAGES"
+          python tools/responsive_check.py https://worlddigital.ai $args --out resp.json > /dev/null; code=$?
+          python3 -c "import json;d=json.load(open('resp.json'));print('::notice title=Responsive check::'+d['checked']+(' - all OK' if d['ok'] else f\" - {len(d['problems'])} problems\"));[print('::warning title=Responsive::'+p) for p in d['problems'][:50]]"
+          exit $code

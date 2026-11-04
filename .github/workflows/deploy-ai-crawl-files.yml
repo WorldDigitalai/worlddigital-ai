@@ -25,7 +25,7 @@ jobs:
         if: github.event_name != 'pull_request' && steps.cf.outputs.ok == '1'
         run: |
           set -o pipefail
-          npx --yes wrangler@4.42.0 deploy 2>&1 | tee deploy.log || { tail -15 deploy.log | sed "s/\x1b\[[0-9;]*m//g" | grep -v "^\s*$" | while read -r l; do echo "::error::$l"; done; exit 1; }
+          npx --yes wrangler@4.149.0 deploy 2>&1 | tee deploy.log || { tail -15 deploy.log | sed "s/\x1b\[[0-9;]*m//g" | grep -v "^\s*$" | while read -r l; do echo "::error::$l"; done; exit 1; }
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

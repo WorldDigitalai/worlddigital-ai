@@ -21,7 +21,7 @@ jobs:
     steps:
       - name: Scripts on the live home page
         run: |
-          curl -s -A "Mozilla/5.0 (Linux; Android 11) Chrome/130 Mobile" https://worlddigital.ai/ -o home.html
+          curl -s -A "Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36" -H "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8" -H "Accept-Language: en-US,en;q=0.9" https://worlddigital.ai/ -o home.html
           grep -oE '<script[^>]*>' home.html | sed -E 's/nonce="[^"]*"//' | sort | uniq -c | while read -r l; do echo "::notice title=script tag::$l"; done
           grep -oE '/5cex/[^"'"'"' ]*' home.html | sort -u | while read -r l; do echo "::notice title=5cex reference in HTML::$l"; done
           grep -c "5cex" home.html | xargs -I{} echo "::notice title=5cex mentions in HTML::{}"

@@ -55,3 +55,6 @@ cd workers/ai-site && npx wrangler dev --local --port 8791 # site; .dev.vars: TO
 - Never invent testimonials, results, prices or certifications. Say "A+ BBB rating", never "accredited".
 - Prices shown in the widget must match `backend/app/products.py`.
 - Update the page's keywords and JSON-LD in `workers/ai-site/src/pages.js` when a page changes.
+- Every new video (social reels, YouTube Shorts, TikTok, and any video made from a blog post) must have real sound:
+  a voiceover, music or sound effects. Never ship a silent track; check with `ffmpeg -i x.mp4 -af volumedetect -f null -`
+  (max_volume near -91 dB means silent).

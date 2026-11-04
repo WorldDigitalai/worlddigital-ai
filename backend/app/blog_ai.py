@@ -288,7 +288,7 @@ def _slug(t: str) -> str:
 
 
 def draft(s: Settings, *, title: str, keyword: str = "", type: str = "how-to", competitors: list[str] | None = None,
-          notes: str = "", country: str = "us", words: int = 1600) -> dict:
+          notes: str = "", country: str = "us", words: int = 1600, facts: str = "") -> dict:
     label, loc = _country(country)
     title = " ".join(str(title or "").split())[:140]
     if not title:
@@ -328,6 +328,7 @@ def draft(s: Settings, *, title: str, keyword: str = "", type: str = "how-to", c
                       user=(f"About us (facts you may use):\n{ABOUT_US}\n\nMarket: {label}. Today: {month}.\n"
                             f"Post title: {title}\nMain keyword: {keyword}\nPost type: {POST_TYPES[ptype]}. {type_rules}\n"
                             f"{'Editor notes: ' + notes[:1000] if notes else ''}\n\n"
+                            f"{'From our own website (accurate facts and pages you may cite and link to with the relative path shown):' + chr(10) + facts[:5000] + chr(10) + chr(10) if facts else ''}"
                             f"Google page 1 for \"{keyword}\" (research; do not copy):\n{research_text or '(not available)'}\n"
                             f"People also ask: {' | '.join(sr['questions']) or '(none)'}\n"
                             f"AI Overview summary: {sr['ai_overview'].get('text') or '(none)'}\n"

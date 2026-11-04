@@ -42,6 +42,7 @@ from starlette.concurrency import run_in_threadpool
 from pymongo import MongoClient
 
 from . import blog_ai, chat
+from .rag import Rag
 from .billing import Billing
 from .config import Settings
 from .exports import FORMATS, build_file
@@ -334,7 +335,8 @@ async def blog_draft(request: Request):
     return json_ok(await run_in_threadpool(
         blog_ai.draft, settings(), title=str(b.get("title") or ""), keyword=str(b.get("keyword") or ""),
         type=str(b.get("type") or "how-to"), competitors=_strs(b.get("competitors"), 5),
-        notes=str(b.get("notes") or "")[:1000], country=str(b.get("country") or "us"), words=b.get("words") or 1600))
+        notes=str(b.get("notes") or "")[:1000], country=str(b.get("country") or "us"), words=b.get("words") or 1600,
+        facts=await run_in_threadpool(_rag_facts, f"{b.get('title') or ''} {b.get('keyword') or ''}", 6, 900)))
 
 
 @app.post("/api/admin/blog/social", dependencies=[Depends(guard)])
@@ -466,6 +468,44 @@ async def billing_overview():
     return json_ok(await run_in_threadpool(_billing_call, "overview"))
 
 
+# ── RAG: knowledge base over our own site ────────────────────────────────────
+#   POST /api/admin/rag/index   rebuild/refresh the index (nightly job)      GET /api/admin/rag  status
+#   POST /api/admin/rag/search  {q, k}  -> top chunks                        POST /api/admin/rag/ask {q} -> cited answer
+def rag() -> Rag:
+    return Rag(settings(), store().db)
+
+
+def _rag_facts(query: str, k: int = 5, chars: int = 900) -> str:
+    """Never lets the knowledge base break chat or drafts: on any problem, answer without it."""
+    try:
+        return rag().context(query, k, chars)
+    except Exception as e:  # noqa: BLE001
+        log.warning("rag context skipped: %s", e)
+        return ""
+
+
+@app.post("/api/admin/rag/index", dependencies=[Depends(guard)])
+async def rag_index():
+    return json_ok(await run_in_threadpool(lambda: rag().index()))
+
+
+@app.get("/api/admin/rag", dependencies=[Depends(guard)])
+async def rag_status():
+    return json_ok(await run_in_threadpool(lambda: rag().status()))
+
+
+@app.post("/api/admin/rag/search", dependencies=[Depends(guard)])
+async def rag_search(request: Request):
+    b = await body_of(request)
+    return json_ok({"hits": await run_in_threadpool(lambda: rag().search(str(b.get("q") or ""), max(1, min(int(b.get("k") or 6), 12))))})
+
+
+@app.post("/api/admin/rag/ask", dependencies=[Depends(guard)])
+async def rag_ask(request: Request):
+    b = await body_of(request)
+    return json_ok(await run_in_threadpool(lambda: rag().answer(str(b.get("q") or ""))))
+
+
 # ── Site chat (AI Ahmad) ────────────────────────────────────────────────────
 @app.post("/api/tools/chat", dependencies=[Depends(guard)])
 async def chat_reply(request: Request):
@@ -473,7 +513,8 @@ async def chat_reply(request: Request):
     messages = chat.clean_messages(body.get("messages"))
     if not store().hit("chat:" + client_ip(request), s.chat_daily_limit):
         raise ApiError("rate limited", 429, "You've reached today's chat limit. Please use the contact page and we'll reply within one business day.")
-    return json_ok({"reply": await run_in_threadpool(chat.reply, s, messages)})
+    facts = await run_in_threadpool(_rag_facts, messages[-1]["content"], 4, 700)
+    return json_ok({"reply": await run_in_threadpool(chat.reply, s, messages, facts)})
 
 
 @app.get("/api/tools/health")

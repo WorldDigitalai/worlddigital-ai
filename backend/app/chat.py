@@ -71,9 +71,11 @@ def clean_messages(raw) -> list[dict]:
     return out
 
 
-def reply(s: Settings, messages: list[dict]) -> str:
+def reply(s: Settings, messages: list[dict], facts: str = "") -> str:
     convo = "\n".join(("Visitor: " if m["role"] == "user" else "AI Ahmad: ") + m["content"] for m in messages)
-    data = openai_json(s, system=SYSTEM, user="Conversation so far:\n" + convo + "\n\nWrite AI Ahmad's next reply.",
+    extra = ("\n\nMore detail from our website, retrieved for this question (use it if relevant; if it ever disagrees "
+             "with FACTS, FACTS win; only link paths that appear here or in FACTS):\n" + facts[:3500]) if facts else ""
+    data = openai_json(s, system=SYSTEM + extra, user="Conversation so far:\n" + convo + "\n\nWrite AI Ahmad's next reply.",
                        max_tokens=600, temperature=0.4)
     text = str((data or {}).get("reply") or "").strip()
     if not text:

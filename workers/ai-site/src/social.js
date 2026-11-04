@@ -25,7 +25,7 @@ const CSS = `<style>
 .sf-sort{display:flex;align-items:center;gap:10px;margin:0;font-weight:600;font-size:14.5px}
 .sf-sort select{width:auto;min-height:44px}
 .sf-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px}
-.sf-card{background:#fff;border:1px solid #DCE5EF;border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
+.sf-card{background:#fff;border:1px solid #DCE5EF;border-radius:16px;overflow:hidden;display:flex;flex-direction:column;content-visibility:auto;contain-intrinsic-size:auto 460px}
 /* Whole image, never cropped: square frame, the picture contained, a blurred copy of it filling the sides
    (portrait carousel slides, 9:16 video covers and wide images all fit). */
 .sf-thumb{position:relative;aspect-ratio:1/1;background:#0E1A2B;overflow:hidden}.sf-thumb img{position:absolute;inset:0;width:100%;height:100%;display:block}.sf-img{object-fit:contain}.sf-bg{object-fit:cover;filter:blur(22px) brightness(.8);transform:scale(1.25)}

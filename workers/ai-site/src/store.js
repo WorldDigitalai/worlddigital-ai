@@ -4,6 +4,9 @@ import { AUTOPILOT_DEFAULTS, callAi, cleanAutopilot, nextLocalHour, runAutopilot
 import { sendEmail, validate } from './admin.js';
 import { shareToBuffer } from './buffer.js';
 
+// A post archived as a duplicate (address ending in -archived) is never public, whatever its status says.
+const isArchived = (slug) => /-archived(-\d+)?$/.test(String(slug || ''));
+
 const DEPS = { sendEmail, validate };
 
 const SCHEMA = `
@@ -59,6 +62,11 @@ export class Store extends DurableObject {
         this.mergeDuplicate(['best-ai-seo-tools-for-2026-free-and-paid-picks', 'best-ai-seo-tools-for-2026-free-and-paid-options']);
         this.sql.exec(`INSERT INTO kv (k,v) VALUES ('dedupe_ai_seo_tools_2026', ?)`, nowIso());
       }
+      // 2026-11-04: the archived copy above was found published again; put every archived duplicate back to draft.
+      if (!one(this.sql.exec(`SELECT v FROM kv WHERE k = 'archived_to_draft_v2'`))) {
+        this.sql.exec(`UPDATE posts SET status = 'draft', publish_at = NULL WHERE slug LIKE '%-archived' AND status != 'draft'`);
+        this.sql.exec(`INSERT INTO kv (k,v) VALUES ('archived_to_draft_v2', ?)`, nowIso());
+      }
     });
   }
 
@@ -90,7 +98,7 @@ export class Store extends DurableObject {
     const n = nowIso();
     const list = rows(this.sql.exec(`SELECT slug,title,seo_title,description,excerpt,category,cover_id,cover_alt,status,publish_at,published_at,updated_at,created_at,author,length(body) AS chars,
       substr(body,1,4000) AS body_head FROM posts ORDER BY COALESCE(published_at, publish_at, updated_at) DESC`));
-    for (const p of list) p.live = p.status === 'published' || (p.status === 'scheduled' && p.publish_at && p.publish_at <= n);
+    for (const p of list) p.live = !isArchived(p.slug) && (p.status === 'published' || (p.status === 'scheduled' && p.publish_at && p.publish_at <= n));
     for (const p of list) if (p.live && p.status === 'scheduled') p.published_at = p.publish_at;
     return all ? list : list.filter((p) => p.live).sort((a, b) => (b.published_at || '').localeCompare(a.published_at || ''));
   }
@@ -102,7 +110,7 @@ export class Store extends DurableObject {
       return r ? { redirect: r.new_slug } : null;
     }
     const n = nowIso();
-    p.live = p.status === 'published' || (p.status === 'scheduled' && p.publish_at && p.publish_at <= n);
+    p.live = !isArchived(p.slug) && (p.status === 'published' || (p.status === 'scheduled' && p.publish_at && p.publish_at <= n));
     if (p.live && p.status === 'scheduled') p.published_at = p.publish_at;
     return p;
   }
@@ -297,7 +305,7 @@ export class Store extends DurableObject {
   // ---- Buffer: share each newly published post to every social channel once ----
   async queueShare(slug) {
     const p = one(this.sql.exec(`SELECT slug,status,publish_at,shared_at FROM posts WHERE slug = ?`, slug));
-    const live = p && (p.status === 'published' || (p.status === 'scheduled' && p.publish_at && p.publish_at <= nowIso()));
+    const live = p && !isArchived(p.slug) && (p.status === 'published' || (p.status === 'scheduled' && p.publish_at && p.publish_at <= nowIso()));
     if (!live || p.shared_at) return false;
     const n = Date.now();
     this.sql.exec(`UPDATE posts SET shared_at=?, shared=? WHERE slug=?`, nowIso(), JSON.stringify({ state: 'queued' }), slug);

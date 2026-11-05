@@ -244,7 +244,12 @@ async function handle(req, env, ctx) {
       const p = await st.getPost(slug);
       if (p?.redirect) return redirect(`/blog/${p.redirect}`);
       if (!p) return redirect('/blog'); // retired post from the old site: the blog, not a dead end
-      if (!p.live) return notFound(prod);
+      if (!p.live) {
+        // An archived duplicate: send visitors and crawlers to the post that was kept.
+        const kept = /-archived(-\d+)?$/.test(slug) ? await st.getPost(slug.replace(/-archived(-\d+)?$/, '')) : null;
+        if (kept?.redirect) return redirect(`/blog/${kept.redirect}`);
+        return notFound(prod);
+      }
       return html(blogPost(p, posts, { prod }), 200, 'public, max-age=0, s-maxage=60');
     }
     const media = /^\/media\/([a-f0-9]{20})(?:\.(?:mp4|jpg|png|webp))?$/.exec(path);

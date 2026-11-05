@@ -234,7 +234,7 @@ assistant must say it doesn't know. Reported metrics:
 | `RAG_CHUNK_TOKENS`, `RAG_CHUNK_OVERLAP_TOKENS` | `550` (`450` for `@cf/` models), `80` | Chunking |
 | `RAG_API_DAILY_LIMIT`, `RAG_API_DAILY_TOTAL` | `30`, `1000` | Public answer API limits |
 | `RAG_SEARCH_DAILY_LIMIT`, `RAG_SEARCH_DAILY_TOTAL` | `100`, `5000` | Website search: AI searches per IP / in total per day |
-| `RAG_RERANK` | off | `1` = rerank results with Workers AI |
+| `RAG_RERANK` | off (production: `1`) | `1` = rerank results with Workers AI (`bge-reranker-base`) |
 | `RAG_COMPARE_MODEL` | `@cf/baai/bge-m3` | Model for the side-by-side test |
 | `RAG_WORKERS_AI_URL` | `https://worlddigital.ai/api/internal/ai` | Site worker's Workers AI endpoint |
 | `CHAT_DAILY_LIMIT` | `40` | Website chat limit per IP |

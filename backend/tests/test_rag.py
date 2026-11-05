@@ -24,12 +24,13 @@ US = {"/": "<html><title>Ahmad Awwad</title><body><nav>menu</nav><main><h1>Ahmad
 CUST = {"/": "<html><title>Bayou Dental</title><main><h1>Bayou Dental</h1><p>Teeth whitening costs $299 at Bayou Dental in Houston.</p></main></html>"}
 
 
-def vec(text: str) -> list[float]:
-    v = [0.0] * rag_mod.DIMS
+def vec(text: str, dims: int | None = None) -> list[float]:
+    dims = dims or rag_mod.DIMS
+    v = [0.0] * dims
     for w in text.lower().replace("$", " ").split():
         w = "".join(c for c in w if c.isalnum())
         if w:
-            v[int(hashlib.md5(w.encode()).hexdigest(), 16) % rag_mod.DIMS] += 1
+            v[int(hashlib.md5(w.encode()).hexdigest(), 16) % dims] += 1
     n = math.sqrt(sum(x * x for x in v)) or 1
     return [x / n for x in v]
 
@@ -42,6 +43,7 @@ class World:
         self.robots = ""
         self.fail_embeds = 0     # next N embedding calls answer 429
         self.dims = None         # force a wrong embedding size
+        self.cf_calls, self.cf_embeds = [], 0
 
     def sitemap(self, pages, host):
         def f(req):
@@ -68,6 +70,18 @@ class World:
         if self.dims:
             return httpx.Response(200, json={"data": [{"index": i, "embedding": [0.1] * self.dims} for i in range(len(inp))]})
         return httpx.Response(200, json={"data": [{"index": i, "embedding": vec(t)} for i, t in enumerate(inp)]})
+
+    def workers_ai(self, req):
+        """The site worker's /api/internal/ai (Workers AI): BGE-M3 embeddings and reranking."""
+        self.cf_calls.append(req)
+        if req.headers.get("x-internal-token") != TOKEN:
+            return httpx.Response(403, json={"error": "Forbidden"})
+        b = json.loads(req.content)
+        if b["op"] == "embed":
+            self.cf_embeds += len(b["texts"])
+            return httpx.Response(200, json={"vectors": [vec(t, 1024) for t in b["texts"]], "dims": 1024})
+        words = set(b["query"].lower().split())
+        return httpx.Response(200, json={"scores": [len(words & set(t.lower().split())) / 10 for t in b["texts"]]})
 
     def chat(self, req):
         b = json.loads(req.content)
@@ -102,6 +116,7 @@ def env(monkeypatch):
         r.get(url__regex=r"https://worlddigital\.ai/.*").mock(side_effect=w.page(w.ai, "# WorldDigital.ai\n\nHubs in Houston, TX and Murfreesboro, TN."))
         r.get(url__regex=r"https://worlddigital\.us/.*").mock(side_effect=w.page(w.us, "# Ahmad\n\nPersonal consulting site."))
         r.post("https://api.openai.com/v1/embeddings").mock(side_effect=w.embed)
+        r.post("https://worlddigital.ai/api/internal/ai").mock(side_effect=w.workers_ai)
         r.post("https://api.openai.com/v1/chat/completions").mock(side_effect=w.chat)
         yield TestClient(main.app), w
     main.settings.cache_clear()
@@ -387,3 +402,86 @@ def test_ai_usage_is_counted_per_feature_and_fallbacks_flagged(env, monkeypatch)
     services.record_usage("test.feature", "gpt-5.5", {"prompt_tokens": 10, "completion_tokens": 5}, fallback=True)
     u = c.get("/api/admin/rag", headers=H).json()["ai_usage_30d"]
     assert u["fallbacks"] == 1 and {r["feature"]: r for r in u["features"]}["test_feature"]["in"] == 10 and u["models"]["gpt-5_5"] >= 1
+
+
+def test_site_search_one_result_per_page_and_free_fallback(env, monkeypatch):
+    c, w = env
+    monkeypatch.setenv("RAG_SEARCH_DAILY_LIMIT", "1")
+    main.settings.cache_clear()
+    c.post("/api/admin/rag/index", headers=H, json={})
+    hdr = {**H, "cf-connecting-ip": "203.0.113.7"}
+    before = w.embeds
+    d = c.post("/api/rag/site-search", headers=hdr, json={"query": "keyword research price"}).json()
+    urls = [r["url"] for r in d["results"]]
+    assert len(urls) == len(set(urls)) and "https://worlddigital.ai/tools" in urls[:2] and not any(u.endswith(".txt") for u in urls)
+    assert d["method"] in ("hybrid", "vector", "scan") and w.embeds == before + 1
+    assert all("#" not in r["snippet"] for r in d["results"]) and any("keyword" in r["snippet"].lower() for r in d["results"])
+    # over the daily AI limit: exact-word search, no embedding call
+    d2 = c.post("/api/rag/site-search", headers=hdr, json={"query": "keyword research price"}).json()
+    assert d2["method"] == "keyword" and w.embeds == before + 1 and "https://worlddigital.ai/tools" in [r["url"] for r in d2["results"][:2]]
+    assert c.post("/api/rag/site-search", json={"query": "x"}).status_code in (401, 403)
+    assert c.post("/api/rag/site-search", headers=hdr, json={"query": ""}).status_code == 400
+
+
+def test_site_search_survives_embedding_outage(env, monkeypatch):
+    c, w = env
+    c.post("/api/admin/rag/index", headers=H, json={})
+    monkeypatch.setattr(rag_mod.time, "sleep", lambda s: None)
+    w.fail_embeds = 10
+    d = c.post("/api/rag/site-search", headers=H, json={"query": "Epic FHIR integration"}).json()
+    assert d["method"] == "keyword" and d["results"][0]["url"] == "https://worlddigital.ai/ehr-emr-integration"
+
+
+def test_workers_ai_embedding_model(env, monkeypatch):
+    c, w = env
+    monkeypatch.setattr(rag_mod, "EMBED_MODEL", "@cf/baai/bge-m3")
+    monkeypatch.setattr(rag_mod, "DIMS", 1024)
+    s = c.post("/api/admin/rag/index", headers=H, json={}).json()
+    assert s["updated"] == 4 and not s["errors"] and w.embeds == 0 and w.cf_embeds > 0
+    ch = db()["rag_chunks"].find_one()
+    assert ch["embedding_model"] == "@cf/baai/bge-m3" and len(ch["embedding"]) == 1024
+    assert all(r.headers["x-internal-token"] == TOKEN for r in w.cf_calls)
+    hits = c.post("/api/admin/rag/search", headers=H, json={"q": "Epic FHIR integrations"}).json()["hits"]
+    assert hits[0]["url"].endswith("/ehr-emr-integration")
+
+
+def test_reranker_reorders_and_is_optional(env, monkeypatch):
+    c, w = env
+    c.post("/api/admin/rag/index", headers=H, json={})
+    monkeypatch.setattr(rag_mod, "RERANK", True)
+    hits = c.post("/api/admin/rag/search", headers=H, json={"q": "content pack ads posts"}).json()["hits"]
+    assert hits[0]["method"].endswith("+rerank") and hits[0]["url"].endswith("/tools")
+    assert [h["score"] for h in hits] == sorted((h["score"] for h in hits), reverse=True)
+    # reranker down: the fused order is kept, search still answers
+    w.workers_ai = None
+    monkeypatch.setattr(rag_mod, "_workers_ai", lambda s, p: (_ for _ in ()).throw(services.ApiError("down", 502, "busy")))
+    hits = c.post("/api/admin/rag/search", headers=H, json={"q": "content pack ads posts"}).json()["hits"]
+    assert hits and not hits[0]["method"].endswith("+rerank")
+
+
+def test_side_by_side_comparison_and_cleanup(env, monkeypatch, tmp_path):
+    c, w = env
+    c.post("/api/admin/rag/index", headers=H, json={})
+    cases = [{"q": "How much is keyword research?", "urls": ["/tools"]}, {"q": "Do you build Epic FHIR apps?", "urls": ["/ehr-emr-integration"]},
+             {"q": "What is the CEO's salary?", "negative": True}]
+    f = tmp_path / "eval.json"; f.write_text(json.dumps(cases))
+    monkeypatch.setattr(rag_mod, "EVAL_FILE", f)
+    d = c.post("/api/admin/rag/compare", headers=H, json={}).json()
+    assert d["ready"] and d["questions"] == 2 and d["embedded"] > 0
+    names = [v["variant"] for v in d["variants"]]
+    assert names == ["text-embedding-3-small", "text-embedding-3-small + rerank", "@cf/baai/bge-m3", "@cf/baai/bge-m3 + rerank"]
+    assert all(v["hit_rate"] == 100 and v["errors"] == 0 for v in d["variants"])
+    ch = db()["rag_chunks"].find_one()
+    assert len(ch["embedding_alt"]) == 1024 and len(ch["embedding"]) == rag_mod.DIMS  # the live embedding is untouched
+    again = c.post("/api/admin/rag/compare", headers=H, json={}).json()
+    assert again["embedded"] == 0  # unchanged chunks are not embedded twice
+    assert c.get("/api/admin/rag", headers=H).json()["compare"]["questions"] == 2
+    assert c.post("/api/admin/rag/compare", headers=H, json={"action": "cleanup"}).json()["removed"] > 0
+    assert not db()["rag_chunks"].find_one({"embedding_alt": {"$exists": True}})
+
+
+def test_snippet():
+    t = "## Pricing\n\nSome intro text. " + "filler words here " * 30 + "Keyword research costs **$9.99** for [all ten](/tools) keywords."
+    sn = rag_mod.snippet(t, "keyword research")
+    assert sn.startswith("…") and "Keyword research costs $9.99 for all ten keywords." in sn and "**" not in sn and "](/" not in sn
+    assert rag_mod.snippet("Short text.", "nothing") == "Short text."

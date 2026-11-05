@@ -57,5 +57,7 @@ class Settings:
     test_site_base: str = field(default_factory=lambda: _env("TEST_SITE_BASE"))
     chat_daily_limit: int = field(default_factory=lambda: int(_env("CHAT_DAILY_LIMIT", "40") or 40))
     rag_api_daily_limit: int = field(default_factory=lambda: int(_env("RAG_API_DAILY_LIMIT", "30") or 30))
+    rag_search_daily_limit: int = field(default_factory=lambda: int(_env("RAG_SEARCH_DAILY_LIMIT", "100") or 100))
+    rag_search_daily_total: int = field(default_factory=lambda: int(_env("RAG_SEARCH_DAILY_TOTAL", "5000") or 5000))
     rag_api_daily_total: int = field(default_factory=lambda: int(_env("RAG_API_DAILY_TOTAL", "1000") or 1000))
     preview_daily_limit: int = field(default_factory=lambda: int(_env("PREVIEW_DAILY_LIMIT", "6") or 6))

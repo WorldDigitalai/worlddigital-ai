@@ -11,6 +11,8 @@ import { INDEXNOW_KEY, PROD_HOSTS, isAppPath } from './routing.js';
 import { toolsProxy, ragAnswer, stripeWebhook } from './tools-proxy.js';
 import { withTool } from './tools-widget.js';
 import { humanOk } from './human.js';
+import { internalAi } from './ai.js';
+import { searchPage } from './search.js';
 import { htmlToMarkdown, wantsMarkdown } from './markdown.js';
 export { Store } from './store.js';
 
@@ -197,6 +199,8 @@ async function handle(req, env, ctx) {
   // Public knowledge API (answers from our own pages, with sources): docs/rag.md
   if (lower === '/api/rag/answer') return ragAnswer(req, env);
   if (lower === '/api/stripe/webhook') return stripeWebhook(req, env);
+  // Workers AI for the knowledge base (embeddings, reranking): backend only, token-checked (src/ai.js)
+  if (lower === '/api/internal/ai') return internalAi(req, env);
 
   // Old customer app: retired. LEGACY_APP=1 sends these addresses to it again.
   const legacy = env.LEGACY_APP === '1';
@@ -208,6 +212,7 @@ async function handle(req, env, ctx) {
   }
 
   if (req.method === 'GET' || req.method === 'HEAD') {
+    if (path === '/search') return searchPage(req, env, url, ctx, prod);
     if (PAGES[path]) {
       // Paid tools show only once the Python API is configured (TOOLS_API_URL).
       const o = PAGES[path].tool && env.TOOLS_API_URL ? { ...PAGES[path], body: withTool(PAGES[path].body, PAGES[path].tool) } : PAGES[path];

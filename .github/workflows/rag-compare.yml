@@ -1,0 +1,49 @@
+name: Knowledge base embedding comparison
+# Side-by-side retrieval test on the golden questions (backend/app/rag_eval.json):
+# the current embedding model (OpenAI) against BGE-M3 on Cloudflare Workers AI, each with and without the reranker.
+# Uses a separate embedding field and index: the website and chat keep using the current model.
+# "cleanup" removes the test data again.
+on:
+  workflow_dispatch:
+    inputs:
+      cleanup:
+        description: "Remove the test index and embeddings instead"
+        type: boolean
+        default: false
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    env:
+      TOKEN: ${{ secrets.TOOLS_API_TOKEN }}
+      API: https://worlddigital-ai-api-250920469327.us-central1.run.app
+    steps:
+      - name: Compare
+        env:
+          CLEANUP: ${{ inputs.cleanup == true }}
+        run: |
+          set +e
+          curl -s -o /dev/null "$API/api/tools/health"
+          body='{}'; [ "$CLEANUP" = "true" ] && body='{"action":"cleanup"}'
+          for i in $(seq 1 12); do
+            code=$(curl -s -o out.json -w "%{http_code}" -X POST "$API/api/admin/rag/compare" -H "x-internal-token: $TOKEN" -H "content-type: application/json" -d "$body" --max-time 295)
+            [ "$code" = "200" ] || { echo "::error::compare returned $code: $(head -c 400 out.json)"; exit 1; }
+            [ "$CLEANUP" = "true" ] && { echo "::notice title=Cleanup::$(cat out.json)"; exit 0; }
+            [ "$(jq -r .ready out.json)" = "true" ] && break
+            echo "try $i: $(jq -r '.message // .index' out.json) (embedded $(jq -r .embedded out.json))"; sleep 20
+          done
+          python3 - <<'PY'
+          import json
+          d = json.load(open("out.json"))
+          if not d.get("ready"):
+              raise SystemExit("::error::the test index did not become ready")
+          print(f"::notice title=Embedding comparison::{d['questions']} questions; " + " | ".join(
+              f"{v['variant']}: hit {v['hit_rate']}%, MRR {v['mrr']}, {v['avg_ms']} ms" + (f", {v['errors']} errors" if v['errors'] else "")
+              for v in d["variants"]))
+          labels = [v["variant"] for v in d["variants"]]
+          print("rank of the expected page per question (- = not in top 6):")
+          print(" | ".join(labels))
+          for r in d["per_question"]:
+              print(" | ".join("-" if r["ranks"].get(l) is None else str(r["ranks"][l]) for l in labels) + "   " + r["q"][:70])
+          PY

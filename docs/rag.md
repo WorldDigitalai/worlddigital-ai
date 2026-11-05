@@ -66,6 +66,28 @@ worlddigital.us is deliberately not indexed.
   - the page record format (`SCHEMA`) changed.
 
   A full sync re-embeds everything.
+- **Cloudflare Workers AI models:** a `RAG_EMBED_MODEL` starting with `@cf/` (for example `@cf/baai/bge-m3`,
+  1024 dimensions, multilingual) is run on Workers AI through the site worker: `POST /api/internal/ai`
+  (`workers/ai-site/src/ai.js`, token-checked, only allow-listed models). No Cloudflare key is stored in the backend.
+  These models read at most 512 tokens, so chunks default to 450 tokens with them.
+- **Reranking (optional):** `RAG_RERANK=1` re-sorts the top candidates with `@cf/baai/bge-reranker-base`.
+  If the reranker is unavailable, the fused order is kept.
+- **Side-by-side test:** `POST /api/admin/rag/compare` (workflow "Knowledge base embedding comparison") embeds the
+  chunks a second time with `RAG_COMPARE_MODEL` (default `@cf/baai/bge-m3`) into `embedding_alt` / index
+  `rag_vector_alt`, then scores the current model and the test model, each with and without reranking, on the golden
+  questions (hit rate in the top 6, MRR, search time). Nothing the website uses changes. `{"action": "cleanup"}`
+  removes the test data.
+
+## Website search (`/search`)
+
+- Header search icon (and "Search" in the mobile menu) opens `worlddigital.ai/search?q=…`, rendered by the site
+  worker (`src/search.js`). Search pages are `noindex`.
+- The worker calls `POST /api/rag/site-search`: hybrid search over public pages (`ai` source only, never private or
+  customer knowledge), one result per page with a highlighted snippet. Results are cached at the edge for an hour.
+- AI search is capped per IP (`RAG_SEARCH_DAILY_LIMIT`, 100) and in total (`RAG_SEARCH_DAILY_TOTAL`, 5000) per day.
+  Past the cap, or if embeddings fail, search uses exact-word matching (no AI cost). If the backend is down, the
+  worker matches page titles and descriptions itself.
+- "Get an AI answer" on the results page calls the public answer API (`/api/rag/answer`, 30 a day per IP).
 
 ## MongoDB collections
 
@@ -209,8 +231,12 @@ assistant must say it doesn't know. Reported metrics:
 | `OPENAI_MODEL` | `gpt-5.4-mini` | Answer model (falls back through a list if not allowed) |
 | `RAG_EMBED_MODEL` | `text-embedding-3-small` | Embedding model. Changing it re-embeds on the next sync and updates the vector index size |
 | `RAG_EMBED_DIMS` | from the model | Override the vector size |
-| `RAG_CHUNK_TOKENS`, `RAG_CHUNK_OVERLAP_TOKENS` | `550`, `80` | Chunking |
+| `RAG_CHUNK_TOKENS`, `RAG_CHUNK_OVERLAP_TOKENS` | `550` (`450` for `@cf/` models), `80` | Chunking |
 | `RAG_API_DAILY_LIMIT`, `RAG_API_DAILY_TOTAL` | `30`, `1000` | Public answer API limits |
+| `RAG_SEARCH_DAILY_LIMIT`, `RAG_SEARCH_DAILY_TOTAL` | `100`, `5000` | Website search: AI searches per IP / in total per day |
+| `RAG_RERANK` | off | `1` = rerank results with Workers AI |
+| `RAG_COMPARE_MODEL` | `@cf/baai/bge-m3` | Model for the side-by-side test |
+| `RAG_WORKERS_AI_URL` | `https://worlddigital.ai/api/internal/ai` | Site worker's Workers AI endpoint |
 | `CHAT_DAILY_LIMIT` | `40` | Website chat limit per IP |
 | `TOOLS_API_TOKEN` | – | Worker ↔ backend and workflow ↔ backend auth |
 | Worker: `TOOLS_API_URL`, `TOOLS_API_TOKEN`, `ADMIN_EMAILS` | | Backend address, token, admin sign-in |

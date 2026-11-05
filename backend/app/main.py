@@ -464,6 +464,8 @@ def clean_mongo_uri(raw: str) -> str:
 #   POST /api/admin/rag/tenants          {action, ...}       customer knowledge bases
 #   POST /api/rag/search                 {query, limit, types, categories, language}   for our own agents
 #   POST /api/rag/answer                 {query}   public site knowledge only; the worker exposes it, rate-limited per IP
+#   POST /api/rag/site-search            {query}   website search (worlddigital.ai/search): one result per page
+#   POST /api/admin/rag/compare          side-by-side embedding test ({action: cleanup} removes it)
 def rag() -> Rag:
     return Rag(settings(), store().db)
 
@@ -547,6 +549,16 @@ async def rag_eval():
     return json_ok(await run_in_threadpool(_rag_call, lambda: rag().evaluate()))
 
 
+@app.post("/api/admin/rag/compare", dependencies=[Depends(guard)])
+async def rag_compare(request: Request):
+    """Side-by-side test of the current embedding model against RAG_COMPARE_MODEL (default BGE-M3 on Workers AI).
+    {"action": "cleanup"} removes the test data."""
+    b = await body_of(request)
+    if b.get("action") == "cleanup":
+        return json_ok(await run_in_threadpool(_rag_call, lambda: rag().compare_cleanup()))
+    return json_ok(await run_in_threadpool(_rag_call, lambda: rag().compare()))
+
+
 @app.get("/api/admin/rag/questions", dependencies=[Depends(guard)])
 async def rag_questions(days: int = 30):
     return json_ok(await run_in_threadpool(_rag_call, lambda: rag().questions_report(days)))
@@ -594,6 +606,18 @@ async def rag_api_search(request: Request):
     return json_ok({"query": q, "results": [{"url": h["url"], "title": h["title"], "section": h.get("section"),
                                              "content_type": h.get("content_type"), "score": h.get("score"),
                                              "content": h["text"]} for h in hits]})
+
+
+@app.post("/api/rag/site-search", dependencies=[Depends(guard)])
+async def rag_site_search(request: Request):
+    """Website search (worlddigital.ai/search, through the site worker). AI search per IP and in total is capped per
+    day; past the cap the search answers with exact-word matching, which costs nothing."""
+    s = settings()
+    b = await body_of(request)
+    q = _rag_query(b)[:200]
+    ip = client_ip(request)
+    semantic = store().hit("search:" + ip, s.rag_search_daily_limit) and store().hit("search:all", s.rag_search_daily_total)
+    return json_ok(await run_in_threadpool(_rag_call, lambda: rag().site_search(q, semantic=semantic)))
 
 
 @app.post("/api/rag/answer", dependencies=[Depends(guard)])

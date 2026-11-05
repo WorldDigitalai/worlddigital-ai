@@ -45,17 +45,25 @@ SITE = SITES["ai"]
 INTERNAL = "internal"
 
 # Embedding model: configurable; dimensions come from the model (and every response is checked against them).
-MODEL_DIMS = {"text-embedding-3-small": 1536, "text-embedding-3-large": 3072, "text-embedding-ada-002": 1536}
+# Models named "@cf/..." run on Cloudflare Workers AI through the site worker (POST /api/internal/ai, token-checked),
+# so no Cloudflare key lives here. Changing RAG_EMBED_MODEL re-embeds everything on the next sync.
+MODEL_DIMS = {"text-embedding-3-small": 1536, "text-embedding-3-large": 3072, "text-embedding-ada-002": 1536,
+              "@cf/baai/bge-m3": 1024}
 EMBED_MODEL = os.environ.get("RAG_EMBED_MODEL", "text-embedding-3-small")
 DIMS = int(os.environ.get("RAG_EMBED_DIMS") or MODEL_DIMS.get(EMBED_MODEL, 1536))
+WORKERS_AI_URL = os.environ.get("RAG_WORKERS_AI_URL", "https://worlddigital.ai/api/internal/ai")
+RERANK_MODEL = "@cf/baai/bge-reranker-base"
+RERANK = os.environ.get("RAG_RERANK", "") == "1"   # rerank search results with RERANK_MODEL (Workers AI)
+ALT_MODEL = os.environ.get("RAG_COMPARE_MODEL", "@cf/baai/bge-m3")  # side-by-side test (Rag.compare)
 
 # Chunking (about 4 characters per token)
-CHUNK_TOKENS = int(os.environ.get("RAG_CHUNK_TOKENS") or 550)
+CHUNK_TOKENS = int(os.environ.get("RAG_CHUNK_TOKENS") or (450 if EMBED_MODEL.startswith("@cf/") else 550))  # Workers AI reads 512 tokens max
 OVERLAP_TOKENS = int(os.environ.get("RAG_CHUNK_OVERLAP_TOKENS") or 80)
 CHUNK_CHARS = CHUNK_TOKENS * 4
 OVERLAP = OVERLAP_TOKENS * 4
 
 INDEX_NAME = "rag_vector"
+ALT_INDEX = "rag_vector_alt"   # second embedding (ALT_MODEL) for the side-by-side test only
 TEXT_INDEX = "rag_text"
 SCHEMA = 5          # page record format; pages stored with an older one are re-processed by the next sync
 FILTER_FIELDS = ("source", "content_type", "category", "language")
@@ -90,38 +98,72 @@ def _ms(t0: float) -> int:
 
 # ── Embeddings ──────────────────────────────────────────────────────────────
 
-def embed(s: Settings, texts: list[str]) -> list[list[float]]:
-    """Batched, retried (429 / 5xx / network, honouring Retry-After), and dimension-checked."""
-    if not s.openai_api_key:
+def _post_retry(url: str, *, headers: dict, payload: dict, timeout: float = 60) -> httpx.Response | None:
+    """POST with retries on 429 / 5xx / network errors (honouring Retry-After). Returns the last response or None."""
+    r = None
+    for attempt in range(5):
+        try:
+            r = httpx.post(url, headers=headers, json=payload, timeout=timeout)
+        except httpx.TransportError:
+            r = None
+        else:
+            if r.status_code not in (429, 500, 502, 503, 504):
+                return r
+        if attempt < 4:
+            wait = r.headers.get("retry-after") if r is not None else None
+            time.sleep(min(float(wait) if wait and wait.replace(".", "", 1).isdigit() else 2 ** attempt, 20))
+    return r
+
+
+def _workers_ai(s: Settings, payload: dict) -> dict:
+    if not s.internal_token:
+        raise ApiError("no internal token", 503, "The knowledge base is being set up.")
+    r = _post_retry(WORKERS_AI_URL, headers={"x-internal-token": s.internal_token, "User-Agent": "WorldDigitalRAG/1.0"},
+                    payload=payload)
+    if r is None or r.status_code >= 400:
+        detail = f"{r.status_code}: {r.text[:200]}" if r is not None else "network"
+        raise ApiError(f"workers-ai {detail}", 502, "The knowledge base is busy. Please try again.")
+    return r.json()
+
+
+def embed(s: Settings, texts: list[str], model: str | None = None) -> list[list[float]]:
+    """Batched, retried and dimension-checked. OpenAI models, or "@cf/..." models on Cloudflare Workers AI."""
+    model = model or EMBED_MODEL
+    dims = DIMS if model == EMBED_MODEL else MODEL_DIMS.get(model)
+    cf = model.startswith("@cf/")
+    if not cf and not s.openai_api_key:
         raise ApiError("no OpenAI key", 503, "The knowledge base is being set up.")
     out: list[list[float]] = []
-    for i in range(0, len(texts), 96):
-        batch = [t[:8000] for t in texts[i:i + 96]]
-        r, last = None, ""
-        for attempt in range(5):
-            try:
-                r = httpx.post(f"{s.openai_base}/v1/embeddings", headers={"Authorization": f"Bearer {s.openai_api_key}"},
-                               json={"model": EMBED_MODEL, "input": batch}, timeout=60)
-            except httpx.TransportError as e:
-                r, last = None, type(e).__name__
-            else:
-                if r.status_code not in (429, 500, 502, 503, 504):
-                    break
-                last = f"{r.status_code}"
-            if attempt < 4:
-                wait = r.headers.get("retry-after") if r is not None else None
-                time.sleep(min(float(wait) if wait and wait.replace(".", "", 1).isdigit() else 2 ** attempt, 20))
-        if r is None or r.status_code >= 400:
-            detail = f"{r.status_code}: {r.text[:200]}" if r is not None else last
-            raise ApiError(f"embeddings {detail}", 502, "The knowledge base is busy. Please try again.")
-        vecs = [d["embedding"] for d in sorted(r.json()["data"], key=lambda d: d["index"])]
-        record_usage("rag.embed", EMBED_MODEL, r.json().get("usage"))
-        if len(vecs) != len(batch) or any(len(v) != DIMS for v in vecs):
+    size = 32 if cf else 96
+    for i in range(0, len(texts), size):
+        batch = [t[:4000 if cf else 8000] for t in texts[i:i + size]]
+        if cf:
+            vecs = _workers_ai(s, {"op": "embed", "model": model, "texts": batch}).get("vectors") or []
+            record_usage("rag.embed", model, {"prompt_tokens": sum(len(t) for t in batch) // 4})  # ~4 chars per token
+        else:
+            r = _post_retry(f"{s.openai_base}/v1/embeddings", headers={"Authorization": f"Bearer {s.openai_api_key}"},
+                            payload={"model": model, "input": batch})
+            if r is None or r.status_code >= 400:
+                detail = f"{r.status_code}: {r.text[:200]}" if r is not None else "network"
+                raise ApiError(f"embeddings {detail}", 502, "The knowledge base is busy. Please try again.")
+            vecs = [d["embedding"] for d in sorted(r.json()["data"], key=lambda d: d["index"])]
+            record_usage("rag.embed", model, r.json().get("usage"))
+        if len(vecs) != len(batch) or (dims and any(len(v) != dims for v in vecs)):
             got = sorted({len(v) for v in vecs})
-            raise ApiError(f"embedding size {got} != {DIMS} for {EMBED_MODEL}", 500,
-                           f"The embedding model returned vectors of size {got}, expected {DIMS}. Check RAG_EMBED_MODEL / RAG_EMBED_DIMS.")
+            raise ApiError(f"embedding size {got} != {dims} for {model}", 500,
+                           f"The embedding model returned vectors of size {got}, expected {dims}. Check RAG_EMBED_MODEL / RAG_EMBED_DIMS.")
         out += vecs
     return out
+
+
+def rerank(s: Settings, query: str, texts: list[str]) -> list[float]:
+    """Relevance score per text (same order), from the Workers AI reranker."""
+    if not texts:
+        return []
+    scores = _workers_ai(s, {"op": "rerank", "model": RERANK_MODEL, "query": query[:1000],
+                             "texts": [t[:2000] for t in texts[:32]]}).get("scores") or []
+    record_usage("rag.rerank", RERANK_MODEL, {"prompt_tokens": (len(query) * len(texts) + sum(len(t) for t in texts)) // 4})
+    return [float(x) for x in scores] + [0.0] * (len(texts) - len(scores))
 
 
 # ── Fetching, robots.txt, HTML to text, chunking ────────────────────────────
@@ -298,6 +340,21 @@ def _content_type(fm: dict, url: str, kind: str) -> str:
     return "blog_post" if "/blog/" in url else "website_page"
 
 
+def snippet(text: str, query: str, size: int = 240) -> str:
+    """A short plain-text window of `text` around the first query word it contains (headings and Markdown removed)."""
+    t = re.sub(r"^#+\s*", "", str(text or ""), flags=re.M)
+    t = re.sub(r"!?\[([^\]]*)\]\([^)]*\)", r"\1", t)
+    t = " ".join(re.sub(r"[*_`>|]+", " ", t).split())
+    low = t.lower()
+    pos = min((p for p in (low.find(w) for w in re.findall(r"[a-z0-9]{3,}", query.lower())) if p >= 0), default=0)
+    start = max(0, pos - size // 3)
+    if start:
+        start = t.find(" ", start) + 1 or start
+    out = t[start:start + size]
+    cut = out.rfind(" ") if len(t) > start + size else -1
+    return ("…" if start else "") + (out[:cut] if cut > size // 2 else out) + ("…" if len(t) > start + size else "")
+
+
 # ── The knowledge base ──────────────────────────────────────────────────────
 
 class Rag:
@@ -403,9 +460,9 @@ class Rag:
                 "public_answers": tot.get("public_answer", 0), "embed_errors": tot.get("embed_error", 0)}
 
     # writing ------------------------------------------------------------------
-    def _embed(self, texts: list[str]) -> list[list[float]]:
+    def _embed(self, texts: list[str], model: str | None = None) -> list[list[float]]:
         try:
-            return embed(self.s, texts)
+            return embed(self.s, texts, model)
         except ApiError:
             self._metric("embed_error")
             raise
@@ -737,35 +794,39 @@ class Rag:
         return f
 
     def search(self, query: str, k: int = 6, sources=None, *, types=None, categories=None, language=None,
-               allow_internal: bool = False) -> list[dict]:
+               allow_internal: bool = False, variant: str = "main", rerank_hits: bool | None = None) -> list[dict]:
+        """Hybrid retrieval. variant "alt" searches the side-by-side embedding (ALT_MODEL, see compare());
+        rerank_hits re-sorts a wider candidate set with the Workers AI reranker (default: RAG_RERANK)."""
         t0 = time.monotonic()
         query = " ".join(str(query or "").split())[:500]
         if not query:
             raise ApiError("empty query", 400, "Type a question first.")
         k = max(1, min(int(k or 6), 12))
+        do_rerank = RERANK if rerank_hits is None else rerank_hits
+        want = min(max(k * 2, 12), 20) if do_rerank else k   # candidates for the reranker
         srcs = self._sources(sources, allow_internal)
         flt = {"source": srcs, **self._filters(types, categories, language)}
-        q = self._embed([query])[0]
+        alt = variant == "alt"
+        index, path = (ALT_INDEX, "embedding_alt") if alt else (INDEX_NAME, "embedding")
+        q = self._embed([query], ALT_MODEL if alt else None)[0]
         proj = {"_id": 0, "url": 1, "title": 1, "section": 1, "text": 1, "source": 1, "content_type": 1, "category": 1, "published_at": 1}
         vfilter = {f: {"$in": v} for f, v in flt.items()}
-        vec_stage = {"$vectorSearch": {"index": INDEX_NAME, "path": "embedding", "queryVector": q,
-                                       "numCandidates": max(60, k * 12), "limit": max(k * 2, 10), "filter": vfilter}}
-        text_stage = {"$search": {"index": TEXT_INDEX, "compound": {
-            "must": [{"text": {"query": query, "path": ["text", "title"]}}],
-            "filter": [{"in": {"path": f, "value": v}} for f, v in flt.items()]}}}
+        vec_stage = {"$vectorSearch": {"index": index, "path": path, "queryVector": q,
+                                       "numCandidates": max(60, want * 12), "limit": max(want * 2, 10), "filter": vfilter}}
+        text_stage = self._text_stage(query, flt)
         allowed = lambda h: all(h.get(f) in v for f, v in flt.items())  # noqa: E731  belt and braces on isolation
         hits, method = [], ""
         try:  # hybrid: meaning + exact words, fused by rank
             hits = list(self.chunks.aggregate([
-                {"$rankFusion": {"input": {"pipelines": {"vector": [vec_stage], "text": [text_stage, {"$limit": max(k * 2, 10)}]}},
+                {"$rankFusion": {"input": {"pipelines": {"vector": [vec_stage], "text": [text_stage, {"$limit": max(want * 2, 10)}]}},
                                  "combination": {"weights": {"vector": 0.6, "text": 0.4}}, "scoreDetails": False}},
-                {"$limit": k}, {"$project": {**proj, "score": {"$meta": "score"}}}]))
+                {"$limit": want}, {"$project": {**proj, "score": {"$meta": "score"}}}]))
             method = "hybrid"
         except Exception as e:  # noqa: BLE001
             log.info("hybrid search unavailable (%s)", type(e).__name__)
         if not hits:
             try:
-                hits = list(self.chunks.aggregate([dict(vec_stage, **{"$vectorSearch": {**vec_stage["$vectorSearch"], "limit": k}}),
+                hits = list(self.chunks.aggregate([dict(vec_stage, **{"$vectorSearch": {**vec_stage["$vectorSearch"], "limit": want}}),
                                                    {"$project": {**proj, "score": {"$meta": "vectorSearchScore"}}}]))
                 method = "vector"
             except Exception as e:  # noqa: BLE001
@@ -774,15 +835,78 @@ class Rag:
             qn = math.sqrt(sum(x * x for x in q)) or 1
             words = set(re.findall(r"[a-z0-9$.]{3,}", query.lower()))
             scored = []
-            for d in self.chunks.find(vfilter, {**proj, "embedding": 1}):
-                v = d.pop("embedding", None) or []
+            for d in self.chunks.find(vfilter, {**proj, path: 1}):
+                v = d.pop(path, None) or []
                 vn = math.sqrt(sum(x * x for x in v)) or 1
                 kw = sum(1 for w in words if w in d["text"].lower()) / (len(words) or 1)
                 scored.append({**d, "score": 0.8 * sum(a * b for a, b in zip(q, v)) / (qn * vn) + 0.2 * kw})
-            hits, method = sorted(scored, key=lambda d: d["score"], reverse=True)[:k], "scan"
-        out = [dict(h, method=method) for h in hits if allowed(h)]
+            hits, method = sorted(scored, key=lambda d: d["score"], reverse=True)[:want], "scan"
+        hits = [h for h in hits if allowed(h)]
+        if do_rerank and len(hits) > 1:
+            try:
+                scores = rerank(self.s, query, [f"{h['title']}\n{h['text']}" for h in hits])
+                hits = [dict(h, score=sc) for sc, h in sorted(zip(scores, hits), key=lambda x: -x[0])]
+                method += "+rerank"
+            except ApiError as e:  # the reranker is an extra: without it the fused order stands
+                log.info("rerank skipped: %s", e)
+        out = [dict(h, method=method) for h in hits[:k]]
         self._metric("search", _ms(t0))
         return out
+
+    @staticmethod
+    def _text_stage(query: str, flt: dict) -> dict:
+        return {"$search": {"index": TEXT_INDEX, "compound": {
+            "must": [{"text": {"query": query, "path": ["text", "title"]}}],
+            "filter": [{"in": {"path": f, "value": v}} for f, v in flt.items()]}}}
+
+    def keyword_search(self, query: str, k: int = 10, sources=None) -> list[dict]:
+        """Exact-word search only (no embedding, no AI cost): the site search uses it when AI search is unavailable
+        or over its daily limit. Atlas Search when available, else a plain word match."""
+        query = " ".join(str(query or "").split())[:200]
+        flt = {"source": self._sources(sources)}
+        proj = {"_id": 0, "url": 1, "title": 1, "section": 1, "text": 1, "source": 1, "content_type": 1}
+        try:
+            hits = list(self.chunks.aggregate([self._text_stage(query, flt), {"$limit": k},
+                                               {"$project": {**proj, "score": {"$meta": "searchScore"}}}]))
+            if hits:
+                return [dict(h, method="keyword") for h in hits if h.get("source") in flt["source"]]
+        except Exception as e:  # noqa: BLE001
+            log.info("text search unavailable (%s)", type(e).__name__)
+        words = [w for w in re.findall(r"[a-z0-9]{3,}", query.lower())][:8]
+        if not words:
+            return []
+        scored = []
+        for d in self.chunks.find({"source": {"$in": flt["source"]}}, proj):
+            low = f"{d['title']} {d['text']}".lower()
+            sc = sum(low.count(w) for w in words) + 3 * sum(w in d["title"].lower() for w in words)
+            if sc:
+                scored.append({**d, "score": sc, "method": "keyword"})
+        return sorted(scored, key=lambda d: -d["score"])[:k]
+
+    def site_search(self, query: str, *, semantic: bool = True, limit: int = 8) -> dict:
+        """Website search (worlddigital.ai/search): public pages only, one result per page with a snippet.
+        semantic=False (or an embedding failure) uses exact-word search, which costs nothing."""
+        t0 = time.monotonic()
+        query = " ".join(str(query or "").split())[:200]
+        hits = []
+        if semantic:
+            try:
+                hits = self.search(query, 12, ["ai"])
+            except ApiError as e:
+                log.info("site search: AI search unavailable (%s), keyword only", e)
+        if not hits:
+            hits = self.keyword_search(query, 20, ["ai"])
+        pages, seen = [], set()
+        for h in hits:
+            if h["url"] in seen or not h["url"].startswith(SITE) or h.get("content_type") == "llms":  # pages only
+                continue
+            seen.add(h["url"])
+            pages.append({"url": h["url"], "title": h["title"], "section": h.get("section") or "",
+                          "content_type": h.get("content_type") or "", "snippet": snippet(h["text"], query)})
+            if len(pages) >= limit:
+                break
+        self._metric("site_search", _ms(t0))
+        return {"query": query, "method": hits[0].get("method") if hits else None, "results": pages, "ms": _ms(t0)}
 
     def answer(self, question: str, k: int = 6, sources=None, *, types=None, categories=None, language=None,
                allow_internal: bool = False, public: bool = False) -> dict:
@@ -913,6 +1037,90 @@ class Rag:
         self.meta.replace_one({"_id": "eval"}, {"_id": "eval", **report}, upsert=True)
         return {**report, "at": _iso(report["at"])}
 
+    # side-by-side embedding test ------------------------------------------------
+    def _alt_index(self) -> str:
+        """The second vector index (ALT_MODEL) used only by compare(): created or resized as needed; returns its status."""
+        from pymongo.operations import SearchIndexModel
+        dims = MODEL_DIMS.get(ALT_MODEL)
+        try:
+            list(self.chunks.list_search_indexes(ALT_INDEX))
+        except Exception:  # noqa: BLE001  no Atlas Search (tests, local): the cosine scan fallback is used
+            return "unavailable"
+        want = {"fields": [{"type": "vector", "path": "embedding_alt", "numDimensions": dims, "similarity": "cosine"}]
+                + [{"type": "filter", "path": f} for f in FILTER_FIELDS]}
+        cur = next(iter(self.chunks.list_search_indexes(ALT_INDEX)), None)
+        if not cur:
+            self.chunks.create_search_index(SearchIndexModel(name=ALT_INDEX, type="vectorSearch", definition=want))
+            return "created"
+        vec = next((f for f in (cur.get("latestDefinition") or {}).get("fields", []) if f.get("type") == "vector"), {})
+        if vec.get("numDimensions") != dims:
+            self.chunks.update_search_index(ALT_INDEX, want)
+            return "updated"
+        return "ready" if cur.get("queryable") else (cur.get("status") or "building").lower()
+
+    def _alt_backfill(self, sources: list[str]) -> int:
+        """Embed every chunk of `sources` with ALT_MODEL into embedding_alt (only chunks that changed since last time)."""
+        todo = list(self.chunks.find({"source": {"$in": sources}, "$or": [
+            {"embedding_alt_model": {"$ne": ALT_MODEL}}, {"$expr": {"$ne": ["$embedding_alt_hash", "$text_hash"]}}]},
+            {"_id": 1, "title": 1, "text": 1, "text_hash": 1}))
+        for i in range(0, len(todo), 32):
+            batch = todo[i:i + 32]
+            vecs = self._embed([f"{d['title']}\n{d['text']}" for d in batch], ALT_MODEL)
+            for d, v in zip(batch, vecs):
+                self.chunks.update_one({"_id": d["_id"]}, {"$set": {"embedding_alt": v, "embedding_alt_model": ALT_MODEL,
+                                                                   "embedding_alt_hash": d.get("text_hash")}})
+        return len(todo)
+
+    def compare(self, wait_s: int = 30) -> dict:
+        """Side-by-side retrieval test on the golden questions (rag_eval.json): the current embedding model against
+        ALT_MODEL, each with and without the reranker. Changes nothing the website uses (a separate field and index).
+        Per variant: hit rate (expected page in the top 6), MRR, and average search time."""
+        cases = [c for c in json.loads(EVAL_FILE.read_text()) if not c.get("negative") and (c.get("urls") or c.get("source"))]
+        sources = sorted({x for c in cases for x in (c.get("sources") or ["ai"])})
+        t0 = time.monotonic()
+        embedded = self._alt_backfill(sources)
+        state = self._alt_index()
+        while state not in ("ready", "unavailable") and time.monotonic() - t0 < wait_s:
+            time.sleep(5)
+            state = self._alt_index()
+        if state not in ("ready", "unavailable"):
+            return {"ready": False, "index": state, "embedded": embedded,
+                    "message": "The test index is still being built. Run the comparison again in a minute."}
+        variants = [(EMBED_MODEL, "main", False), (f"{EMBED_MODEL} + rerank", "main", True),
+                    (ALT_MODEL, "alt", False), (f"{ALT_MODEL} + rerank", "alt", True)]
+        rows, per_q = [], {c["q"]: {} for c in cases}
+        for label, variant, rr in variants:
+            hit = 0; rr_sum = 0.0; lat = []; errors = 0
+            for c in cases:
+                exp = c.get("urls") or [c["source"]]
+                s0 = time.monotonic()
+                try:
+                    hits = self.search(c["q"], 6, c.get("sources") or ["ai"], variant=variant, rerank_hits=rr)
+                except ApiError:
+                    errors += 1; per_q[c["q"]][label] = None; continue
+                lat.append(_ms(s0))
+                rank = next((i + 1 for i, h in enumerate(hits) if any(e in h["url"] for e in exp)), None)
+                hit += rank is not None
+                rr_sum += 1 / rank if rank else 0
+                per_q[c["q"]][label] = rank
+            n = len(cases)
+            rows.append({"variant": label, "hit_rate": round(100 * hit / n) if n else None, "mrr": round(rr_sum / n, 3) if n else None,
+                         "avg_ms": round(sum(lat) / len(lat)) if lat else None, "errors": errors})
+        report = {"ready": True, "embedded": embedded, "questions": len(cases), "variants": rows,
+                  "per_question": [{"q": q, "ranks": r} for q, r in per_q.items()], "at": now()}
+        self.meta.replace_one({"_id": "compare"}, {"_id": "compare", **report}, upsert=True)
+        return {**report, "at": _iso(report["at"])}
+
+    def compare_cleanup(self) -> dict:
+        """Remove the side-by-side test data (second index and embedding field)."""
+        try:
+            self.chunks.drop_search_index(ALT_INDEX)
+        except Exception:  # noqa: BLE001
+            pass
+        n = self.chunks.update_many({"embedding_alt": {"$exists": True}},
+                                    {"$unset": {"embedding_alt": "", "embedding_alt_model": "", "embedding_alt_hash": ""}}).modified_count
+        return {"removed": n}
+
     # monitoring ---------------------------------------------------------------
     @staticmethod
     def _run_summary(r: dict) -> dict:
@@ -957,7 +1165,9 @@ class Rag:
             "internal": {"docs": self.pages.count_documents({"source": INTERNAL}), "chunks": self.chunks.count_documents({"source": INTERNAL})},
             "tenants": self.tenants.count_documents({}),
             "config": {"embedding_model": EMBED_MODEL, "embedding_dims": DIMS, "chunk_tokens": CHUNK_TOKENS,
-                       "overlap_tokens": OVERLAP_TOKENS, "vector_index": INDEX_NAME, "text_index": TEXT_INDEX},
+                       "overlap_tokens": OVERLAP_TOKENS, "vector_index": INDEX_NAME, "text_index": TEXT_INDEX,
+                       "rerank": RERANK, "compare_model": ALT_MODEL},
+            "compare": {k: _iso(v) for k, v in (self.meta.find_one({"_id": "compare"}) or {}).items() if k in ("variants", "questions", "at")},
             "search_indexes": self.ensure_indexes(),
             "eval": {k: _iso(v) for k, v in ev.items() if k in ("total", "passed", "score", "at", "metrics")},
             "questions_30d": self.questions.count_documents({"at": {"$gte": now() - timedelta(days=30)}}),

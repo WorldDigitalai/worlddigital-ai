@@ -11,6 +11,8 @@
   "preview_urls": false,
   "rules": [{ "type": "Text", "globs": ["**/*.html", "**/*.md"], "fallthrough": true }],
   "assets": { "directory": "./public", "binding": "ASSETS", "html_handling": "none", "not_found_handling": "none" },
+  // Workers AI (knowledge base embeddings + reranking, src/ai.js). Billed per use; free daily allocation covers our volume.
+  "ai": { "binding": "AI" },
   "services": [{ "binding": "REPORT", "service": "worlddigital-report" }],
   "durable_objects": { "bindings": [{ "name": "STORE", "class_name": "Store" }] },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Store"] }],

@@ -10,6 +10,7 @@ Loads every page in <base-url>/sitemap.xml (or --pages) at 9 viewport sizes and 
   - the main heading missing or cut off
   - on the home page: the main call to action not reachable in the first screen on a 390x844 phone
   - JavaScript errors
+  - images without alt text (missing alt, or empty alt on an image not marked decorative), checked once per page
 """
 import argparse
 import asyncio
@@ -54,6 +55,10 @@ PROBE = r"""(touch) => {
   out.h1 = !h1 ? 'missing' : (h1.scrollWidth > h1.clientWidth + 2 ? 'cut off' : 'ok');
   const btn = document.querySelector('main a.btn.red, main .btn.red');
   out.reportBtnBottom = btn && vis(btn) ? Math.round(btn.getBoundingClientRect().bottom + scrollY) : null;
+  // SEO / accessibility: every <img> needs alt text; alt="" only for decorative images (aria-hidden or role=presentation)
+  out.noAlt = [...document.images].filter(i => !i.hasAttribute('alt') ||
+      (!i.getAttribute('alt').trim() && i.getAttribute('aria-hidden') !== 'true' && !/^(presentation|none)$/.test(i.getAttribute('role') || '')))
+    .slice(0, 5).map(i => (i.hasAttribute('alt') ? 'empty alt: ' : 'no alt: ') + (i.currentSrc || i.src || '').replace(location.origin, '').slice(0, 80));
   out.height = de.scrollHeight;
   return out;
 }"""
@@ -100,6 +105,8 @@ async def run(base, shots):
                     problems.append(f"{where}: main call to action is below the first screen ({r['reportBtnBottom']}px)")
                 if errors:
                     problems.append(f"{where}: JavaScript error: {errors[0]}")
+                if r["noAlt"] and name == "laptop":  # same markup at every size: report once
+                    problems.append(f"{path}: image without alt text: {', '.join(r['noAlt'][:3])}")
                 if shots:
                     await page.screenshot(path=f"{shots}/{name}{('_home' if path == '/' else path.replace('/', '_'))}.png", full_page=True)
                 await page.close()

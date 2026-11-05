@@ -50,6 +50,7 @@ export function aiPanelHtml() {
 <h3>1. Find what’s trending (past 3 months)</h3>
 <p class="sub">Google Trends, keyword volume and cost per click, live Google results, “People also ask” (AEO) and AI Overview sources (GEO).</p>
 <div class="row"><input id="ai-topic" maxlength="100" placeholder="Topic, e.g. AI SEO (empty = all our services)"><select id="ai-country" aria-label="Market" style="flex:0 0 auto;width:auto"><option value="us">United States</option><option value="ca">Canada</option></select></div>
+<label style="margin-top:8px">Write for<select id="ai-aud"><option value="midlarge">Mid-size &amp; large companies</option><option value="all">All business sizes</option><option value="small">Small businesses</option></select></label>
 <div class="chips" style="margin-top:8px">${TOPICS.map((t) => `<button type="button" class="chip" data-topic="${esc(t)}">${esc(t)}</button>`).join('')}</div>
 <button type="button" class="btn red" id="ai-go" style="width:100%;margin-top:10px">Find trending post ideas</button>
 <details style="margin-top:14px"><summary><b>2. Compare with competitors</b> <span class="muted" style="font-size:13px">(for “vs” posts)</span></summary>
@@ -189,7 +190,7 @@ export function aiPanelClient() {
   function research() {
     if (busy) return;
     lock(true, ['<span class="wdt-spin"></span>Checking Google Trends for the past 3 months…', 'Pulling keyword volume and cost per click…', 'Reading live Google results and AI Overviews…', 'Ranking the best posts to write…']);
-    job('research', { topic: $('ai-topic').value.trim(), country: $('ai-country').value, competitors: picked() }, researched, failed);
+    job('research', { topic: $('ai-topic').value.trim(), country: $('ai-country').value, competitors: picked(), audience: $('ai-aud').value }, researched, failed);
   }
   function researched(d) {
     lock(false); msg('Done. ' + (d.ideas || []).length + ' post ideas, best first.', 'ok'); render(d);
@@ -205,7 +206,7 @@ export function aiPanelClient() {
     if (publish && !confirm('Write this post and publish it on worlddigital.ai right away, without review?')) return;
     if (!publish && filled() && !confirm('Replace what is in the editor now with a new AI draft?')) return;
     o.publish = !!publish;
-    o.country = $('ai-country').value; o.words = +$('ai-words').value || 1600;
+    o.country = $('ai-country').value; o.words = +$('ai-words').value || 1600; o.audience = $('ai-aud').value;
     if (!o.notes) o.notes = $('ai-notes').value.trim();
     lock(true, ['<span class="wdt-spin"></span>Researching the live Google results for “' + e(o.keyword || o.title) + '”…', 'Writing the post (about a minute)…', 'Adding the comparison table and FAQ…', 'Almost done…']);
     job('draft', o, drafted, failed);
@@ -238,7 +239,7 @@ export function aiPanelClient() {
   var when = function (ms) { return ms ? new Date(ms).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/Chicago' }) : ''; };
   function apShow(c) {
     $('ap-on').checked = !!c.enabled; $('ap-every').value = String(c.every_days); $('ap-hour').value = String(c.hour);
-    $('ap-mode').value = c.mode; $('ap-topics').value = (c.topics || []).join(', '); $('ap-vs').checked = c.mix_vs !== false;
+    $('ap-mode').value = c.mode; if (c.audience) $('ai-aud').value = c.audience; $('ap-topics').value = (c.topics || []).join(', '); $('ap-vs').checked = c.mix_vs !== false;
     (c.competitors || []).forEach(function (n) { var b = document.querySelector('[data-comp="' + n.replace(/"/g, '') + '"]'); if (b) b.setAttribute('aria-pressed', 'true'); });
     $('ap-state').textContent = c.enabled ? '(on · next post ' + when(c.next_run) + ')' : '(off)';
     var l = c.last_run, info = c.enabled ? 'Next post: ' + when(c.next_run) + ' (Houston time). ' : 'Autopilot is off. ';
@@ -247,7 +248,7 @@ export function aiPanelClient() {
   }
   function apSettings() {
     return { enabled: $('ap-on').checked, every_days: +$('ap-every').value, hour: +$('ap-hour').value, mode: $('ap-mode').value,
-      topics: $('ap-topics').value, competitors: picked(), country: $('ai-country').value, words: +$('ai-words').value || 1600, mix_vs: $('ap-vs').checked };
+      topics: $('ap-topics').value, competitors: picked(), country: $('ai-country').value, words: +$('ai-words').value || 1600, mix_vs: $('ap-vs').checked, audience: $('ai-aud').value };
   }
   $('ap-save').addEventListener('click', function () {
     var s = apSettings();

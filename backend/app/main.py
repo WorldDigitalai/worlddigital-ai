@@ -367,7 +367,8 @@ def _strs(v, n=6):
 async def blog_research(request: Request):
     b = await body_of(request)
     return json_ok(await run_in_threadpool(blog_ai.research, settings(), topic=str(b.get("topic") or "")[:100],
-                                           country=str(b.get("country") or "us"), competitors=_strs(b.get("competitors"))))
+                                           country=str(b.get("country") or "us"), competitors=_strs(b.get("competitors")),
+                                           audience=str(b.get("audience") or "midlarge"), industry=str(b.get("industry") or "")[:60]))
 
 
 @app.post("/api/admin/blog/draft", dependencies=[Depends(guard)])
@@ -377,6 +378,7 @@ async def blog_draft(request: Request):
         blog_ai.draft, settings(), title=str(b.get("title") or ""), keyword=str(b.get("keyword") or ""),
         type=str(b.get("type") or "how-to"), competitors=_strs(b.get("competitors"), 5),
         notes=str(b.get("notes") or "")[:1000], country=str(b.get("country") or "us"), words=b.get("words") or 1600,
+        audience=str(b.get("audience") or "midlarge"), industry=str(b.get("industry") or "")[:60],
         facts=(await run_in_threadpool(_rag_facts, f"{b.get('title') or ''} {b.get('keyword') or ''}", 6, 900))[0]))
 
 
@@ -385,7 +387,8 @@ async def blog_social(request: Request):
     b = await body_of(request)
     return json_ok(await run_in_threadpool(blog_ai.social, settings(), title=str(b.get("title") or ""),
                                            excerpt=str(b.get("excerpt") or "")[:500], url=str(b.get("url") or "")[:300],
-                                           keyword=str(b.get("keyword") or "")[:100], category=str(b.get("category") or "")[:60]))
+                                           keyword=str(b.get("keyword") or "")[:100], category=str(b.get("category") or "")[:60],
+                                           audience=str(b.get("audience") or "midlarge")))
 
 
 @app.post("/api/admin/blog/image", dependencies=[Depends(guard)])

@@ -36,3 +36,23 @@ test('panel lists competitors and its browser code parses', () => {
   assert.ok(Object.values(COMPETITORS).flat().length >= 25);
   assert.doesNotThrow(() => new Function(`(${aiPanelClient.toString()})`));
 });
+
+test('Autopilot targets mid-size & large companies by default and rotates industries', async () => {
+  const { runAutopilot, cleanAutopilot: clean, AUTOPILOT_DEFAULTS: D, MIDLARGE_TOPICS, INDUSTRIES } = await import('../src/autopilot.js');
+  assert.equal(D.audience, 'midlarge');
+  assert.equal(clean({ audience: 'small' }).audience, 'small');
+  assert.equal(clean({ audience: 'nope' }, { ...D, audience: 'all' }).audience, 'all');
+  const sent = [];
+  const orig = globalThis.fetch;
+  globalThis.fetch = async (u, init) => { sent.push([u, JSON.parse(init.body)]); return new Response(JSON.stringify({ ideas: [] })); };
+  try {
+    const store = { listPosts: () => [], slugTaken: () => false };
+    for (const runs of [0, 1, 13]) {
+      const r = await runAutopilot(store, { TOOLS_API_URL: 'https://api.test' }, { ...D, runs }, {});
+      assert.ok(r.skipped);
+    }
+    const bodies = sent.map(([, b]) => b);
+    assert.ok(bodies.every((b) => b.audience === 'midlarge'));
+    assert.deepEqual(bodies.map((b) => [b.topic, b.industry]), [[MIDLARGE_TOPICS[0], INDUSTRIES[0]], [MIDLARGE_TOPICS[1], INDUSTRIES[1]], [MIDLARGE_TOPICS[3], INDUSTRIES[1]]]);
+  } finally { globalThis.fetch = orig; }
+});

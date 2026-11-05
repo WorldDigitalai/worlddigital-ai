@@ -3,7 +3,9 @@
 // **bold**, *italic*, `code`, [links](url), ![images](url), --- rules.
 // All text is HTML-escaped; only http(s), mailto, tel, relative and #anchor URLs are kept.
 // Self-contained (no imports) so its source can be shipped to the browser as-is.
-export function mdToHtml(src) {
+export function mdToHtml(src, opts) {
+  // images written without alt text get the nearest heading (or the page title) so no <img> is left without alt
+  var near = esc((opts && opts.title) || '');
   function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
   function safeUrl(u) {
     u = String(u || '').trim();
@@ -15,7 +17,7 @@ export function mdToHtml(src) {
     var out = esc(s);
     var codes = [];
     out = out.replace(/`([^`]+)`/g, function (m, c) { codes.push('<code>' + c + '</code>'); return '\u0000' + (codes.length - 1) + '\u0000'; });
-    out = out.replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, function (m, alt, u) { var s2 = safeUrl(u.replace(/&amp;/g, '&')); return s2 ? '<img src="' + s2 + '" alt="' + alt + '" loading="lazy">' : ''; });
+    out = out.replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, function (m, alt, u) { var s2 = safeUrl(u.replace(/&amp;/g, '&')); return s2 ? '<img src="' + s2 + '" alt="' + (alt.trim() || near) + '" loading="lazy">' : ''; });
     out = out.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, function (m, t, u) {
       var s2 = safeUrl(u.replace(/&amp;/g, '&'));
       if (!s2) return t;
@@ -35,7 +37,7 @@ export function mdToHtml(src) {
     var t = line.trim();
     if (!t) { flush(); i++; continue; }
     var h = /^(#{2,4})\s+(.+)$/.exec(t);
-    if (h) { flush(); var lvl = h[1].length, txt = inline(h[2].replace(/\s+#+$/, '')); html.push('<h' + lvl + ' id="' + slugify(txt) + '">' + txt + '</h' + lvl + '>'); i++; continue; }
+    if (h) { flush(); var lvl = h[1].length, txt = inline(h[2].replace(/\s+#+$/, '')); near = txt.replace(/<[^>]+>/g, ''); html.push('<h' + lvl + ' id="' + slugify(txt) + '">' + txt + '</h' + lvl + '>'); i++; continue; }
     if (/^#\s+/.test(t)) { flush(); html.push('<h2>' + inline(t.replace(/^#\s+/, '')) + '</h2>'); i++; continue; }
     if (/^(-{3,}|\*{3,})$/.test(t)) { flush(); html.push('<hr>'); i++; continue; }
     if (/^>\s?/.test(t)) {

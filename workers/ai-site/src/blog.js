@@ -34,7 +34,7 @@ const cover = (p) => (p.cover_id ? `/media/${p.cover_id}` : null);
 function card(p) {
   const img = cover(p);
   return `<a class="card post-card" href="/blog/${p.slug}">
-${img ? `<img src="${img}" alt="${esc(p.cover_alt || '')}" loading="lazy" width="640" height="360">` : ''}
+${img ? `<img src="${img}" alt="${esc(p.cover_alt || p.title || '')}" loading="lazy" width="640" height="360">` : ''}
 <span class="chip" style="align-self:flex-start">${esc(p.category || 'Guide')}</span>
 <h2 class="h" style="font-size:21px;line-height:1.3">${esc(p.title)}</h2>
 <p class="muted" style="margin:0;line-height:1.55">${esc(p.excerpt || p.description || '')}</p>
@@ -70,7 +70,7 @@ ${filters}
 }
 
 export function blogPost(p, others, { prod, preview = false }) {
-  const html = mdToHtml(p.body);
+  const html = mdToHtml(p.body, { title: p.title });
   const minutes = readMinutes(p.body);
   const img = cover(p);
   const related = others.filter((o) => o.slug !== p.slug).sort((a, b) => (a.category === p.category ? -1 : 0) - (b.category === p.category ? -1 : 0)).slice(0, 3);
@@ -85,7 +85,7 @@ ${p.excerpt ? `<p style="font-size:19px;line-height:1.6;color:#33445A;margin:16p
 <p class="muted" style="margin:18px 0 0;font-size:15px">${esc(p.author || 'WorldDigital.ai Team')} · <time datetime="${esc(date)}">${esc(fmtDate(date))}</time> · ${minutes} min read</p>
 </div></header>
 <div class="wrap" style="max-width:860px;padding-top:36px;padding-bottom:20px">
-${img ? `<img src="${img}" alt="${esc(p.cover_alt || '')}" width="1200" height="675" style="border-radius:16px;width:100%;margin-bottom:28px">` : ''}
+${img ? `<img src="${img}" alt="${esc(p.cover_alt || p.title || '')}" width="1200" height="675" style="border-radius:16px;width:100%;margin-bottom:28px">` : ''}
 <div class="prose">${html}</div>
 <aside class="card" style="margin:40px 0 0;display:flex;flex-wrap:wrap;gap:18px;align-items:center;justify-content:space-between;background:#0E1A2B;border-color:#0E1A2B;color:#fff">
 <div style="max-width:520px"><div class="eyebrow" style="color:#93C5FD">WorldDigital.ai</div><h2 class="h" style="font-size:24px;color:#fff;margin-top:6px">Want more customers from Google and AI search?</h2><p style="color:#C9D6E6;margin:8px 0 0">SEO, AEO and GEO in one flat plan, $199.99 a month, no contract. Google Ads quoted after a short call.</p></div>

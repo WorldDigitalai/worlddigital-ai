@@ -40,6 +40,29 @@ COMPETITORS = {
     "Website builders": ["Wix", "Squarespace", "GoDaddy"],
     "EHR/EMR integration": ["Redox", "Health Gorilla"],
 }
+# Who the posts are written for. "midlarge" is the default for Autopilot (requested Nov 2026).
+AUDIENCES = {
+    "small": "small businesses (owner-led, about 1-50 employees)",
+    "midlarge": ("mid-size and large companies (about 50 to 5,000+ employees: multi-location brands, B2B firms, "
+                 "healthcare groups, manufacturers, professional services) and the marketing, IT and operations "
+                 "leaders who buy for them"),
+    "all": "businesses of every size",
+}
+AUDIENCE_RULES = {
+    "small": "Write for the owner who does it all: simple steps, low cost, quick wins.",
+    "midlarge": ("Write for decision-makers at larger companies: speak to scale (many locations, pages, brands or "
+                 "teams), integration with their existing systems (CRM, ERP, EHR, analytics), security and compliance "
+                 "only where factual, ownership of accounts and data, reporting and ROI, and how a vendor is evaluated "
+                 "and onboarded. Do not frame the reader as a solo owner. The natural next step is a discovery call "
+                 "and a fixed-scope proposal (/contact, /custom-software), not a $9.99 tool."),
+    "all": "Write so a reader at any company size gets value; note where advice differs by size.",
+}
+
+
+def _aud(a) -> str:
+    return a if a in AUDIENCES else "midlarge"
+
+
 POST_TYPES = {
     "vs": "Comparison (X vs Y)", "alternatives": "Alternatives / best options", "how-to": "How-to guide",
     "list": "List / best-of", "what-is": "Explainer (what is …)", "local": "Local (city) guide",
@@ -192,12 +215,18 @@ def _safe(fn, *args, default=None):
 
 # ── Research ────────────────────────────────────────────────────────────────
 
-def research(s: Settings, *, topic: str = "", country: str = "us", competitors: list[str] | None = None) -> dict:
+def research(s: Settings, *, topic: str = "", country: str = "us", competitors: list[str] | None = None,
+             audience: str = "midlarge", industry: str = "") -> dict:
     label, loc = _country(country)
     topic = _clean_phrase(topic)
     seeds = [topic] if topic else list(DEFAULT_SEEDS)
+    audience, industry = _aud(audience), _clean_phrase(industry)[:60]
     if topic:
-        seeds += [f"{topic} for small business", f"best {topic}", f"{topic} tools"]
+        if audience == "small":
+            seeds += [f"{topic} for small business", f"best {topic}", f"{topic} tools"]
+        else:
+            seeds += [f"{topic} for {industry}" if industry else f"{topic} services", f"enterprise {topic}",
+                      f"{topic} agency", f"best {topic}"]
     seeds = [x for x in dict.fromkeys(_clean_phrase(x) for x in seeds) if x][:5]
     main_kw = seeds[0]
 
@@ -235,7 +264,8 @@ def research(s: Settings, *, topic: str = "", country: str = "us", competitors: 
                      system=("You are the head of content and SEO (including AEO and GEO: being the answer in Google's "
                              "AI Overviews and getting cited by ChatGPT, Gemini and Perplexity) for WorldDigital.ai. "
                              "You plan blog posts that bring in customers. You only use the data given. Reply with JSON only."),
-                     user=(f"About us:\n{ABOUT_US}\n\nMarket: {label}. Month: {month}. Topic: {topic or 'our products and services overall'}\n\n"
+                     user=(f"About us:\n{ABOUT_US}\n\nMarket: {label}. Month: {month}. Topic: {topic or 'our products and services overall'}\n"
+                           f"Audience: {AUDIENCES[audience]}.{(' Industry focus: ' + industry + '.') if industry else ''}\n\n"
                            f"Google Trends, past 3 months:\n{trend_lines or '(no data)'}\n"
                            f"Rising related searches: {', '.join(q['query'] + ' (+' + q['value'] + '%)' for q in queries['rising']) or '(none)'}\n"
                            f"Top related searches: {', '.join(q['query'] for q in queries['top']) or '(none)'}\n\n"
@@ -248,9 +278,11 @@ def research(s: Settings, *, topic: str = "", country: str = "us", competitors: 
                            f"{'The editor wants comparisons with: ' + ', '.join(comp_names) if comp_names else ''}\n\n"
                            "Suggest 12 blog posts, best first, that are trending now and that we can realistically rank for "
                            "and be cited by AI for. Include at least 4 comparison posts (type \"vs\", e.g. \"WorldDigital.ai vs "
-                           "HubSpot vs Fiverr for small business SEO\") and 2 \"alternatives\" posts against the competitors "
+                           "HubSpot vs WebFX for multi-location SEO\") and 2 \"alternatives\" posts against the competitors "
                            "most relevant to this topic, and use rising searches where they fit what we sell. Never suggest "
-                           "a post about something we do not offer.\n"
+                           "a post about something we do not offer. Every idea must speak to the audience above"
+                           f"{(' and, where it fits, the ' + industry + ' industry') if industry else ''}: "
+                           f"{AUDIENCE_RULES[audience]}\n"
                            "For each: title (max 70 chars), keyword (the main search phrase, from the data when possible), "
                            f"type (one of {', '.join(POST_TYPES)}), competitors (names, only for vs/alternatives), "
                            "why (max 22 words, cite the data: trend %, volume or AI Overview), score (1-100).\n"
@@ -288,7 +320,8 @@ def _slug(t: str) -> str:
 
 
 def draft(s: Settings, *, title: str, keyword: str = "", type: str = "how-to", competitors: list[str] | None = None,
-          notes: str = "", country: str = "us", words: int = 1600, facts: str = "") -> dict:
+          notes: str = "", country: str = "us", words: int = 1600, facts: str = "", audience: str = "midlarge",
+          industry: str = "") -> dict:
     label, loc = _country(country)
     title = " ".join(str(title or "").split())[:140]
     if not title:
@@ -311,7 +344,7 @@ def draft(s: Settings, *, title: str, keyword: str = "", type: str = "how-to", c
                          "as one honest option, not every one. A comparison table, then a short section per alternative "
                          "with who it is best for."),
         "list": "A ranked or grouped list with a one-paragraph explanation per item and a summary table.",
-        "how-to": "Numbered steps a small-business owner can follow today, with examples.",
+        "how-to": "Numbered steps the reader's team can follow, with examples.",
         "what-is": "A plain-English definition first, then how it works, why it matters now, and how to start.",
         "local": "Specific to the city in the title: local search behaviour, Google Maps, and a local checklist.",
         "pricing": "Real cost ranges with what drives the price, a table, and how to avoid overpaying.",
@@ -320,12 +353,14 @@ def draft(s: Settings, *, title: str, keyword: str = "", type: str = "how-to", c
     out = openai_json(s, max_tokens=7000, temperature=0.6, timeout=240, effort="low",
                       system=("You write blog posts for WorldDigital.ai that rank on Google and get cited by AI answers "
                               "(ChatGPT, Gemini, Perplexity, Google AI Overviews). Plain, confident English for busy "
-                              "business owners: short sentences, no hype, no filler, no em-dash overuse. You are honest: "
+                              "decision-makers: short sentences, no hype, no filler, no em-dash overuse. You are honest: "
                               "you never invent statistics, studies, quotes, customer stories, awards or competitor "
                               "prices. You state a competitor fact only if it appears in the research or is widely known "
                               "and stable; otherwise say it varies and to check their current pricing page. "
                               "Reply with JSON only."),
                       user=(f"About us (facts you may use):\n{ABOUT_US}\n\nMarket: {label}. Today: {month}.\n"
+                            f"Reader: {AUDIENCES[_aud(audience)]}.{(' Industry: ' + industry[:60] + '.') if industry else ''} "
+                            f"{AUDIENCE_RULES[_aud(audience)]}\n"
                             f"Post title: {title}\nMain keyword: {keyword}\nPost type: {POST_TYPES[ptype]}. {type_rules}\n"
                             f"{'Editor notes: ' + notes[:1000] if notes else ''}\n\n"
                             f"{'From our own website (accurate facts and pages you may cite and link to with the relative path shown):' + chr(10) + facts[:5000] + chr(10) + chr(10) if facts else ''}"
@@ -367,14 +402,15 @@ def draft(s: Settings, *, title: str, keyword: str = "", type: str = "how-to", c
 SOCIAL_LIMITS = {"linkedin": 1300, "facebook": 900, "instagram": 2000, "x": 250, "google": 1400, "tiktok": 900}
 
 
-def social(s: Settings, *, title: str, excerpt: str = "", url: str, keyword: str = "", category: str = "") -> dict:
+def social(s: Settings, *, title: str, excerpt: str = "", url: str, keyword: str = "", category: str = "",
+           audience: str = "midlarge") -> dict:
     """One caption per platform for a new blog post. Links: X/LinkedIn/Facebook/Google carry the URL;
     Instagram and TikTok say 'link in bio' (links in captions are not clickable there)."""
     title = " ".join(str(title or "").split())[:140]
     if not title or not str(url).startswith("https://"):
         raise ApiError("bad social input", 400, "A title and a page address are needed.")
     out = openai_json(s, max_tokens=1800, temperature=0.7, timeout=90, effort="low",
-                      system=("You write social posts for WorldDigital.ai that make busy business owners click through to "
+                      system=(f"You write social posts for WorldDigital.ai that make {AUDIENCES[_aud(audience)]} click through to "
                               "a new blog post. Plain, specific, no hype, no clickbait, no invented numbers. Reply with JSON only."),
                       user=(f"Blog post: {title}\nSummary: {excerpt[:400]}\nMain keyword: {keyword}\nTopic: {category}\n\n"
                             "Write one post per platform, each opening with a hook from the post's real content:\n"

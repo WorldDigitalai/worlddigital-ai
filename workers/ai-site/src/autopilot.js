@@ -8,12 +8,19 @@
 
 export const AUTOPILOT_DEFAULTS = {
   enabled: false, every_days: 2, hour: 9, mode: 'publish', topics: [], competitors: [], country: 'us', words: 1600,
-  mix_vs: true, runs: 0, used: [], last_run: null, next_run: null,
+  mix_vs: true, runs: 0, used: [], last_run: null, next_run: null, audience: 'midlarge',
 };
+export const AUDIENCES = ['midlarge', 'all', 'small'];
 const ORIGIN = 'https://worlddigital.ai';
 // With no topics set, Autopilot rotates through what we sell, one per day, and picks what is trending in each.
 export const DEFAULT_TOPICS = ['AI SEO', 'Generative engine optimization', 'Local SEO', 'Google Ads', 'Answer engine optimization',
   'Keyword research', 'AI content marketing', 'Custom software', 'AI automation for small business', 'Website design', 'EHR integration', ''];
+// For mid-size and large companies (the default audience): services they buy, rotated against industries.
+// 10 topics x 12 industries (coprime-ish lengths) so the same pair doesn't come back for months.
+export const MIDLARGE_TOPICS = ['Enterprise SEO', 'Generative engine optimization', 'Multi-location SEO', 'Google Ads management',
+  'Custom software development', 'AI automation', 'API and systems integration', 'Answer engine optimization', 'B2B content marketing', 'EHR integration'];
+export const INDUSTRIES = ['healthcare', 'manufacturing', 'logistics', 'legal', 'financial services', 'real estate', 'construction',
+  'retail and ecommerce', 'hospitality', 'SaaS', 'franchises', 'professional services'];
 
 export async function callAi(env, which, body) {
   if (!env.TOOLS_API_URL) throw new Error('The AI assistant is being set up. Please try again later.');
@@ -57,6 +64,7 @@ export function cleanAutopilot(input, prev = AUTOPILOT_DEFAULTS) {
     country: input.country === 'ca' ? 'ca' : 'us',
     words: [1000, 1600, 2200].includes(Number(input.words)) ? Number(input.words) : prev.words,
     mix_vs: input.mix_vs !== false,
+    audience: AUDIENCES.includes(input.audience) ? input.audience : (prev.audience || 'midlarge'),
   };
 }
 
@@ -97,9 +105,11 @@ const isDuplicate = (title, existing) => existing.some((t) => titleSimilarity(ti
 
 export async function runAutopilot(store, env, cfg, deps) {
   const n = cfg.runs || 0;
-  const list = cfg.topics.length ? cfg.topics : DEFAULT_TOPICS;
+  const audience = cfg.audience || 'midlarge';
+  const list = cfg.topics.length ? cfg.topics : audience === 'small' ? DEFAULT_TOPICS : MIDLARGE_TOPICS;
   const topic = list[n % list.length];
-  const r = await callAi(env, 'research', { topic, country: cfg.country, competitors: cfg.competitors });
+  const industry = audience === 'small' ? '' : INDUSTRIES[n % INDUSTRIES.length];
+  const r = await callAi(env, 'research', { topic, country: cfg.country, competitors: cfg.competitors, audience, industry });
   const used = new Set(cfg.used || []);
   const existing = store.listPosts({ all: true }).map((p) => p.title);
   const cands = (r.ideas || []).filter((i) => i.title && !used.has(i.keyword) && !store.slugTaken(slugify(i.title)) && !isDuplicate(i.title, existing));
@@ -107,7 +117,7 @@ export async function runAutopilot(store, env, cfg, deps) {
   const pick = (preferVs && cands.find((i) => i.type === 'vs' || i.type === 'alternatives')) || cands[0];
   if (!pick) return { skipped: true, topic, message: 'No new idea this time (all top ideas were already written).' };
   const d = await callAi(env, 'draft', { title: pick.title, keyword: pick.keyword, type: pick.type,
-    competitors: pick.competitors, country: cfg.country, words: cfg.words });
+    competitors: pick.competitors, country: cfg.country, words: cfg.words, audience, industry });
   if (isDuplicate(d.title, existing)) return { skipped: true, topic, message: `Skipped: the draft "${d.title}" repeats an existing post.` };
   const saved = savePost(store, d, cfg.mode === 'publish' ? 'publish' : 'save', 'autopilot', deps);
   const live = cfg.mode === 'publish';
@@ -121,7 +131,7 @@ export async function runAutopilot(store, env, cfg, deps) {
   const socialHtml = !social ? '' : social.error ? `<p>Sharing to Buffer failed: ${escH(social.error)}</p>` : social.results && social.results.skipped ? `<p>Buffer: ${escH(social.results.skipped)}</p>`
     : `<p>Shared to Buffer: ${Object.entries(social.results || {}).map(([k, v]) => `${escH(k)} ${v.ok ? '✓' : '✗ ' + escH(v.error || '')}`).join(' · ')}</p>`;
   await notify(env, live ? `New blog post published: ${d.title}` : `New blog draft ready: ${d.title}`,
-    `<p>Autopilot ${live ? 'published' : 'wrote a draft of'} <b>${escH(d.title)}</b> (topic: ${escH(topic || 'trending across our services')}, keyword: ${escH(pick.keyword)}).</p>
+    `<p>Autopilot ${live ? 'published' : 'wrote a draft of'} <b>${escH(d.title)}</b> (topic: ${escH(topic || 'trending across our services')}${industry ? `, industry: ${escH(industry)}` : ''}, keyword: ${escH(pick.keyword)}).</p>
 <p>${escH(pick.why || '')}</p><p><a href="${ORIGIN}/blog-admin/edit/${encodeURIComponent(saved.slug)}">Review or edit it</a>${live ? ` · <a href="${ORIGIN}/blog/${encodeURIComponent(saved.slug)}">See it live</a>` : ''}</p>${socialHtml}`, deps.sendEmail);
   return { title: d.title, slug: saved.slug, status: saved.status, keyword: pick.keyword, topic, type: pick.type,
     social: social && social.results ? Object.fromEntries(Object.entries(social.results).filter(([k]) => k !== 'skipped').map(([k, v]) => [k, !!v.ok])) : social };

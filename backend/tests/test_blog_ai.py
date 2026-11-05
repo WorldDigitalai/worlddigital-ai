@@ -156,3 +156,18 @@ def test_cover_image_falls_back_between_models(client):
         r.post("https://openai.test/v1/images/generations").mock(side_effect=img)
         d = c.post("/api/admin/blog/image", json={"title": "HubSpot vs Fiverr"}).json()
     assert d["b64"] == "QUJD" and d["type"] == "image/jpeg" and seen == ["gpt-image-1.5", "gpt-image-1"]
+
+
+def test_audience_and_industry_reach_the_prompts(client):
+    c, calls = client
+    d = c.post("/api/admin/blog/research", json={"topic": "local seo", "audience": "midlarge", "industry": "healthcare"}).json()
+    assert d["ideas"]
+    p = calls.prompts[-1]
+    assert "mid-size and large companies" in p and "Industry focus: healthcare" in p and "solo owner" in p
+    seeds = [t for path, t in calls.dfs if path.endswith("explore/live") and t["item_types"] == ["google_trends_graph"]][-1]["keywords"]
+    assert "local seo for healthcare" in seeds and "enterprise local seo" in seeds and not any("small business" in k for k in seeds)
+    c.post("/api/admin/blog/draft", json={"title": "Multi-location SEO for hospital groups", "audience": "midlarge", "industry": "healthcare"})
+    assert "Reader: mid-size and large" in calls.prompts[-1] and "discovery call" in calls.prompts[-1]
+    c.post("/api/admin/blog/research", json={"topic": "local seo", "audience": "small"})
+    seeds = [t for path, t in calls.dfs if path.endswith("explore/live") and t["item_types"] == ["google_trends_graph"]][-1]["keywords"]
+    assert "local seo for small business" in seeds

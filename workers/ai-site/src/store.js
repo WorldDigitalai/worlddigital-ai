@@ -46,6 +46,13 @@ export class Store extends DurableObject {
         this.putAutopilot(c);
         this.sql.exec(`INSERT INTO kv (k,v) VALUES ('autopilot_daily_v1', ?)`, nowIso());
       }
+      // Requested 2026-11-04: focus on mid-size and large companies across industries.
+      if (!one(this.sql.exec(`SELECT v FROM kv WHERE k = 'autopilot_midlarge_v1'`))) {
+        const c = this.getAutopilot();
+        c.audience = 'midlarge';
+        this.putAutopilot(c);
+        this.sql.exec(`INSERT INTO kv (k,v) VALUES ('autopilot_midlarge_v1', ?)`, nowIso());
+      }
       // 2026-11-04 audit: Autopilot published the same article twice. Keep the older one; the newer one becomes an
       // archived draft (nothing deleted) and its address redirects to the one kept.
       if (!one(this.sql.exec(`SELECT v FROM kv WHERE k = 'dedupe_ai_seo_tools_2026'`))) {
@@ -319,7 +326,7 @@ export class Store extends DurableObject {
       } catch (e) { imageNote = 'No cover image: ' + e.message; console.log('cover image failed', e.message); }
     }
     const imageUrl = coverId ? `https://worlddigital.ai/media/${coverId}` : 'https://worlddigital.ai/og.png';
-    const texts = await callAi(this.env, 'social', { title: p.title, excerpt: p.excerpt || p.description || '', url, category: p.category || '', keyword: '' });
+    const texts = await callAi(this.env, 'social', { title: p.title, excerpt: p.excerpt || p.description || '', url, category: p.category || '', keyword: '', audience: this.getAutopilot().audience || 'midlarge' });
     // Short video with voiceover + music for YouTube Shorts and TikTok (the backend refuses silent videos).
     let videoUrl = null, videoNote = null;
     try {

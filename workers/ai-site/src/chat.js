@@ -49,7 +49,7 @@ function add(role,text,cls){var d=document.createElement('div');d.className='aic
 var HELLO="Hi! I'm AI Ahmad, the AI assistant for WorldDigital.ai. Ask me about our SEO plan, Google Ads, websites, or your free SEO report.";
 function build(){
  panel=document.createElement('div');panel.className='aic-panel';panel.id='aic-panel';panel.setAttribute('role','dialog');panel.setAttribute('aria-label','Chat with AI Ahmad');panel.hidden=true;
- panel.innerHTML='<div class="aic-hd"><img src="/ai-ahmad.webp" alt="" width="42" height="42"><div><b>AI Ahmad \\u00b7 WorldDigital AI</b><small>\\u25cf AI assistant \\u00b7 online</small></div><button type="button" class="aic-x" aria-label="Close chat">\\u00d7</button></div>'
+ panel.innerHTML='<div class="aic-hd"><img src="/ai-ahmad.webp" alt="AI Ahmad" width="42" height="42"><div><b>AI Ahmad \\u00b7 WorldDigital AI</b><small>\\u25cf AI assistant \\u00b7 online</small></div><button type="button" class="aic-x" aria-label="Close chat">\\u00d7</button></div>'
  +'<div class="aic-note">I\\u2019m an AI assistant, not Ahmad in person. Need a real person? <a href="/contact">Contact us</a>.</div>'
  +'<div class="aic-log" aria-live="polite"></div><div class="aic-chips"></div>'
  +'<form class="aic-f"><label class="sr-only" for="aic-in" style="position:absolute;left:-9999px">Your question</label><input id="aic-in" maxlength="800" autocomplete="off" placeholder="Ask me anything\\u2026"><button type="submit">Send</button></form>';
@@ -80,6 +80,6 @@ if(!seen)setTimeout(function(){if(!panel||panel.hidden)tip.hidden=false},6000);
 })();`;
 
 export const CHAT_HTML = `<style>${CSS}</style>
-<button type="button" class="aic-btn" id="aic-btn" aria-label="Chat with AI Ahmad, our AI assistant" aria-controls="aic-panel" aria-expanded="false"><img src="/ai-ahmad.webp" alt="" width="68" height="68" loading="lazy"><span class="aic-ai" aria-hidden="true">AI</span><span class="aic-dot" aria-hidden="true"></span></button>
+<button type="button" class="aic-btn" id="aic-btn" aria-label="Chat with AI Ahmad, our AI assistant" aria-controls="aic-panel" aria-expanded="false"><img src="/ai-ahmad.webp" alt="AI Ahmad, AI assistant" width="68" height="68" loading="lazy"><span class="aic-ai" aria-hidden="true">AI</span><span class="aic-dot" aria-hidden="true"></span></button>
 <div class="aic-tip" id="aic-tip" hidden>Need help? Ask AI Ahmad 👋</div>
 <script>${JS}</script>`;

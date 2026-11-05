@@ -159,7 +159,7 @@ function header(path) {
   const links = NAV.map(([h, t]) => `<a href="${h}"${cur(h)}>${esc(t)}</a>`).join('');
   return `<a class="skip" href="#main">Skip to content</a>
 <header class="top"><div class="wrap topin">
-<a class="brand" href="/"><img src="/icon-72.webp" alt="" width="36" height="36"><span>WorldDigital.ai<small>Software company · Serving the US &amp; Canada</small></span></a>
+<a class="brand" href="/"><img src="/icon-72.webp" alt="WorldDigital.ai logo" width="36" height="36"><span>WorldDigital.ai<small>Software company · Serving the US &amp; Canada</small></span></a>
 <nav class="nav" aria-label="Main">${links}</nav>
 <div class="nav-cta"><a class="srch" href="/search" aria-label="Search the site" title="Search"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg></a><a class="btn ghost" href="${CONTACT}">Contact</a><a class="btn red" href="${START}">Start free</a></div>
 <details class="menu"><summary aria-label="Menu">Menu</summary><nav aria-label="Mobile">${links}<a href="/search">Search</a><a href="${START}">Start free</a><a href="${CONTACT}">Contact</a></nav></details>

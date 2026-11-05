@@ -12,7 +12,7 @@ const COLORS = { LinkedIn: '#0A66C2', Instagram: '#C13584', Facebook: '#0F63D6',
 const sorted = [...posts].sort((a, b) => (b.score - a.score) || (b.date > a.date ? 1 : -1));
 
 const card = (p, i) => `<article class="sf-card" data-p="${esc(p.platformLabel)}" data-s="${p.score}" data-d="${esc(p.date)}"${i >= PER_PAGE ? ' hidden' : ''}>
-${p.thumb ? `<div class="sf-thumb"><img class="sf-bg" src="${esc(p.thumb)}" alt="" aria-hidden="true" loading="lazy" decoding="async" referrerpolicy="no-referrer"><img class="sf-img" src="${esc(p.thumb)}" alt="${esc(`${p.platformLabel} post: ${p.text.slice(0, 80)}`)}" loading="lazy" decoding="async" width="400" height="400" referrerpolicy="no-referrer" onerror="this.parentNode.remove()"></div>` : ''}
+${p.thumb ? `<div class="sf-thumb"><img class="sf-bg" src="${esc(p.thumb)}" alt="${esc(`${p.platformLabel} post image (background)`)}" aria-hidden="true" loading="lazy" decoding="async" referrerpolicy="no-referrer"><img class="sf-img" src="${esc(p.thumb)}" alt="${esc(`${p.platformLabel} post: ${p.text.slice(0, 80)}`)}" loading="lazy" decoding="async" width="400" height="400" referrerpolicy="no-referrer" onerror="this.parentNode.remove()"></div>` : ''}
 <div class="sf-body"><div class="sf-meta"><span class="sf-badge" style="--c:${COLORS[p.platformLabel] || '#0D5EC7'}">${esc(p.platformLabel)}</span><time datetime="${esc(p.date)}">${fmt(p.date)}</time></div>
 <p class="sf-text">${esc(p.text)}</p>
 ${p.link ? `<a class="sf-link" href="${esc(p.link)}" target="_blank" rel="noopener">View on ${esc(p.platformLabel)} <span aria-hidden="true">→</span></a>` : ''}</div></article>`;

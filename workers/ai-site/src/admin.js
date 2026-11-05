@@ -139,7 +139,7 @@ function editorPage(nonce, ed, p, cats) {
 <div class="two"><div><label for="cat">Topic</label><input id="cat" list="cats" maxlength="40" value="${esc(p.category || '')}" placeholder="e.g. Local SEO"><datalist id="cats">${cats.map((c) => `<option value="${esc(c)}">`).join('')}</datalist></div>
 <div><label for="cover">Cover photo <span class="muted" style="font-weight:400">(optional)</span></label><input id="cover" type="file" accept="image/*"></div></div>
 <input type="hidden" id="cover_id" value="${esc(p.cover_id || '')}">
-<div id="coverbox" ${p.cover_id ? '' : 'hidden'}><img id="coverimg" class="cover-prev" alt="" src="${p.cover_id ? `/media/${esc(p.cover_id)}` : ''}"><label for="cover_alt">Describe the photo (for Google and screen readers)</label><input id="cover_alt" maxlength="160" value="${esc(p.cover_alt || '')}"><button type="button" class="btn ghost" id="rmcover" style="margin-top:8px;min-height:40px">Remove photo</button></div>
+<div id="coverbox" ${p.cover_id ? '' : 'hidden'}><img id="coverimg" class="cover-prev" alt="Cover image preview" src="${p.cover_id ? `/media/${esc(p.cover_id)}` : ''}"><label for="cover_alt">Describe the photo (for Google and screen readers)</label><input id="cover_alt" maxlength="160" value="${esc(p.cover_alt || '')}"><button type="button" class="btn ghost" id="rmcover" style="margin-top:8px;min-height:40px">Remove photo</button></div>
 <label for="excerpt">Short summary <span class="count" id="c-ex"></span></label><textarea id="excerpt" maxlength="300" style="min-height:80px" placeholder="One or two sentences under the title.">${esc(p.excerpt || '')}</textarea>
 <label for="body">Post</label>
 <div class="tool" role="toolbar" aria-label="Formatting">

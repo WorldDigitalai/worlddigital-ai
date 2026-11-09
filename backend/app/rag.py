@@ -366,7 +366,8 @@ class Rag:
         self.questions = db["rag_questions"]
         self.meta = db["rag_meta"]
         self.syncs = db["rag_sync"]
-        self.answers = db["rag_answers"]   # public answers remembered for a day (see answer_stream)
+        self.answers = db["rag_answers"]
+        self.last_timing: dict = {}   # public answers remembered for a day (see answer_stream)
 
     # indexes ------------------------------------------------------------------
     def _vector_def(self) -> dict:
@@ -816,6 +817,8 @@ class Rag:
         alt = variant == "alt"
         index, path = (ALT_INDEX, "embedding_alt") if alt else (INDEX_NAME, "embedding")
         q = self._embed([query], ALT_MODEL if alt else None)[0]
+        self.last_timing = {"embed_ms": _ms(t0)}
+        t1 = time.monotonic()
         proj = {"_id": 0, "url": 1, "title": 1, "section": 1, "text": 1, "source": 1, "content_type": 1, "category": 1, "published_at": 1}
         vfilter = {f: {"$in": v} for f, v in flt.items()}
         vec_stage = {"$vectorSearch": {"index": index, "path": path, "queryVector": q,
@@ -849,6 +852,8 @@ class Rag:
                 scored.append({**d, "score": 0.8 * sum(a * b for a, b in zip(q, v)) / (qn * vn) + 0.2 * kw})
             hits, method = sorted(scored, key=lambda d: d["score"], reverse=True)[:want], "scan"
         hits = [h for h in hits if allowed(h)]
+        self.last_timing["db_ms"] = _ms(t1)
+        t2 = time.monotonic()
         if do_rerank and len(hits) > 1:
             try:
                 scores = rerank(self.s, query, [f"{h['title']}\n{h['text']}" for h in hits])
@@ -856,6 +861,7 @@ class Rag:
                 method += "+rerank"
             except ApiError as e:  # the reranker is an extra: without it the fused order stands
                 log.info("rerank skipped: %s", e)
+        self.last_timing["rerank_ms"] = _ms(t2)
         out = [dict(h, method=method) for h in hits[:k]]
         self._metric("search", _ms(t0))
         return out
@@ -1033,7 +1039,7 @@ class Rag:
             except Exception:  # noqa: BLE001  the cache is an extra
                 pass
         yield {"type": "done", "sources": srcl, "covered": covered, "undocumented": undoc, "cached": False,
-               "ms": ms, "first_ms": first_ms, "search_ms": search_ms, "hits": hits}
+               "ms": ms, "first_ms": first_ms, "search_ms": search_ms, "timing": dict(self.last_timing), "hits": hits}
 
     def answer(self, question: str, k: int = 6, sources=None, *, types=None, categories=None, language=None,
                allow_internal: bool = False, public: bool = False) -> dict:
@@ -1050,7 +1056,7 @@ class Rag:
         if public:
             return {**res, "cached": done.get("cached", False)}
         return {**res, "method": hits[0].get("method") if hits else None, "ms": done.get("ms"), "first_ms": done.get("first_ms"),
-                "search_ms": done.get("search_ms"),
+                "search_ms": done.get("search_ms"), "timing": done.get("timing") or {},
                 "passages": [{"title": h["title"], "url": h["url"], "section": h.get("section"), "score": h.get("score"),
                               "content_type": h.get("content_type"), "text": h["text"][:600]} for h in hits]}
 
@@ -1088,7 +1094,7 @@ class Rag:
         """Golden questions. Per question: expected page retrieved (and at which rank), expected page cited,
         expected words in the answer, and for questions we have no answer to, that the assistant says so."""
         cases = json.loads(EVAL_FILE.read_text())
-        results, lat, first, search_lat = [], [], [], []
+        results, lat, first, search_lat, stage = [], [], [], [], {}
         pos = neg = passed = hit = with_exp = cited_ok = answered_ok = unsupported = 0
         rr_sum = 0.0
         for c in cases:
@@ -1102,6 +1108,8 @@ class Rag:
                 first.append(a["first_ms"])
             if a.get("search_ms") is not None:
                 search_lat.append(a["search_ms"])
+            for tk, tv in (a.get("timing") or {}).items():
+                stage.setdefault(tk, []).append(tv)
             urls = [s["url"] for s in a["sources"]]
             if c.get("negative"):
                 neg += 1
@@ -1139,6 +1147,7 @@ class Rag:
                               "p95_ms": lat[min(len(lat) - 1, int(len(lat) * 0.95))] if lat else None,
                               "first_words_ms": round(sum(first) / len(first)) if first else None,
                               "search_ms": round(sum(search_lat) / len(search_lat)) if search_lat else None,
+                              **{f"search_{k}": round(sum(v) / len(v)) for k, v in stage.items() if v},
                               "first_words_p95_ms": first[min(len(first) - 1, int(len(first) * 0.95))] if first else None},
                   "results": results, "at": now()}
         self.meta.replace_one({"_id": "eval"}, {"_id": "eval", **report}, upsert=True)

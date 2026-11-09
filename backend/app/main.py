@@ -645,6 +645,7 @@ async def rag_api_answer_stream(request: Request):
                 else:
                     ev.pop("hits", None)
                     ev.pop("search_ms", None)
+                    ev.pop("timing", None)
                     yield json.dumps(ev) + "\n"
                     rag().log_question(q, text, ev["covered"], [{"url": x["url"]} for x in ev["sources"]], channel="api")
         except ApiError as e:

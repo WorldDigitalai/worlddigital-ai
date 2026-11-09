@@ -87,6 +87,7 @@ worlddigital.us is deliberately not indexed.
   to 5 bullets, 450 tokens max), with reasoning effort "none" so it starts writing straight away.
 - Public answers are remembered for 24 hours (`rag_answers`, keyed by the normalised question and the content
   version). Any indexed page change bumps the content version, so a remembered answer never outlives the page.
+- Written answers skip the reranker (`RAG_RERANK_ANSWERS=1` turns it on): the model reads all top sources anyway, and it saves ~0.6 s. Recent query embeddings are remembered per instance, so "Get an AI answer" after a search skips the embedding call (~0.3 s). The quality test always embeds fresh.
 - The backend keeps one instance running (`--min-instances=1`, `--cpu-boost`): no slow first answer after a quiet spell.
 - Quality test and admin page report "First words shown" and "Full answer written" (average and slowest 5%).
 

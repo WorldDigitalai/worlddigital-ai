@@ -54,6 +54,8 @@ DIMS = int(os.environ.get("RAG_EMBED_DIMS") or MODEL_DIMS.get(EMBED_MODEL, 1536)
 WORKERS_AI_URL = os.environ.get("RAG_WORKERS_AI_URL", "https://worlddigital.ai/api/internal/ai")
 RERANK_MODEL = "@cf/baai/bge-reranker-base"
 RERANK = os.environ.get("RAG_RERANK", "") == "1"   # rerank search results with RERANK_MODEL (Workers AI)
+# Written answers skip the reranker by default: the model reads all top sources anyway, and it saves ~0.6 s
+RERANK_ANSWERS = os.environ.get("RAG_RERANK_ANSWERS", "") == "1"
 ALT_MODEL = os.environ.get("RAG_COMPARE_MODEL", "@cf/baai/bge-m3")  # side-by-side test (Rag.compare)
 
 # Chunking (about 4 characters per token)
@@ -802,7 +804,8 @@ class Rag:
         return f
 
     def search(self, query: str, k: int = 6, sources=None, *, types=None, categories=None, language=None,
-               allow_internal: bool = False, variant: str = "main", rerank_hits: bool | None = None) -> list[dict]:
+               allow_internal: bool = False, variant: str = "main", rerank_hits: bool | None = None,
+               fresh: bool = False) -> list[dict]:
         """Hybrid retrieval. variant "alt" searches the side-by-side embedding (ALT_MODEL, see compare());
         rerank_hits re-sorts a wider candidate set with the Workers AI reranker (default: RAG_RERANK)."""
         t0 = time.monotonic()
@@ -816,7 +819,7 @@ class Rag:
         flt = {"source": srcs, **self._filters(types, categories, language)}
         alt = variant == "alt"
         index, path = (ALT_INDEX, "embedding_alt") if alt else (INDEX_NAME, "embedding")
-        q = self._embed([query], ALT_MODEL if alt else None)[0]
+        q = self._query_vector(query, ALT_MODEL if alt else EMBED_MODEL, fresh)
         self.last_timing = {"embed_ms": _ms(t0)}
         t1 = time.monotonic()
         proj = {"_id": 0, "url": 1, "title": 1, "section": 1, "text": 1, "source": 1, "content_type": 1, "category": 1, "published_at": 1}
@@ -865,6 +868,22 @@ class Rag:
         out = [dict(h, method=method) for h in hits[:k]]
         self._metric("search", _ms(t0))
         return out
+
+    _QVEC: "dict[tuple[str, str], list[float]]" = {}   # recent query embeddings (per instance), newest last
+
+    def _query_vector(self, query: str, model: str, fresh: bool = False) -> list[float]:
+        """A visitor who searches and then asks for an AI answer sends the same text twice: the second time the
+        embedding comes from memory. fresh=True (quality test) always asks the model, so timings stay honest."""
+        key = (model, query.lower())
+        if not fresh and key in Rag._QVEC:
+            v = Rag._QVEC.pop(key)
+            Rag._QVEC[key] = v
+            return v
+        v = self._embed([query], None if model == EMBED_MODEL else model)[0]
+        Rag._QVEC[key] = v
+        while len(Rag._QVEC) > 500:
+            Rag._QVEC.pop(next(iter(Rag._QVEC)))
+        return v
 
     @staticmethod
     def _text_stage(query: str, flt: dict) -> dict:
@@ -965,7 +984,7 @@ class Rag:
         return hashlib.sha256(raw.encode()).hexdigest()
 
     def answer_stream(self, question: str, k: int = 6, sources=None, *, types=None, categories=None, language=None,
-                      allow_internal: bool = False, public: bool = False):
+                      allow_internal: bool = False, public: bool = False, fresh: bool = False):
         """Yields {"type": "text", "text": ...} pieces as the answer is written, then one {"type": "done", ...} with
         sources, covered, undocumented and timings (ms: total, first_ms: until the first words)."""
         t0 = time.monotonic()
@@ -981,7 +1000,8 @@ class Rag:
                 yield {"type": "done", "sources": hit["sources"], "covered": hit["covered"], "undocumented": hit.get("undocumented", ""),
                        "cached": True, "ms": ms, "first_ms": ms}
                 return
-        hits = self.search(question, k, srcs, types=types, categories=categories, language=language, allow_internal=allow_internal)
+        hits = self.search(question, k, srcs, types=types, categories=categories, language=language, allow_internal=allow_internal,
+                           rerank_hits=RERANK_ANSWERS, fresh=fresh)
         search_ms = _ms(t0)
         tenant = srcs[0].startswith("tenant:")
         who = self._tenant(srcs[0].split(":", 1)[1])["name"] if tenant else "WorldDigital.ai"
@@ -1042,10 +1062,10 @@ class Rag:
                "ms": ms, "first_ms": first_ms, "search_ms": search_ms, "timing": dict(self.last_timing), "hits": hits}
 
     def answer(self, question: str, k: int = 6, sources=None, *, types=None, categories=None, language=None,
-               allow_internal: bool = False, public: bool = False) -> dict:
+               allow_internal: bool = False, public: bool = False, fresh: bool = False) -> dict:
         text, done = "", {}
         for ev in self.answer_stream(question, k, sources, types=types, categories=categories, language=language,
-                                     allow_internal=allow_internal, public=public):
+                                     allow_internal=allow_internal, public=public, fresh=fresh):
             if ev["type"] == "text":
                 text += ev["text"]
             else:
@@ -1100,7 +1120,7 @@ class Rag:
         for c in cases:
             t0 = time.monotonic()
             try:
-                a = self.answer(c["q"], sources=c.get("sources") or ["ai"])
+                a = self.answer(c["q"], sources=c.get("sources") or ["ai"], fresh=True)
             except ApiError as e:
                 results.append({"q": c["q"], "ok": False, "why": e.public}); continue
             ms = _ms(t0); lat.append(ms)

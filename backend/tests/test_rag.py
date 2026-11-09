@@ -112,6 +112,7 @@ def env(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
     main.settings.cache_clear()
     main.set_store(Store(mongomock.MongoClient()["t"]))
+    rag_mod.Rag._QVEC.clear()
     w = World()
     # customer sites are fetched through the SSRF-safe fetcher; stand it in for the mock customer
     monkeypatch.setattr(rag_mod, "_fetch_page", lambda url: httpx.Response(200, text=CUST.get(httpx.URL(url).path, ""), headers={"content-type": "text/html"})
@@ -533,3 +534,18 @@ def test_status_line_missing_still_parsed(env, monkeypatch):
     monkeypatch.setattr(rag_mod, "openai_stream", lambda s, **kw: iter(["COVERED: yes\nWe build websites [1].\nNot documented: pricing for boats."]))
     a = c.post("/api/admin/rag/ask", headers=H, json={"q": "websites and boat pricing"}).json()
     assert a["covered"] and a["undocumented"] == "pricing for boats." and a["first_ms"] is not None
+
+
+def test_answer_reuses_the_search_embedding_and_skips_rerank(env, monkeypatch):
+    c, w = env
+    c.post("/api/admin/rag/index", headers=H, json={})
+    monkeypatch.setattr(rag_mod, "RERANK", True)
+    hdr = {**H, "cf-connecting-ip": "203.0.113.11"}
+    c.post("/api/rag/site-search", headers=hdr, json={"query": "Epic FHIR integration"})
+    before, rr = w.embeds, len(w.cf_calls)
+    c.post("/api/rag/answer-stream", headers=hdr, json={"query": "Epic FHIR integration"})
+    assert w.embeds == before, "the search page's embedding is reused"
+    assert len(w.cf_calls) == rr, "written answers skip the reranker"
+    # the quality test never uses remembered embeddings
+    c.post("/api/admin/rag/eval", headers=H, json={})
+    assert w.embeds > before

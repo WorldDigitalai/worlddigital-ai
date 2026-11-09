@@ -206,7 +206,7 @@ export class Store extends DurableObject {
   // Live posts that search engines have not been told about yet.
   unpinged() {
     const n = nowIso();
-    return rows(this.sql.exec(`SELECT slug FROM posts WHERE pinged_at IS NULL AND (status='published' OR (status='scheduled' AND publish_at <= ?))`, n)).map((r) => r.slug);
+    return rows(this.sql.exec(`SELECT slug FROM posts WHERE pinged_at IS NULL AND slug NOT LIKE '%-archived' AND slug NOT LIKE '%-archived-%' AND (status='published' OR (status='scheduled' AND publish_at <= ?))`, n)).map((r) => r.slug);
   }
   markPinged(slugs) { const t = nowIso(); for (const s of slugs) this.sql.exec(`UPDATE posts SET pinged_at=? WHERE slug=?`, t, s); }
 

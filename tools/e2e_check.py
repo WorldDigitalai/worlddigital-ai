@@ -5,7 +5,7 @@
 Checks (each one independent; a failure in one does not stop the others):
   search    /search returns results that link to our pages; "Get an AI answer" answers with sources
   chat      the AI Ahmad assistant opens, answers a question, and shows no error
-  tools     /tools loads the free tools with an input and a run button (nothing is run: previews need a human check)
+  tools     /tools lists the tools; the keyword and content tool forms load (nothing is run: previews need a human check)
   contact   the contact form loads; submitting it empty is refused by the browser and sends nothing
   blog      the blog lists posts; the first post opens with its heading and its images load
   pages     home, services and pricing pages load with a heading, a search icon and no JavaScript errors
@@ -71,14 +71,16 @@ def check_chat(browser, base):
 def check_tools(browser, base):
     errors = []
     p = new_page(browser, errors)
-    p.goto(f"{base}/tools", wait_until="load", timeout=45000)
-    p.wait_for_selector("main input:visible", timeout=20000)
-    inputs = p.locator("main input:visible").count()
-    buttons = p.locator("main button:visible").count()
-    assert inputs >= 1 and buttons >= 1, f"tools form missing ({inputs} inputs, {buttons} buttons)"
+    p.goto(f"{base}/tools", wait_until="domcontentloaded", timeout=45000)
+    cards = p.locator(".grid3 a[href]").count()
+    assert cards >= 2, f"/tools lists {cards} tools"
+    for path, field in (("/services/keyword-research", "#wdt-url"), ("/services/content-marketing", "#wdt-offer")):
+        p.goto(base + path, wait_until="load", timeout=45000)
+        p.wait_for_selector(field, state="visible", timeout=20000)
+        assert p.locator("#tool .wdt-go").first.is_visible(), f"{path}: run button missing"
     assert not errors, f"JavaScript error: {errors[0]}"
     p.context.close()
-    return f"{inputs} inputs, {buttons} buttons"
+    return f"{cards} tools listed; keyword and content forms ready"
 
 
 def check_contact(browser, base):

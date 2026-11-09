@@ -1,0 +1,38 @@
+name: Feature tests (worlddigital.ai)
+# Real-browser tests of the site's features (Playwright, tools/e2e_check.py): search + AI answer, AI Ahmad chat,
+# free tools form, contact form validation (never submitted), blog posts and images, key pages.
+# Runs after every site deploy, nightly, and on demand. A failure fails the run, and GitHub emails you.
+on:
+  workflow_run:
+    workflows: ["Deploy worlddigital.ai site"]
+    types: [completed]
+  schedule:
+    - cron: "37 4 * * *"   # nightly ~10:30 pm Chicago
+  workflow_dispatch:
+    inputs:
+      only:
+        description: "Optional comma-separated checks: search, chat, tools, contact, blog, pages"
+        default: ""
+permissions:
+  contents: read
+jobs:
+  e2e:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.12" }
+      - run: pip install -q playwright==1.48.0 && python -m playwright install --with-deps chromium >/dev/null
+      - name: Test features
+        env:
+          ONLY: ${{ inputs.only }}
+        run: |
+          set +e
+          sleep 20   # let the new version reach the edge after a deploy
+          python tools/e2e_check.py --only "$ONLY" | tee out.txt
+          code=${PIPESTATUS[0]}
+          grep '^FAIL' out.txt | while read -r l; do echo "::error title=Feature test::$l"; done
+          echo "::notice title=Feature tests::$(grep '^SUMMARY' out.txt | cut -c9-)"
+          exit $code

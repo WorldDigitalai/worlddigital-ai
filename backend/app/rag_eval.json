@@ -1,7 +1,7 @@
 [
   {"q": "What is WorldDigital.ai?", "expect": ["software"]},
   {"q": "How do your software products work?", "expect": [], "urls": ["/tools", "/free-seo-report", "/services/keyword-research", "/services/content-marketing"]},
-  {"q": "What advertising platforms do you support?", "expect": ["google", "meta"], "urls": ["ads", "/services"]},
+  {"q": "What advertising platforms do you support?", "expect": ["google", "meta|facebook"], "urls": ["ads", "/services"]},
   {"q": "Do you provide AI SEO services?", "expect": ["seo"], "urls": ["seo", "geo", "/services"]},
   {"q": "How do you help small businesses?", "expect": []},
   {"q": "What services do you offer?", "expect": [], "urls": ["/services"]},

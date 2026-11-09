@@ -35,7 +35,8 @@ jobs:
           q='SELECT REGEXP_REPLACE(url, r"^https://worlddigital\.ai", "") AS page, SUM(impressions) AS impressions, SUM(clicks) AS clicks, ROUND(SUM(sum_position)/SUM(impressions)+1,1) AS avg_pos, MAX(data_date) AS last_seen
              FROM `cs-poc-0zqkvyxapah85tnxz2byzqa.searchconsole_worlddigitalai.searchdata_url_impression`
              WHERE data_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 28 DAY) GROUP BY page ORDER BY impressions DESC LIMIT 200'
-          bq --project_id=cs-poc-0zqkvyxapah85tnxz2byzqa query --nouse_legacy_sql --format=json --max_rows=200 "$q" > gsc-pages.json
+          bq --project_id=cs-poc-0zqkvyxapah85tnxz2byzqa query --nouse_legacy_sql --format=json --max_rows=200 "$q" > gsc-pages.json \
+            || { echo "::warning title=Search Console data::$(head -c 400 gsc-pages.json | tr '\n' ' ')"; exit 1; }
           python3 - <<'EOF'
           import json, os
           rows = json.load(open('gsc-pages.json'))

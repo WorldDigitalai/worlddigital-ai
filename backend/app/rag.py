@@ -1018,7 +1018,8 @@ class Rag:
                 rr_sum += 1 / rank if rank else 0
             cited = not exp or any(e in u for u in urls for e in exp)
             cited_ok += cited
-            miss = [w for w in c.get("expect", []) if w.lower() not in a["answer"].lower()]
+            # an expected word may list alternatives: "meta|facebook" passes on either
+            miss = [w for w in c.get("expect", []) if not any(x.strip().lower() in a["answer"].lower() for x in w.split("|"))]
             answered = not miss and a.get("covered", True)
             answered_ok += answered
             ok = answered and cited and (not exp or rank is not None)

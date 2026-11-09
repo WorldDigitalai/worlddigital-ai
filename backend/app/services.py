@@ -90,6 +90,7 @@ def openai_stream(s: Settings, *, system: str, user: str, max_tokens: int = 500,
                 r.read()
                 if "reasoning_effort" in r.text and "reasoning_effort" in body:
                     _effort_refused.add((model, body.pop("reasoning_effort")))  # this model does not take this value
+                    print(f"openai {model}: reasoning_effort refused: {r.text[:200]}", flush=True)
                     continue
             if r.status_code >= 400:
                 r.read()

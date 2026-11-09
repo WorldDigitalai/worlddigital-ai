@@ -1050,6 +1050,7 @@ class Rag:
         if public:
             return {**res, "cached": done.get("cached", False)}
         return {**res, "method": hits[0].get("method") if hits else None, "ms": done.get("ms"), "first_ms": done.get("first_ms"),
+                "search_ms": done.get("search_ms"),
                 "passages": [{"title": h["title"], "url": h["url"], "section": h.get("section"), "score": h.get("score"),
                               "content_type": h.get("content_type"), "text": h["text"][:600]} for h in hits]}
 
@@ -1087,7 +1088,7 @@ class Rag:
         """Golden questions. Per question: expected page retrieved (and at which rank), expected page cited,
         expected words in the answer, and for questions we have no answer to, that the assistant says so."""
         cases = json.loads(EVAL_FILE.read_text())
-        results, lat, first = [], [], []
+        results, lat, first, search_lat = [], [], [], []
         pos = neg = passed = hit = with_exp = cited_ok = answered_ok = unsupported = 0
         rr_sum = 0.0
         for c in cases:
@@ -1099,6 +1100,8 @@ class Rag:
             ms = _ms(t0); lat.append(ms)
             if a.get("first_ms") is not None:
                 first.append(a["first_ms"])
+            if a.get("search_ms") is not None:
+                search_lat.append(a["search_ms"])
             urls = [s["url"] for s in a["sources"]]
             if c.get("negative"):
                 neg += 1
@@ -1135,6 +1138,7 @@ class Rag:
                               "avg_ms": round(sum(lat) / len(lat)) if lat else None,
                               "p95_ms": lat[min(len(lat) - 1, int(len(lat) * 0.95))] if lat else None,
                               "first_words_ms": round(sum(first) / len(first)) if first else None,
+                              "search_ms": round(sum(search_lat) / len(search_lat)) if search_lat else None,
                               "first_words_p95_ms": first[min(len(first) - 1, int(len(first) * 0.95))] if first else None},
                   "results": results, "at": now()}
         self.meta.replace_one({"_id": "eval"}, {"_id": "eval", **report}, upsert=True)

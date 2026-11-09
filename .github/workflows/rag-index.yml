@@ -60,7 +60,7 @@ jobs:
           m = d.get("metrics", {})
           print(f"::notice title=Answer quality::{d['passed']}/{d['total']} passed ({d['score']}%) | right page found {m.get('retrieval_hit_rate')}% "
                 f"(MRR {m.get('mrr')}) | right page cited {m.get('citation_accuracy')}% | answers correct {m.get('answer_accuracy')}% | "
-                f"made-up answers {m.get('unsupported_answer_rate')}% | first words {m.get('first_words_ms')} ms (p95 {m.get('first_words_p95_ms')}) | full answer {m.get('avg_ms')} ms (p95 {m.get('p95_ms')})")
+                f"made-up answers {m.get('unsupported_answer_rate')}% | search {m.get('search_ms')} ms | first words {m.get('first_words_ms')} ms (p95 {m.get('first_words_p95_ms')}) | full answer {m.get('avg_ms')} ms (p95 {m.get('p95_ms')})")
           for r in d.get("results", []):
               if not r.get("ok"):
                   why = r.get("why") or (("missing: " + ", ".join(r["missing"])) if r.get("missing") else "wrong source page")

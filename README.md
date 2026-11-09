@@ -58,3 +58,5 @@ cd workers/ai-site && npx wrangler dev --local --port 8791 # site; .dev.vars: TO
 - Every new video (social reels, YouTube Shorts, TikTok, and any video made from a blog post) must have real sound:
   a voiceover, music or sound effects. Never ship a silent track; check with `ffmpeg -i x.mp4 -af volumedetect -f null -`
   (max_volume near -91 dB means silent).
+- Every new video and reel is 8 seconds or less (7-8 s target). `backend/app/blog_video.py` enforces this with
+  `MAX_SECONDS`; check any other video with `ffprobe -show_entries format=duration x.mp4`.

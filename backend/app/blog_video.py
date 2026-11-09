@@ -2,7 +2,10 @@
 
 POST /api/admin/blog/video {title, excerpt, body, category, url, cover_url} -> {b64, type, duration, title}
 
-1. OpenAI writes a 5-part script (hook, 3 key points, call to action) from the post itself.
+RULE: every video is 8 seconds or less (MAX_SECONDS). Longer voiceovers are sped up slightly; if still too long,
+the video is refused.
+
+1. OpenAI writes a 3-part script (hook, 1 key point, call to action) from the post itself.
 2. OpenAI text-to-speech reads each part; each slide lasts as long as its voiceover.
 3. Pillow draws 720x1280 frames (cover image with slow zoom, brand colors, animated text), piped into ffmpeg.
 4. ffmpeg mixes the voiceover with a soft synthesized music bed and a swoosh on each slide change.
@@ -28,6 +31,7 @@ from .services import ApiError, openai_json, record_usage
 
 W, H, FPS = 720, 1280, 24
 MAX_BYTES = 1_850_000
+MAX_SECONDS = 8.0
 ASSETS = os.path.join(os.path.dirname(__file__), "assets")
 NAVY, NAVY2, RED, BLUE, WHITE = (11, 26, 51), (19, 40, 77), (193, 58, 42), (13, 94, 199), (255, 255, 255)
 _TTS_MODELS = ["gpt-4o-mini-tts", "tts-1"]
@@ -41,23 +45,23 @@ def _font(name: str, size: int) -> ImageFont.FreeTypeFont:
 
 def write_script(s: Settings, *, title: str, excerpt: str, body: str) -> dict:
     data = openai_json(s, system=(
-        "You write 25-second vertical videos (YouTube Shorts, TikTok) that promote a business blog post for "
+        "You write 7-second vertical videos (YouTube Shorts, TikTok) that promote a business blog post for "
         "WorldDigital.ai. Plain, friendly English for small business owners. Only use facts that are in the post: "
         "never invent numbers, results, prices, clients or guarantees."), user=(
         f"Blog post title: {title}\nSummary: {excerpt}\nPost text (start):\n{body[:3500]}\n\n"
         "Return JSON with:\n"
-        "- hook: on-screen headline, max 8 words\n"
-        "- points: exactly 3 on-screen key takeaways from the post, each max 7 words\n"
-        "- cta: on-screen call to action, max 6 words (e.g. 'Read the full guide')\n"
-        "- voice: exactly 5 voiceover lines in order (hook, point 1, point 2, point 3, call to action). Each line "
-        "8 to 16 words, spoken naturally. The last line tells viewers to read the full post on worlddigital.ai."),
+        "- hook: on-screen headline, max 6 words\n"
+        "- point: the single most useful takeaway from the post, on screen, max 6 words\n"
+        "- cta: on-screen call to action, max 4 words (e.g. 'Read the full guide')\n"
+        "- voice: exactly 3 very short voiceover lines in order (hook, point, call to action), max 6 words each, "
+        "15 words in total at most, so the whole video fits in 7 seconds. The last line points to worlddigital.ai."),
         max_tokens=700, temperature=0.5)
-    pts = [str(p).strip() for p in (data.get("points") or []) if str(p).strip()][:3]
-    voice = [str(v).strip() for v in (data.get("voice") or []) if str(v).strip()][:5]
+    pts = [str(data.get("point") or "").strip()] if str(data.get("point") or "").strip() else []
+    voice = [str(v).strip() for v in (data.get("voice") or []) if str(v).strip()][:3]
     hook, cta = str(data.get("hook") or title).strip(), str(data.get("cta") or "Read the full guide").strip()
-    if len(pts) != 3 or len(voice) != 5:
+    if len(pts) != 1 or len(voice) != 3:
         raise ApiError("bad video script", 502, "The video script could not be written. Please try again.")
-    return {"hook": hook[:70], "points": [p[:60] for p in pts], "cta": cta[:50], "voice": [v[:220] for v in voice]}
+    return {"hook": hook[:70], "points": [p[:60] for p in pts], "cta": cta[:40], "voice": [v[:80] for v in voice]}
 
 
 # ── 2. Voiceover ────────────────────────────────────────────────────────────
@@ -173,8 +177,8 @@ def _cover_card(cover: Image.Image | None) -> Image.Image | None:
 def _slides(script: dict, cover: Image.Image | None) -> list[dict]:
     big, mid, small = _font("Poppins-ExtraBold.ttf", 66), _font("Poppins-ExtraBold.ttf", 58), _font("Poppins-SemiBold.ttf", 34)
     out = [{"kind": "hook", "text": _text_layer([(script["hook"], big, WHITE)], W - 100), "card": _cover_card(cover)}]
-    for i, p in enumerate(script["points"]):
-        num = _text_layer([(f"{i + 1}", _font("Poppins-ExtraBold.ttf", 150), (255, 140, 110))], W - 100, 0)
+    for p in script["points"]:
+        num = _text_layer([("QUICK TIP", _font("Poppins-ExtraBold.ttf", 44), (255, 140, 110))], W - 100, 0)
         out.append({"kind": "point", "num": num, "text": _text_layer([(p, mid, WHITE)], W - 110)})
     out.append({"kind": "cta", "text": _text_layer([(script["cta"], big, WHITE)], W - 100),
                 "sub": _text_layer([("worlddigital.ai/blog", small, (159, 227, 180))], W - 100)})
@@ -213,7 +217,7 @@ def render_frames(script: dict, cover: Image.Image | None, durations: list[float
         lt, sl = t - starts[k], slides[k]
         fr = bg.copy().convert("RGBA")
         fr.alpha_composite(bar, (0, 60))
-        a = _ease(lt / 0.45)
+        a = _ease(lt / 0.3)
         dy = int((1 - a) * 70)
         if sl["kind"] == "hook":
             if sl["card"] is not None:
@@ -226,15 +230,12 @@ def render_frames(script: dict, cover: Image.Image | None, durations: list[float
             fr.alpha_composite(_fade(sl["text"], a), ((W - sl["text"].size[0]) // 2, ty + dy))
         elif sl["kind"] == "point":
             na = _ease(lt / 0.3)
-            fr.alpha_composite(_fade(sl["num"], na), ((W - sl["num"].size[0]) // 2, 380 + int((1 - na) * -40)))
+            fr.alpha_composite(_fade(sl["num"], na), ((W - sl["num"].size[0]) // 2, 500 + int((1 - na) * -40)))
             fr.alpha_composite(_fade(sl["text"], a), ((W - sl["text"].size[0]) // 2, 620 + dy))
-            for i in range(3):  # progress dots
-                ImageDraw.Draw(fr).ellipse((W // 2 - 50 + i * 40, 1120, W // 2 - 34 + i * 40, 1136),
-                                           fill=WHITE if i <= k - 1 else (90, 110, 140))
         else:
             fr.alpha_composite(_fade(sl["text"], a), ((W - sl["text"].size[0]) // 2, 470 + dy))
-            pa = _ease((lt - 0.3) / 0.4)
-            s = 0.9 + 0.1 * pa + (0.03 if (lt * 2) % 1 < 0.5 and lt > 1 else 0)
+            pa = _ease((lt - 0.15) / 0.3)
+            s = 0.9 + 0.1 * pa + (0.03 if (lt * 2) % 1 < 0.5 and lt > 0.8 else 0)
             p2 = pill.resize((int(pill.size[0] * s), int(pill.size[1] * s)))
             fr.alpha_composite(_fade(p2, pa), ((W - p2.size[0]) // 2, 760))
             fr.alpha_composite(_fade(sl["sub"], pa), ((W - sl["sub"].size[0]) // 2, 900))
@@ -261,6 +262,27 @@ def max_volume_db(path: str) -> float:
     return float(m.group(1)) if m and m.group(1) != "-inf" else -99.0
 
 
+def _fit_voice(tmp: str, raws: list[str]) -> tuple[list[float], list[str]]:
+    """Normalize each line (trim silence, 0.15 s pause) and make the whole video fit MAX_SECONDS."""
+    tail = 0.5  # last slide holds a moment after the voice
+    for tempo in (1.0, 1.12, 1.25):
+        durations, parts = [], []
+        for i, raw in enumerate(raws):
+            p = os.path.join(tmp, f"vo{i}_{int(tempo * 100)}.wav")
+            af = ("silenceremove=start_periods=1:start_threshold=-45dB,areverse,"
+                  "silenceremove=start_periods=1:start_threshold=-45dB,areverse,"
+                  + (f"atempo={tempo}," if tempo != 1.0 else "") + "apad=pad_dur=0.15")
+            if _ff("-i", raw, "-ar", "44100", "-ac", "2", "-af", af, p).returncode:
+                raise ApiError("voice convert failed", 502, "The voiceover could not be made.")
+            parts.append(p)
+            durations.append(_duration(p))
+        durations[-1] += tail
+        if sum(durations) <= MAX_SECONDS:
+            return durations, parts
+    raise ApiError(f"video too long ({sum(durations):.1f}s)", 502,
+                   f"The video came out longer than {MAX_SECONDS:g} seconds, so it was not used.")
+
+
 def make_video(s: Settings, *, title: str, excerpt: str, body: str, cover_url: str = "") -> dict:
     if not s.openai_api_key:
         raise ApiError("OPENAI_API_KEY missing", 503, "The video maker is being set up.")
@@ -278,14 +300,8 @@ def make_video(s: Settings, *, title: str, excerpt: str, body: str, cover_url: s
         for i, line in enumerate(script["voice"]):
             raw = os.path.join(tmp, f"raw{i}.wav")
             open(raw, "wb").write(speak(s, line))
-            p = os.path.join(tmp, f"vo{i}.wav")  # normalize: 44.1 kHz stereo, 0.35 s pause after each line
-            if _ff("-i", raw, "-ar", "44100", "-ac", "2", "-af", "apad=pad_dur=0.35", p).returncode:
-                raise ApiError("voice convert failed", 502, "The voiceover could not be made.")
-            parts.append(p)
-            durations.append(_duration(p))
-        durations[-1] += 1.2  # let the last slide breathe
-        if sum(durations) > 58:
-            raise ApiError("video too long", 502, "The video script came out too long. Please try again.")
+            parts.append(raw)
+        durations, parts = _fit_voice(tmp, parts)
         lst = os.path.join(tmp, "list.txt")
         open(lst, "w").write("".join(f"file '{p}'\n" for p in parts))
         vo = os.path.join(tmp, "vo.wav")

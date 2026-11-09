@@ -34,9 +34,9 @@ class Mocks:
     def chat(self, request):
         self.openai += 1
         user = json.loads(request.content)["messages"][1]["content"]
-        if "exactly 5 voiceover lines" in user:
-            out = {"hook": "Get found on Google Maps", "points": ["Claim your profile", "Ask for reviews", "Post every week"],
-                   "cta": "Read the full guide", "voice": [f"Voice line number {i} for the test video." for i in range(5)]}
+        if "exactly 3 very short voiceover lines" in user:
+            out = {"hook": "Get found on Google Maps", "point": "Ask happy customers for reviews",
+                   "cta": "Read the full guide", "voice": [f"Short voice line {i}." for i in range(3)]}
         elif "Write AI Ahmad's next reply" in user:
             out = {"reply": "Our SEO plan is $199.99 a month with no contract. See /ai-seo-pricing"}
         elif "seed search phrases" in user:
@@ -268,9 +268,9 @@ def test_chat_trims_history():
     assert len(msgs[-1]["content"]) == chat.MAX_CHARS
 
 
-def _tone_wav(request):
+def _tone_wav(request, seconds=1.6):
     import subprocess
-    wav = subprocess.run(["ffmpeg", "-loglevel", "error", "-f", "lavfi", "-i", "sine=frequency=330:duration=1.6",
+    wav = subprocess.run(["ffmpeg", "-loglevel", "error", "-f", "lavfi", "-i", f"sine=frequency=330:duration={seconds}",
                           "-ar", "24000", "-ac", "1", "-f", "wav", "-"], capture_output=True, check=True).stdout
     return httpx.Response(200, content=wav, headers={"content-type": "audio/wav"})
 
@@ -288,7 +288,7 @@ def test_blog_video_has_sound(env):
     import base64
     data = base64.b64decode(d["b64"])
     assert d["type"] == "video/mp4" and data[4:8] == b"ftyp" and len(data) < 1_850_000
-    assert d["max_volume_db"] > -30 and 5 < d["duration"] < 60
+    assert d["max_volume_db"] > -30 and 3 < d["duration"] <= 8.0
 
 
 @pytest.mark.skipif(not __import__("shutil").which("ffmpeg"), reason="ffmpeg not installed")
@@ -361,3 +361,14 @@ def test_backup_round_trip(env):
     job = db["tool_jobs"].find_one()
     assert fresh["tool_jobs"].find_one({"_id": job["_id"]})["created"] == job["created"]  # dates survive
     assert backup.restore(fresh, raw) == counts  # restoring twice is harmless
+
+
+@pytest.mark.skipif(not __import__("shutil").which("ffmpeg"), reason="ffmpeg not installed")
+def test_blog_video_refuses_over_8_seconds(env):
+    c, m = env
+    import respx as _r
+    with _r.mock(assert_all_called=False) as r2:
+        r2.post("https://openai.test/v1/chat/completions").mock(side_effect=m.chat)
+        r2.post("https://openai.test/v1/audio/speech").mock(side_effect=lambda req: _tone_wav(req, 3.4))
+        r = c.post("/api/admin/blog/video", json={"title": "Local SEO guide", "excerpt": "x", "body": "y"})
+    assert r.status_code == 503 and "8 seconds" in r.json()["error"]

@@ -79,7 +79,7 @@ def reply(s: Settings, messages: list[dict], facts: str = "") -> tuple[str, bool
              "features, statistics or partnerships that neither FACTS nor this text state:\n<website_detail>\n"
              + facts[:3500].replace("</website_detail", "") + "\n</website_detail>") if facts else ""
     data = openai_json(s, system=SYSTEM + extra, user="Conversation so far:\n" + convo + "\n\nWrite AI Ahmad's next reply.",
-                       max_tokens=600, temperature=0.4)
+                       max_tokens=600, temperature=0.4, effort="none")  # reply straight away, no long thinking
     text = str((data or {}).get("reply") or "").strip()
     if not text:
         raise ApiError("empty reply", 502, "Sorry, I couldn't answer that. Please try again or use the contact page.")

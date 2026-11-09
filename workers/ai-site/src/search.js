@@ -105,11 +105,19 @@ ${list ? `<ol class="sr-list">${list}</ol>` : `<p>Try other words, or one of the
 ${q ? `<script>(function(){var b=document.getElementById('sr-ask'),o=document.getElementById('sr-out');if(!b)return;
 function el(t,c,x){var e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e}
 b.addEventListener('click',function(){b.disabled=true;b.textContent='Thinking…';o.textContent='';
-fetch('/api/rag/answer',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:${JSON.stringify(q).replace(/</g, '\\u003c')}})})
-.then(function(r){return r.json()}).then(function(d){b.remove();if(d.error){o.appendChild(el('p','',d.error));return}
-o.appendChild(el('p','',d.answer||''));if(d.sources&&d.sources.length){var ol=el('ol');d.sources.forEach(function(s){var li=el('li'),a=el('a','',s.title||s.url);
-if(/^https:\\/\\/worlddigital\\.ai(\\/|$)/.test(s.url)){a.href=s.url.replace('https://worlddigital.ai','')||'/'}li.appendChild(a);ol.appendChild(li)});o.appendChild(el('p','','Sources:'));o.appendChild(ol)}})
-.catch(function(){b.disabled=false;b.textContent='Get an AI answer';o.appendChild(el('p','','Could not get an answer right now. Please try again.'))})})})();</script>` : ''}`;
+var p=el('p','');p.style.whiteSpace='pre-line';var got=false;
+function fail(m){b.disabled=false;b.textContent='Get an AI answer';if(!got){o.textContent='';o.appendChild(el('p','',m||'Could not get an answer right now. Please try again.'))}}
+function sources(d){if(!d.sources||!d.sources.length)return;var ol=el('ol');d.sources.forEach(function(s){var li=el('li'),a=el('a','',s.title||s.url);
+if(/^https:\\/\\/worlddigital\\.ai(\\/|$)/.test(s.url)){a.href=s.url.replace('https://worlddigital.ai','')||'/'}li.appendChild(a);ol.appendChild(li)});o.appendChild(el('p','','Sources:'));o.appendChild(ol)}
+function line(t){if(!t.trim())return;var d;try{d=JSON.parse(t)}catch(e){return}
+if(d.type==='text'){if(!got){got=true;b.remove();o.appendChild(p)}p.textContent+=d.text}
+else if(d.type==='done'){p.textContent=p.textContent.trim();sources(d)}else if(d.type==='error'){fail(d.error)}}
+fetch('/api/rag/answer-stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:${JSON.stringify(q).replace(/</g, '\\u003c')}})})
+.then(function(r){if(!r.ok||!r.body||!/ndjson/.test(r.headers.get('content-type')||'')){return r.json().catch(function(){return{}}).then(function(d){fail(d.error)})}
+var rd=r.body.getReader(),dec=new TextDecoder(),buf='';
+function pump(){return rd.read().then(function(x){if(x.done){if(buf)line(buf);return}buf+=dec.decode(x.value,{stream:true});var parts=buf.split('\\n');buf=parts.pop();parts.forEach(line);return pump()})}
+return pump()})
+.catch(function(){fail()})})})();</script>` : ''}`;
   const html = page({ path: '/search', title: q ? `${q} – Search | WorldDigital.ai` : 'Search | WorldDigital.ai', description: 'Search WorldDigital.ai products, services and guides.',
     noindex: true, body: CSS + body, cta: false, tools: false, prod });
   return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } });

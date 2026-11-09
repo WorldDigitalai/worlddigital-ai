@@ -40,15 +40,18 @@ def check_search(browser, base):
     assert links.count() >= 1, "no search results"
     hrefs = [links.nth(i).get_attribute("href") for i in range(links.count())]
     assert all(h.startswith("/") for h in hrefs), f"result links leave the site: {hrefs[:3]}"
-    first = hrefs[0]
     p.get_by_role("button", name="Get an AI answer").click()
-    p.wait_for_function("() => { const o = document.getElementById('sr-out'); return o && o.textContent.trim().length > 40 }", timeout=60000)
+    t0 = time.monotonic()
+    p.wait_for_function("() => { const o = document.getElementById('sr-out'); return o && o.textContent.trim().length > 0 }", timeout=60000)
+    first = time.monotonic() - t0
+    p.wait_for_function("() => document.querySelector('#sr-out ol li a')", timeout=60000)
+    full = time.monotonic() - t0
     out = p.locator("#sr-out").inner_text()
     assert "could not get an answer" not in out.lower(), "AI answer failed"
     assert p.locator("#sr-out ol li a").count() >= 1, "AI answer has no sources"
     assert not errors, f"JavaScript error: {errors[0]}"
     p.context.close()
-    return f"{len(hrefs)} results (first {first}); AI answer with sources"
+    return f"{len(hrefs)} results (top: {hrefs[0]}); AI answer with sources, first words {first:.1f}s, complete {full:.1f}s"
 
 
 def check_chat(browser, base):

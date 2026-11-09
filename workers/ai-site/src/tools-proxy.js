@@ -89,6 +89,30 @@ export async function ragAnswer(req, env) {
   }
 }
 
+// Streamed version of the answer API: the answer arrives as it is written (NDJSON lines, see backend
+// /api/rag/answer-stream), so visitors see the first words in under a second. Same limits as /api/rag/answer.
+export async function ragAnswerStream(req, env) {
+  const out = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { ...JSON_HEADERS, ...CORS, 'X-Content-Type-Options': 'nosniff' } });
+  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
+  if (req.method !== 'POST') return out({ error: 'Use POST with JSON: {"query": "your question"}' }, 405);
+  if (!env.TOOLS_API_URL) return out({ error: 'The knowledge API is being set up. Please try again later.' }, 503);
+  let b; try { b = JSON.parse((await req.text()).slice(0, 4000)); } catch { return out({ error: 'Send JSON: {"query": "your question"}' }, 400); }
+  const query = String((b && (b.query || b.q)) || '').trim();
+  if (!query) return out({ error: 'Send JSON: {"query": "your question"}' }, 400);
+  if (query.length > 500) return out({ error: 'Please keep the question under 500 characters.' }, 400);
+  try {
+    const res = await fetch(env.TOOLS_API_URL.replace(/\/$/, '') + '/api/rag/answer-stream', {
+      method: 'POST', signal: AbortSignal.timeout(60000),
+      headers: { 'x-internal-token': env.TOOLS_API_TOKEN || '', 'content-type': 'application/json', 'cf-connecting-ip': req.headers.get('CF-Connecting-IP') || '' },
+      body: JSON.stringify({ query }),
+    });
+    if (!res.ok) { let d = {}; try { d = await res.json(); } catch {} return out({ error: d.error || 'Could not answer right now.' }, res.status); }
+    return new Response(res.body, { status: 200, headers: { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', ...CORS } });
+  } catch {
+    return out({ error: 'The knowledge API is busy right now. Please try again in a minute.' }, 502);
+  }
+}
+
 // Stripe webhook: Stripe calls https://worlddigital.ai/api/stripe/webhook. The raw body and Stripe-Signature are passed
 // through unchanged (the backend verifies the signature and re-checks the payment with Stripe before unlocking).
 export async function stripeWebhook(req, env) {

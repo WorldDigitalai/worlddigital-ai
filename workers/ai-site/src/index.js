@@ -8,7 +8,7 @@ import { handleAdmin, sendEmail, sha256 } from './admin.js';
 import { ROBOTS, LLMS, LLMS_FULL, UPDATED } from './crawl-text.js';
 import { SOCIAL_UPDATED } from './social.js';
 import { INDEXNOW_KEY, PROD_HOSTS, isAppPath } from './routing.js';
-import { toolsProxy, ragAnswer, stripeWebhook } from './tools-proxy.js';
+import { toolsProxy, ragAnswer, ragAnswerStream, stripeWebhook } from './tools-proxy.js';
 import { withTool } from './tools-widget.js';
 import { humanOk } from './human.js';
 import { internalAi } from './ai.js';
@@ -198,6 +198,7 @@ async function handle(req, env, ctx) {
   if (lower.startsWith('/api/tools/')) return toolsProxy(req, env, url);
   // Public knowledge API (answers from our own pages, with sources): docs/rag.md
   if (lower === '/api/rag/answer') return ragAnswer(req, env);
+  if (lower === '/api/rag/answer-stream') return ragAnswerStream(req, env);
   if (lower === '/api/stripe/webhook') return stripeWebhook(req, env);
   // Workers AI for the knowledge base (embeddings, reranking): backend only, token-checked (src/ai.js)
   if (lower === '/api/internal/ai') return internalAi(req, env);

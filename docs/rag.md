@@ -78,6 +78,18 @@ worlddigital.us is deliberately not indexed.
   questions (hit rate in the top 6, MRR, search time). Nothing the website uses changes. `{"action": "cleanup"}`
   removes the test data.
 
+## Answer speed
+
+- Answers are written as a stream: `POST /api/rag/answer-stream` (NDJSON: `{"type":"text"}` pieces, then
+  `{"type":"done","sources",...}`), used by "Get an AI answer" on `/search`. Visitors see the first words in about
+  a second instead of waiting for the whole answer. `/api/rag/answer` returns the same answer in one piece.
+- The model writes a status line first (`COVERED: yes|no`, never shown), then a short answer (1 to 3 sentences or up
+  to 5 bullets, 450 tokens max), with reasoning effort "none" so it starts writing straight away.
+- Public answers are remembered for 24 hours (`rag_answers`, keyed by the normalised question and the content
+  version). Any indexed page change bumps the content version, so a remembered answer never outlives the page.
+- The backend keeps one instance running (`--min-instances=1`, `--cpu-boost`): no slow first answer after a quiet spell.
+- Quality test and admin page report "First words shown" and "Full answer written" (average and slowest 5%).
+
 ## Website search (`/search`)
 
 - Header search icon (and "Search" in the mobile menu) opens `worlddigital.ai/search?q=…`, rendered by the site

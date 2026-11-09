@@ -96,6 +96,13 @@ class World:
                 out = {"answer": "I don't know.", "used": [], "covered": False}
         else:
             out = {"reply": "All 10 keywords are $9.99: /tools", "covered": "retrieved for this question" in sysmsg}
+        if b.get("stream"):  # answers are streamed as text: "COVERED: yes|no" line, then the answer
+            text = f"COVERED: {'yes' if out['covered'] else 'no'}\n" + (
+                out["answer"] if out["covered"] else "The available information does not cover this.")
+            pieces = [text[i:i + 7] for i in range(0, len(text), 7)]
+            sse = "".join(f"data: {json.dumps({'choices': [{'delta': {'content': p}}]})}\n\n" for p in pieces)
+            sse += f"data: {json.dumps({'choices': [], 'usage': {'prompt_tokens': 100, 'completion_tokens': 20}})}\n\ndata: [DONE]\n\n"
+            return httpx.Response(200, text=sse, headers={"content-type": "text/event-stream"})
         return httpx.Response(200, json={"choices": [{"message": {"content": json.dumps(out)}}]})
 
 
@@ -386,7 +393,7 @@ def test_evaluation_metrics(env, monkeypatch, tmp_path):
 def test_every_cited_number_is_listed(env, monkeypatch):
     c, w = env
     c.post("/api/admin/rag/index", headers=H, json={})
-    monkeypatch.setattr(rag_mod, "openai_json", lambda s, **kw: {"answer": "Yes [3], and also [1]. Not [99].", "used": [1], "covered": True})
+    monkeypatch.setattr(rag_mod, "openai_stream", lambda s, **kw: iter(["COVERED: yes\nYes [3], ", "and also [1]. Not [99]."]))
     a = c.post("/api/admin/rag/ask", headers=H, json={"q": "Epic FHIR keyword research"}).json()
     assert [s["n"] for s in a["sources"]] == [3, 1] or sorted({s["n"] for s in a["sources"]}) >= [1, 3]
 
@@ -485,3 +492,44 @@ def test_snippet():
     sn = rag_mod.snippet(t, "keyword research")
     assert sn.startswith("…") and "Keyword research costs $9.99 for all ten keywords." in sn and "**" not in sn and "](/" not in sn
     assert rag_mod.snippet("Short text.", "nothing") == "Short text."
+
+
+def test_streamed_answer_first_words_cache_and_limits(env, monkeypatch):
+    c, w = env
+    c.post("/api/admin/rag/index", headers=H, json={})
+    hdr = {**H, "cf-connecting-ip": "203.0.113.9"}
+    r = c.post("/api/rag/answer-stream", headers=hdr, json={"query": "How much is keyword research 9.99?"})
+    assert r.status_code == 200 and r.headers["content-type"].startswith("application/x-ndjson")
+    evs = [json.loads(l) for l in r.text.splitlines() if l.strip()]
+    texts = [e["text"] for e in evs if e["type"] == "text"]
+    done = evs[-1]
+    assert len(texts) > 1, "the answer arrives in pieces"
+    assert "".join(texts).strip() == "All 10 keywords cost $9.99; 3 are free [1]." and "COVERED" not in "".join(texts)
+    assert done["type"] == "done" and done["covered"] and done["sources"] and done["first_ms"] is not None and not done["cached"]
+    assert "hits" not in done
+    calls = len(w.prompts)
+    # same question again (different wording/case): remembered, no new AI call
+    again = [json.loads(l) for l in c.post("/api/rag/answer-stream", headers=hdr, json={"query": "how much is keyword research 9.99"}).text.splitlines()]
+    assert again[-1]["cached"] and again[0]["text"].startswith("All 10 keywords") and len(w.prompts) == calls
+    assert c.post("/api/rag/answer", headers=hdr, json={"query": "How much is keyword research 9.99?"}).json()["cached"]
+    # site content changes: the remembered answer is not used any more
+    rag_mod.Rag(main.settings(), db())._bump_content()
+    third = [json.loads(l) for l in c.post("/api/rag/answer-stream", headers=hdr, json={"query": "How much is keyword research 9.99?"}).text.splitlines()]
+    assert not third[-1]["cached"] and len(w.prompts) == calls + 1
+    # short answers by design
+    assert "1 to 3 plain sentences" in w.prompts[-1]
+    # not covered: the status line says so and no sources are listed
+    neg = [json.loads(l) for l in c.post("/api/rag/answer-stream", headers=hdr, json={"query": "Do you sell used boats?"}).text.splitlines()]
+    assert neg[-1]["covered"] is False and neg[-1]["sources"] == []
+    assert c.post("/api/rag/answer-stream", json={"query": "x"}).status_code in (401, 403)
+
+
+def test_status_line_missing_still_parsed(env, monkeypatch):
+    c, w = env
+    c.post("/api/admin/rag/index", headers=H, json={})
+    monkeypatch.setattr(rag_mod, "openai_stream", lambda s, **kw: iter(["The available information does not ", "cover that."]))
+    a = c.post("/api/admin/rag/ask", headers=H, json={"q": "Do you sell used boats?"}).json()
+    assert a["answer"].startswith("The available information") and a["covered"] is False
+    monkeypatch.setattr(rag_mod, "openai_stream", lambda s, **kw: iter(["COVERED: yes\nWe build websites [1].\nNot documented: pricing for boats."]))
+    a = c.post("/api/admin/rag/ask", headers=H, json={"q": "websites and boat pricing"}).json()
+    assert a["covered"] and a["undocumented"] == "pricing for boats." and a["first_ms"] is not None

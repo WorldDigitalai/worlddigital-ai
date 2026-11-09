@@ -33,7 +33,7 @@ import uuid
 from functools import lru_cache
 
 from fastapi import BackgroundTasks, Depends, FastAPI, Request
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from starlette.concurrency import run_in_threadpool
 from pymongo import MongoClient
 
@@ -621,6 +621,40 @@ async def rag_site_search(request: Request):
     ip = client_ip(request)
     semantic = store().hit("search:" + ip, s.rag_search_daily_limit) and store().hit("search:all", s.rag_search_daily_total)
     return json_ok(await run_in_threadpool(_rag_call, lambda: rag().site_search(q, semantic=semantic)))
+
+
+@app.post("/api/rag/answer-stream", dependencies=[Depends(guard)])
+async def rag_api_answer_stream(request: Request):
+    """Same as /api/rag/answer, written as it is generated: one JSON object per line (NDJSON):
+    {"type":"text","text":"..."} pieces, then {"type":"done","sources":[...],"covered":true,...}."""
+    s = settings()
+    b = await body_of(request)
+    q = _rag_query(b)
+    ip = client_ip(request)
+    if not store().hit("rag:" + ip, s.rag_api_daily_limit) or not store().hit("rag:all", s.rag_api_daily_total):
+        raise ApiError("rate limited", 429, "Daily question limit reached. Please try again tomorrow, or see https://worlddigital.ai/contact.")
+    filters = _rag_filters(b)
+
+    def events():
+        text = ""
+        try:
+            for ev in rag().answer_stream(q, 6, ["ai"], public=True, **filters):
+                if ev["type"] == "text":
+                    text += ev["text"]
+                    yield json.dumps(ev) + "\n"
+                else:
+                    ev.pop("hits", None)
+                    ev.pop("search_ms", None)
+                    yield json.dumps(ev) + "\n"
+                    rag().log_question(q, text, ev["covered"], [{"url": x["url"]} for x in ev["sources"]], channel="api")
+        except ApiError as e:
+            yield json.dumps({"type": "error", "error": e.public or "Could not answer right now."}) + "\n"
+        except Exception:  # noqa: BLE001
+            log.exception("answer stream failed")
+            yield json.dumps({"type": "error", "error": "Could not answer right now. Please try again."}) + "\n"
+
+    return StreamingResponse(events(), media_type="application/x-ndjson",
+                             headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"})
 
 
 @app.post("/api/rag/answer", dependencies=[Depends(guard)])

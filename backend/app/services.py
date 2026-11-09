@@ -62,6 +62,59 @@ def _caller() -> str:
     return f"{f.f_globals.get('__name__', '').rsplit('.', 1)[-1]}.{f.f_code.co_name}"
 
 
+_effort_refused: set[tuple[str, str]] = set()   # (model, effort) pairs OpenAI rejected: not sent again
+
+
+def openai_stream(s: Settings, *, system: str, user: str, max_tokens: int = 500, temperature: float = 0.2,
+                  timeout: float = 60, effort: str | None = "none", feature: str | None = None):
+    """Yields the model's text as it is written (chat completions with stream=True), so callers can show the first
+    words in well under a second. Reasoning models get reasoning_effort (default "none": answer straight away);
+    a model that does not take it is asked again without."""
+    feature = feature or _caller()
+    if not s.openai_api_key:
+        raise ApiError("OPENAI_API_KEY missing", 503, "The generator is being set up. Please try again later.")
+    model = (_working_model or [s.openai_model])[0]
+    reasoning = model.startswith(("gpt-5", "o1", "o3", "o4"))
+    body = {"model": model, "stream": True, "stream_options": {"include_usage": True},
+            "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
+    if reasoning:
+        body["max_completion_tokens"] = max_tokens * 4
+        if effort and (model, effort) not in _effort_refused:
+            body["reasoning_effort"] = effort
+    else:
+        body.update(max_tokens=max_tokens, temperature=temperature)
+    headers = {"Authorization": f"Bearer {s.openai_api_key}"}
+    for _ in range(3):
+        with httpx.stream("POST", f"{s.openai_base}/v1/chat/completions", headers=headers, json=body, timeout=timeout) as r:
+            if r.status_code == 400:
+                r.read()
+                if "reasoning_effort" in r.text and "reasoning_effort" in body:
+                    _effort_refused.add((model, body.pop("reasoning_effort")))  # this model does not take this value
+                    continue
+            if r.status_code >= 400:
+                r.read()
+                _json(r, "OpenAI")  # raises with the error
+            usage = None
+            for line in r.iter_lines():
+                if not line.startswith("data: "):
+                    continue
+                data = line[6:].strip()
+                if data == "[DONE]":
+                    break
+                try:
+                    ev = json.loads(data)
+                except ValueError:
+                    continue
+                usage = ev.get("usage") or usage
+                for ch in ev.get("choices") or []:
+                    piece = (ch.get("delta") or {}).get("content")
+                    if piece:
+                        yield piece
+            record_usage(feature, model, usage, fallback=model != s.openai_model)
+            return
+    raise ApiError("OpenAI stream failed", 502)
+
+
 def openai_json(s: Settings, *, system: str, user: str, max_tokens: int = 2500, temperature: float = 0.4,
                 timeout: float = 90, effort: str | None = None, feature: str | None = None) -> dict:
     feature = feature or _caller()
@@ -75,14 +128,14 @@ def openai_json(s: Settings, *, system: str, user: str, max_tokens: int = 2500, 
                 "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
         if reasoning:
             body["max_completion_tokens"] = max_tokens * 4  # room for reasoning tokens
-            if effort:
+            if effort and (model, effort) not in _effort_refused:
                 body["reasoning_effort"] = effort
         else:
             body.update(max_tokens=max_tokens, temperature=temperature)
         res = httpx.post(f"{s.openai_base}/v1/chat/completions", headers={"Authorization": f"Bearer {s.openai_api_key}"},
                          json=body, timeout=timeout)
         if res.status_code == 400 and "reasoning_effort" in res.text and "reasoning_effort" in body:
-            body.pop("reasoning_effort")  # this model does not take it; ask again without
+            _effort_refused.add((model, body.pop("reasoning_effort")))  # this model does not take it; ask again without
             res = httpx.post(f"{s.openai_base}/v1/chat/completions", headers={"Authorization": f"Bearer {s.openai_api_key}"},
                              json=body, timeout=timeout)
         if res.status_code in (403, 404) and "model" in res.text:

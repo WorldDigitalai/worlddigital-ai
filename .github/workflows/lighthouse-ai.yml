@@ -72,8 +72,10 @@ jobs:
           jq -rs '[.[] as $r | ($r.finalDisplayedUrl|sub("https://worlddigital.ai";"")) as $u | ($r.audits["inspector-issues"].details.items // [])[] | "\($u) \(.issueType): " + ([(.subItems.items // [])[] | (.url // .violatedDirective // .blockedURL // (.|tostring))] | unique | join(" , ") | .[0:300])] | unique | .[0:8][] | "::notice title=LH100 issue '"$d"'::" + .' reports/*-$d.report.json || true
           { echo "## Lighthouse (${{ matrix.device }})"; cat summary.md; } >> "$GITHUB_STEP_SUMMARY"
           cat summary.md
+      # Full HTML reports are ~13 MB per run: keep a week, and never fail the check over storage
       - uses: actions/upload-artifact@v5
+        continue-on-error: true
         with:
           name: lighthouse-${{ matrix.device }}
           path: reports/
-          retention-days: 30
+          retention-days: 7

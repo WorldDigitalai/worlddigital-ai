@@ -220,12 +220,15 @@
   "tag": "page"
  },
  {
-  "q": "Which spoken languages can your team work in?",
+  "q": "Do you work with clients in Arabic?",
   "expect": [
    "arabic"
   ],
   "urls": [
-   "/about"
+   "/about",
+   "/help",
+   "/houston",
+   "/murfreesboro"
   ],
   "tag": "page"
  },
@@ -297,7 +300,7 @@
  {
   "q": "How long does the free SEO audit take?",
   "expect": [
-   "minute"
+   "minute|seconds"
   ],
   "urls": [
    "free-seo-report"

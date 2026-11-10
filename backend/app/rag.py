@@ -38,6 +38,7 @@ from urllib.parse import urlparse
 import httpx
 
 from .config import Settings
+from . import services
 from .services import ApiError, _fetch_page, openai_json, openai_stream, record_usage
 
 log = logging.getLogger("worlddigital.rag")
@@ -58,6 +59,9 @@ RERANK_MODEL = "@cf/baai/bge-reranker-base"
 RERANK = os.environ.get("RAG_RERANK", "") == "1"   # rerank search results with RERANK_MODEL (Workers AI)
 # Written answers skip the reranker by default: the model reads all top sources anyway, and it saves ~0.6 s
 RERANK_ANSWERS = os.environ.get("RAG_RERANK_ANSWERS", "") == "1"
+ANSWER_MODEL = os.environ.get("RAG_ANSWER_MODEL", "")            # empty: the site's main model (OPENAI_MODEL)
+ANSWER_SOURCES = int(os.environ.get("RAG_ANSWER_SOURCES") or 5)  # passages the model reads per answer
+ANSWER_CHARS = int(os.environ.get("RAG_ANSWER_CHARS") or 1200)   # characters per passage
 ALT_MODEL = os.environ.get("RAG_COMPARE_MODEL", "@cf/baai/bge-m3")  # side-by-side test (Rag.compare)
 
 # Chunking (about 4 characters per token)
@@ -109,7 +113,7 @@ def _post_retry(url: str, *, headers: dict, payload: dict, timeout: float = 60) 
     r = None
     for attempt in range(5):
         try:
-            r = httpx.post(url, headers=headers, json=payload, timeout=timeout)
+            r = services.http.post(url, headers=headers, json=payload, timeout=timeout)
         except httpx.TransportError:
             r = None
         else:
@@ -953,7 +957,7 @@ class Rag:
 
     def _answer_prompt(self, question: str, hits: list[dict], who: str) -> tuple[str, str]:
         safe = lambda t: str(t).replace("</source", "<\\/source").replace("<source", "<\\source")  # noqa: E731
-        ctx = "\n".join(f'<source n="{i + 1}" title="{safe(h["title"])}" url="{h["url"]}">\n{safe(h["text"][:1500])}\n</source>'
+        ctx = "\n".join(f'<source n="{i + 1}" title="{safe(h["title"])}" url="{h["url"]}">\n{safe(h["text"][:ANSWER_CHARS])}\n</source>'
                         for i, h in enumerate(hits))
         system = (
             f"You are the {who} AI knowledge assistant. Answer questions using ONLY the numbered sources: retrieved {who} "
@@ -989,8 +993,8 @@ class Rag:
         raw = json.dumps([self._content_version(), srcs, norm, filters], sort_keys=True)
         return hashlib.sha256(raw.encode()).hexdigest()
 
-    def answer_stream(self, question: str, k: int = 6, sources=None, *, types=None, categories=None, language=None,
-                      allow_internal: bool = False, public: bool = False, fresh: bool = False):
+    def answer_stream(self, question: str, k: int | None = None, sources=None, *, types=None, categories=None, language=None,
+                      allow_internal: bool = False, public: bool = False, fresh: bool = False, model: str | None = None):
         """Yields {"type": "text", "text": ...} pieces as the answer is written, then one {"type": "done", ...} with
         sources, covered, undocumented and timings (ms: total, first_ms: until the first words)."""
         t0 = time.monotonic()
@@ -1006,7 +1010,7 @@ class Rag:
                 yield {"type": "done", "sources": hit["sources"], "covered": hit["covered"], "undocumented": hit.get("undocumented", ""),
                        "cached": True, "ms": ms, "first_ms": ms}
                 return
-        hits = self.search(question, k, srcs, types=types, categories=categories, language=language, allow_internal=allow_internal,
+        hits = self.search(question, k or ANSWER_SOURCES, srcs, types=types, categories=categories, language=language, allow_internal=allow_internal,
                            rerank_hits=RERANK_ANSWERS, fresh=fresh)
         search_ms = _ms(t0)
         tenant = srcs[0].startswith("tenant:")
@@ -1017,7 +1021,8 @@ class Rag:
             return
         system, user = self._answer_prompt(question, hits, who)
         head, text, first_ms, covered = "", "", None, None
-        for piece in openai_stream(self.s, system=system, user=user, max_tokens=self.ANSWER_TOKENS, feature="rag.answer"):
+        for piece in openai_stream(self.s, system=system, user=user, max_tokens=self.ANSWER_TOKENS, feature="rag.answer",
+                                   model=model or ANSWER_MODEL or None):
             if covered is None:  # hold back the status line, then stream the answer
                 head += piece
                 if "\n" not in head and len(head) < 24:
@@ -1070,11 +1075,11 @@ class Rag:
         yield {"type": "done", "sources": srcl, "covered": covered, "undocumented": undoc, "cached": False,
                "ms": ms, "first_ms": first_ms, "search_ms": search_ms, "timing": dict(getattr(self._local, "timing", {})), "hits": hits}
 
-    def answer(self, question: str, k: int = 6, sources=None, *, types=None, categories=None, language=None,
-               allow_internal: bool = False, public: bool = False, fresh: bool = False) -> dict:
+    def answer(self, question: str, k: int | None = None, sources=None, *, types=None, categories=None, language=None,
+               allow_internal: bool = False, public: bool = False, fresh: bool = False, model: str | None = None) -> dict:
         text, done = "", {}
         for ev in self.answer_stream(question, k, sources, types=types, categories=categories, language=language,
-                                     allow_internal=allow_internal, public=public, fresh=fresh):
+                                     allow_internal=allow_internal, public=public, fresh=fresh, model=model):
             if ev["type"] == "text":
                 text += ev["text"]
             else:
@@ -1119,7 +1124,7 @@ class Rag:
                 "questions": [{**r, "at": _iso(r["at"]), "expires_at": None} for r in rows]}
 
     # answer-quality tests ------------------------------------------------------
-    def evaluate(self) -> dict:
+    def evaluate(self, model: str | None = None) -> dict:
         """Golden questions. Per question: expected page retrieved (and at which rank), expected page cited,
         expected words in the answer, and for questions we have no answer to, that the assistant says so."""
         cases = json.loads(EVAL_FILE.read_text())
@@ -1129,7 +1134,7 @@ class Rag:
         def ask(c):
             t0 = time.monotonic()
             try:
-                return self.answer(c["q"], sources=c.get("sources") or ["ai"], fresh=True), _ms(t0)
+                return self.answer(c["q"], sources=c.get("sources") or ["ai"], fresh=True, model=model), _ms(t0)
             except ApiError as e:
                 return e, _ms(t0)
 
@@ -1182,7 +1187,7 @@ class Rag:
         for c in [c for c in cases if not c.get("negative")][:SPEED_SAMPLE]:
             t0 = time.monotonic()
             try:
-                a = self.answer(c["q"], sources=c.get("sources") or ["ai"], fresh=True)
+                a = self.answer(c["q"], sources=c.get("sources") or ["ai"], fresh=True, model=model)
             except ApiError:
                 continue
             lat.append(_ms(t0))

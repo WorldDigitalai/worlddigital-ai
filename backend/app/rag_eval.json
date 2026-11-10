@@ -1111,5 +1111,42 @@
   "q": "Can you fix my car's transmission?",
   "negative": true,
   "tag": "trick"
+ },
+ {
+  "q": "Where can I find you on social media?",
+  "expect": [
+   "linkedin",
+   "instagram"
+  ],
+  "urls": [
+   "/help",
+   "/about",
+   "/social"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "Where can I see your Google reviews?",
+  "expect": [
+   "google business profile|google"
+  ],
+  "urls": [
+   "/help",
+   "/about",
+   "/testimonials"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "Are you on TikTok?",
+  "expect": [
+   "tiktok"
+  ],
+  "urls": [
+   "/help",
+   "/about",
+   "/social"
+  ],
+  "tag": "reworded"
  }
 ]

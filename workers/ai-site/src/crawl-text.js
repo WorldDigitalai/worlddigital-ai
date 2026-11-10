@@ -122,6 +122,7 @@ Last updated: ${UPDATED}
 - Email: support@worlddigital.ai
 - Phone: (832) 834-0680
 - Contact form: https://worlddigital.ai/contact
+- Official profiles: Google Business Profile: https://share.google/FB4831wKavklYkwE8; LinkedIn: https://www.linkedin.com/company/103999920; Facebook: https://www.facebook.com/270977466108280; Instagram: https://www.instagram.com/worlddigitalai; X: https://x.com/Worlddigitalai; YouTube: https://www.youtube.com/channel/UCQnMWxPXt_OyldvmKizBJNA; TikTok: https://www.tiktok.com/@worlddigitalai; Snapchat: https://snapchat.com/add/worlddigitalai
 - Founder: Ahmad Awwad, digital marketing strategist; MBA in Strategic Marketing Analytics (in progress) and Bachelor's in Integrated Studies, Middle Tennessee State University; Google Digital Marketing & E-commerce and HubSpot Academy certifications. Personal site: https://worlddigital.us
 - Trust: BBB A+ rated; Google Business Profile rated 5.0
 

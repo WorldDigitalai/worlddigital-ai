@@ -73,3 +73,18 @@ test('internal AI endpoint: token, model allowlist, embed and rerank', async () 
   const r = await (await post({ op: 'rerank', query: 'q', texts: ['x', 'y'] })).json();
   assert.deepEqual(r.scores, [0.2, 0.9]);
 });
+
+test('official profile links are the same everywhere (footer, structured data, About, Help, llms.txt)', async () => {
+  const { SOCIAL } = await import('../src/layout.js');
+  const { readFile } = await import('node:fs/promises');
+  const about = await readFile(new URL('../src/pages/about.html', import.meta.url), 'utf8');
+  const help = await readFile(new URL('../src/pages/help.html', import.meta.url), 'utf8');
+  const llms = await readFile(new URL('../src/crawl-text.js', import.meta.url), 'utf8');
+  const layout = await readFile(new URL('../src/layout.js', import.meta.url), 'utf8');
+  assert.equal(SOCIAL.length, 8);
+  for (const [name, url] of SOCIAL) {
+    for (const [where, text] of [['about', about], ['help', help], ['llms', llms]]) assert.ok(text.includes(url), `${name} missing on ${where}`);
+    if (name !== 'Google Business Profile' && name !== 'Snapchat') assert.ok(layout.split(url).length >= 3, `${name} not in footer`);
+  }
+  assert.ok(!/facebook\.com\/worlddigitalai|youtube\.com\/@worlddigitalai|company\/worlddigitalai/.test(layout + about + help), 'old unverified links remain');
+});

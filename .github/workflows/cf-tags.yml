@@ -18,6 +18,7 @@ permissions:
 jobs:
   tags:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     env:
       CF: ${{ secrets.CLOUDFLARE_ZONE_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
       ZONE: 44cabb00d59301e37d10f9e0e2387111

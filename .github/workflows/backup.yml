@@ -16,6 +16,7 @@ permissions:
 jobs:
   backup:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     env:
       TOKEN: ${{ secrets.TOOLS_API_TOKEN }}
       API: https://worlddigital-ai-api-250920469327.us-central1.run.app

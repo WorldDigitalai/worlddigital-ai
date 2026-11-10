@@ -24,7 +24,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
         with: { python-version: "3.12" }
-      - run: pip install -q playwright==1.48.0 && python -m playwright install --with-deps chromium >/dev/null
+      - run: pip install -q playwright==1.48.0 && { timeout 420 python -m playwright install --with-deps chromium >/dev/null || { echo "::warning::browser install slow or failed, retrying once"; sleep 20; timeout 600 python -m playwright install --with-deps chromium >/dev/null; }; }
       - name: Test features
         env:
           ONLY: ${{ inputs.only }}

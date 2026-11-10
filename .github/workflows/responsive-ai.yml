@@ -18,11 +18,12 @@ jobs:
   responsive:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-24.04   # pinned: Playwright cannot install its browser libraries on ubuntu-latest (26.04) yet
+    timeout-minutes: 40   # a stuck step (e.g. package mirror) can otherwise hang for 6 hours
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
         with: { python-version: "3.12" }
-      - run: pip install -q playwright==1.48.0 && python -m playwright install --with-deps chromium >/dev/null
+      - run: pip install -q playwright==1.48.0 && { timeout 420 python -m playwright install --with-deps chromium >/dev/null || { echo "::warning::browser install slow or failed, retrying once"; sleep 20; timeout 600 python -m playwright install --with-deps chromium >/dev/null; }; }
       - name: Check every page at 9 sizes
         env:
           PAGES: ${{ inputs.pages }}

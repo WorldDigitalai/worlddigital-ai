@@ -15,6 +15,7 @@ jobs:
   lighthouse:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-24.04   # pinned: Playwright cannot install its browser libraries on ubuntu-latest (26.04) yet
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:

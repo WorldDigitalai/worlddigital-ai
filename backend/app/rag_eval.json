@@ -1,25 +1,1111 @@
 [
-  {"q": "What is WorldDigital.ai?", "expect": ["software"]},
-  {"q": "How do your software products work?", "expect": [], "urls": ["/tools", "/free-seo-report", "/services/keyword-research", "/services/content-marketing"]},
-  {"q": "What advertising platforms do you support?", "expect": ["google", "meta|facebook"], "urls": ["ads", "/services"]},
-  {"q": "Do you provide AI SEO services?", "expect": ["seo"], "urls": ["seo", "geo", "/services"]},
-  {"q": "How do you help small businesses?", "expect": []},
-  {"q": "What services do you offer?", "expect": [], "urls": ["/services"]},
-  {"q": "What are the features of your products?", "expect": [], "urls": ["/tools", "/free-seo-report", "/services/keyword-research", "/services/content-marketing"]},
-  {"q": "What topics does your blog cover?", "expect": [], "urls": ["/blog"]},
-  {"q": "How much does keyword research cost?", "expect": ["9.99"], "urls": ["keyword-research", "/tools"]},
-  {"q": "How many keywords do I get for free?", "expect": ["3"], "urls": ["keyword-research", "/tools"]},
-  {"q": "What does the content generator cost?", "expect": ["24.99"], "urls": ["content", "/tools"]},
-  {"q": "How much is the SEO and AI search plan per month?", "expect": ["199.99"]},
-  {"q": "Is there a long-term contract for the SEO plan?", "expect": ["contract"]},
-  {"q": "Is the SEO report free?", "expect": ["free"], "urls": ["free-seo-report", "/tools"]},
-  {"q": "Can you integrate with Epic using FHIR?", "expect": ["fhir"], "urls": ["ehr-emr-integration"]},
-  {"q": "Do you build custom software and web apps?", "expect": ["custom"], "urls": ["custom-software"]},
-  {"q": "Where are your offices or hubs?", "expect": ["houston", "murfreesboro"]},
-  {"q": "Do you work with businesses in Canada?", "expect": ["canada"]},
-  {"q": "What is generative engine optimization?", "expect": ["ai"], "urls": ["generative-engine-optimization", "/geo"]},
-  {"q": "How do I contact support?", "expect": ["support@worlddigital.ai"]},
-  {"q": "Do you sell used boats?", "negative": true},
-  {"q": "Can you file my personal income tax return?", "negative": true},
-  {"q": "Do you sell mobile phone plans?", "negative": true}
+ {
+  "q": "What is WorldDigital.ai?",
+  "expect": [
+   "software"
+  ],
+  "tag": "core"
+ },
+ {
+  "q": "How do your software products work?",
+  "expect": [],
+  "urls": [
+   "/tools",
+   "/free-seo-report",
+   "/services/keyword-research",
+   "/services/content-marketing"
+  ],
+  "tag": "core"
+ },
+ {
+  "q": "What advertising platforms do you support?",
+  "expect": [
+   "google",
+   "meta|facebook"
+  ],
+  "urls": [
+   "ads",
+   "/services"
+  ],
+  "tag": "core"
+ },
+ {
+  "q": "Do you provide AI SEO services?",
+  "expect": [
+   "seo"
+  ],
+  "urls": [
+   "seo",
+   "geo",
+   "/services"
+  ],
+  "tag": "core"
+ },
+ {
+  "q": "How do you help small businesses?",
+  "expect": [],
+  "tag": "core"
+ },
+ {
+  "q": "What services do you offer?",
+  "expect": [],
+  "urls": [
+   "/services"
+  ],
+  "tag": "core"
+ },
+ {
+  "q": "What are the features of your products?",
+  "expect": [],
+  "urls": [
+   "/tools",
+   "/free-seo-report",
+   "/services/keyword-research",
+   "/services/content-marketing"
+  ],
+  "tag": "core"
+ },
+ {
+  "q": "What topics does your blog cover?",
+  "expect": [],
+  "urls": [
+   "/blog"
+  ],
+  "tag": "core"
+ },
+ {
+  "q": "How much does keyword research cost?",
+  "expect": [
+   "9.99"
+  ],
+  "urls": [
+   "keyword-research",
+   "/tools"
+  ],
+  "tag": "core"
+ },
+ {
+  "q": "How many keywords do I get for free?",
+  "expect": [
+   "3"
+  ],
+  "urls": [
+   "keyword-research",
+   "/tools"
+  ],
+  "tag": "core"
+ },
+ {
+  "q": "What does the content generator cost?",
+  "expect": [
+   "24.99"
+  ],
+  "urls": [
+   "content",
+   "/tools"
+  ],
+  "tag": "core"
+ },
+ {
+  "q": "How much is the SEO and AI search plan per month?",
+  "expect": [
+   "199.99"
+  ],
+  "tag": "core"
+ },
+ {
+  "q": "Is there a long-term contract for the SEO plan?",
+  "expect": [
+   "contract"
+  ],
+  "tag": "core"
+ },
+ {
+  "q": "Is the SEO report free?",
+  "expect": [
+   "free"
+  ],
+  "urls": [
+   "free-seo-report",
+   "/tools"
+  ],
+  "tag": "core"
+ },
+ {
+  "q": "Can you integrate with Epic using FHIR?",
+  "expect": [
+   "fhir"
+  ],
+  "urls": [
+   "ehr-emr-integration"
+  ],
+  "tag": "core"
+ },
+ {
+  "q": "Do you build custom software and web apps?",
+  "expect": [
+   "custom"
+  ],
+  "urls": [
+   "custom-software"
+  ],
+  "tag": "core"
+ },
+ {
+  "q": "Where are your offices or hubs?",
+  "expect": [
+   "houston",
+   "murfreesboro"
+  ],
+  "tag": "core"
+ },
+ {
+  "q": "Do you work with businesses in Canada?",
+  "expect": [
+   "canada"
+  ],
+  "tag": "core"
+ },
+ {
+  "q": "What is generative engine optimization?",
+  "expect": [
+   "ai"
+  ],
+  "urls": [
+   "generative-engine-optimization",
+   "/geo"
+  ],
+  "tag": "core"
+ },
+ {
+  "q": "How do I contact support?",
+  "expect": [
+   "support@worlddigital.ai"
+  ],
+  "tag": "core"
+ },
+ {
+  "q": "Do you sell used boats?",
+  "negative": true,
+  "tag": "trick"
+ },
+ {
+  "q": "Can you file my personal income tax return?",
+  "negative": true,
+  "tag": "trick"
+ },
+ {
+  "q": "Do you sell mobile phone plans?",
+  "negative": true,
+  "tag": "trick"
+ },
+ {
+  "q": "When was WorldDigital.ai founded?",
+  "expect": [
+   "2023"
+  ],
+  "urls": [
+   "/about"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "What is the legal name of the company?",
+  "expect": [
+   "corporation llc"
+  ],
+  "urls": [
+   "/about"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "What languages do you work in?",
+  "expect": [
+   "arabic"
+  ],
+  "urls": [
+   "/about"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "What is your phone number?",
+  "expect": [
+   "834-0680"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "How do I get started with the SEO plan?",
+  "expect": [
+   "subscribe|contact"
+  ],
+  "urls": [
+   "/help"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "What do you need from me to start?",
+  "expect": [
+   "google business profile|website"
+  ],
+  "urls": [
+   "/help"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "Do I need to meet you in person?",
+  "expect": [
+   "no|not"
+  ],
+  "urls": [
+   "/help",
+   "/houston",
+   "/murfreesboro"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "Will I still own my Google accounts?",
+  "expect": [
+   "own"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "How fast do you reply to messages?",
+  "expect": [
+   "one business day"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "What does the free SEO report check?",
+  "expect": [
+   "speed|lighthouse",
+   "backlink"
+  ],
+  "urls": [
+   "free-seo-report",
+   "/tools"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "How long does the free SEO audit take?",
+  "expect": [
+   "minute"
+  ],
+  "urls": [
+   "free-seo-report"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "Do I need a credit card for the free SEO report?",
+  "expect": [
+   "no"
+  ],
+  "urls": [
+   "free-seo-report"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "What should I do after I get my SEO audit?",
+  "expect": [
+   "fix"
+  ],
+  "urls": [
+   "free-seo-report"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "What data comes with the paid keyword list?",
+  "expect": [
+   "volume",
+   "cost per click|cpc"
+  ],
+  "urls": [
+   "keyword-research",
+   "/tools"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "Is keyword research included in the SEO plan?",
+  "expect": [
+   "199.99|included|plan"
+  ],
+  "urls": [
+   "keyword-research"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "Which platforms can the content generator write for?",
+  "expect": [
+   "linkedin",
+   "tiktok"
+  ],
+  "urls": [
+   "content-marketing",
+   "/tools"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "How many ad variations does the content generator write?",
+  "expect": [
+   "5"
+  ],
+  "urls": [
+   "content-marketing",
+   "/tools"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "What file formats do the tools give me?",
+  "expect": [
+   "pdf"
+  ],
+  "urls": [
+   "/tools"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "Do I need an account to use the tools?",
+  "expect": [
+   "no"
+  ],
+  "urls": [
+   "/tools"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "How much does custom software cost?",
+  "expect": [
+   "scope|fixed|proposal"
+  ],
+  "urls": [
+   "custom-software"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "How long does a custom software project take?",
+  "expect": [
+   "2",
+   "6 weeks|weeks"
+  ],
+  "urls": [
+   "custom-software"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "Who owns the code you write for me?",
+  "expect": [
+   "you|own"
+  ],
+  "urls": [
+   "custom-software"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "What technology stack do you use for custom software?",
+  "expect": [
+   "python|fastapi",
+   "cloudflare"
+  ],
+  "urls": [
+   "custom-software"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "How do you handle HIPAA and patient data?",
+  "expect": [
+   "business associate|baa",
+   "encrypt"
+  ],
+  "urls": [
+   "ehr-emr-integration"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "How long does an EHR integration take?",
+  "expect": [
+   "security review|sandbox|prototype"
+  ],
+  "urls": [
+   "ehr-emr-integration"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "Do you support HL7?",
+  "expect": [
+   "hl7"
+  ],
+  "urls": [
+   "ehr-emr-integration",
+   "custom-software"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "Do you work with franchises and multi-location brands?",
+  "expect": [
+   "location"
+  ],
+  "urls": [
+   "/enterprise"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "How is enterprise SEO priced?",
+  "expect": [
+   "per location|location"
+  ],
+  "urls": [
+   "/enterprise"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "What is your local SEO process?",
+  "expect": [
+   "audit",
+   "report"
+  ],
+  "urls": [
+   "local-seo-services"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "What is in the monthly local SEO report?",
+  "expect": [
+   "maps|calls|direction"
+  ],
+  "urls": [
+   "local-seo-services"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "Do you work with small businesses in Houston?",
+  "expect": [
+   "houston"
+  ],
+  "urls": [
+   "/houston"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "How much does SEO cost for a Murfreesboro small business?",
+  "expect": [
+   "199.99"
+  ],
+  "urls": [
+   "/murfreesboro"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "How much does Google Ads management cost?",
+  "expect": [
+   "proposal|budget|depends"
+  ],
+  "urls": [
+   "google-ads-agency"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "What do your PPC management services include?",
+  "expect": [
+   "keyword",
+   "conversion|tracking"
+  ],
+  "urls": [
+   "google-ads-agency"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "Can you take over my existing Google Ads account?",
+  "expect": [
+   "audit|yes"
+  ],
+  "urls": [
+   "google-ads-agency"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "Do you set up Local Service Ads?",
+  "expect": [
+   "local service"
+  ],
+  "urls": [
+   "google-ads-agency",
+   "google-ads-management-local-businesses"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "Can you improve my existing website?",
+  "expect": [
+   "audit|yes"
+  ],
+  "urls": [
+   "/build"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "Will my new website be set up for SEO and analytics?",
+  "expect": [
+   "ga4|search console|schema"
+  ],
+  "urls": [
+   "/build"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "Do you help with domains and hosting?",
+  "expect": [
+   "domain|dns|hosting"
+  ],
+  "urls": [
+   "/build"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "What do you automate with AI marketing automation?",
+  "expect": [
+   "keyword|research|draft"
+  ],
+  "urls": [
+   "ai-marketing-automation"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "Which AI assistants does GEO target?",
+  "expect": [
+   "chatgpt",
+   "perplexity"
+  ],
+  "urls": [
+   "generative-engine-optimization",
+   "ai-seo-agency"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "What is the difference between SEO, AEO and GEO?",
+  "expect": [
+   "answer"
+  ],
+  "urls": [
+   "generative-engine-optimization",
+   "ai-seo-agency"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "How much do agencies charge for AEO?",
+  "expect": [
+   "3,000|1,500|$"
+  ],
+  "urls": [
+   "ai-seo-pricing"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "Is your SEO plan month to month?",
+  "expect": [
+   "month"
+  ],
+  "urls": [
+   "/services",
+   "/help",
+   "ai-seo-agency"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "What is your BBB rating?",
+  "expect": [
+   "a+"
+  ],
+  "urls": [
+   "/testimonials"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "Which businesses have you worked with?",
+  "expect": [
+   "kabob|rpm|bean loft"
+  ],
+  "urls": [
+   "/testimonials",
+   "/"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "Do you offer remote jobs?",
+  "expect": [
+   "remote"
+  ],
+  "urls": [
+   "/career"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "How can I manage cookies on your site?",
+  "expect": [
+   "browser"
+  ],
+  "urls": [
+   "cookies-policy"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "What information do you collect about me?",
+  "expect": [
+   "email|usage|account"
+  ],
+  "urls": [
+   "privacy-policy"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "Can I terminate the agreement at any time?",
+  "expect": [
+   "any time|anytime|terminate"
+  ],
+  "urls": [
+   "terms-and-conditions",
+   "/help"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "What are the best AI SEO tools in 2026?",
+  "expect": [
+   "audit|keyword"
+  ],
+  "urls": [
+   "best-ai-seo-tools"
+  ],
+  "tag": "blog"
+ },
+ {
+  "q": "Which third-party Google Ads automation tools exist?",
+  "expect": [
+   "optmyzr|wordstream|adalysis"
+  ],
+  "urls": [
+   "best-google-ads-automation-tool"
+  ],
+  "tag": "blog"
+ },
+ {
+  "q": "What should I check before hiring a custom software company for financial services?",
+  "expect": [
+   "integrat|scope|own"
+  ],
+  "urls": [
+   "financial-services"
+  ],
+  "tag": "blog"
+ },
+ {
+  "q": "How do you start an enterprise integration project for construction?",
+  "expect": [
+   "discovery"
+  ],
+  "urls": [
+   "construction"
+  ],
+  "tag": "blog"
+ },
+ {
+  "q": "How do Local Service Ads charge?",
+  "expect": [
+   "call|lead|message"
+  ],
+  "urls": [
+   "google-ads-management-local-businesses"
+  ],
+  "tag": "blog"
+ },
+ {
+  "q": "How many ad variants can AI create compared to a copywriter?",
+  "expect": [
+   "30"
+  ],
+  "urls": [
+   "how-ai-marketing-automation-works"
+  ],
+  "tag": "blog"
+ },
+ {
+  "q": "How should a logistics company do local SEO for many branches?",
+  "expect": [
+   "profile|location page|branch"
+  ],
+  "urls": [
+   "local-seo-for-multiple-locations"
+  ],
+  "tag": "blog"
+ },
+ {
+  "q": "How many people use Snapchat each month?",
+  "expect": [
+   "800"
+  ],
+  "urls": [
+   "snapchat-marketing"
+  ],
+  "tag": "blog"
+ },
+ {
+  "q": "What is the average CPM on TikTok versus Instagram?",
+  "expect": [
+   "$3",
+   "$5"
+  ],
+  "urls": [
+   "tiktok-vs-instagram"
+  ],
+  "tag": "blog"
+ },
+ {
+  "q": "Which pages should a small business website have?",
+  "expect": [
+   "about|contact|services"
+  ],
+  "urls": [
+   "website-design-for-small-business"
+  ],
+  "tag": "blog"
+ },
+ {
+  "q": "What role does LinkedIn play in multi-platform advertising?",
+  "expect": [
+   "b2b"
+  ],
+  "urls": [
+   "omnichannel"
+  ],
+  "tag": "blog"
+ },
+ {
+  "q": "How does WorldDigital.ai compare with HubSpot and WebFX?",
+  "expect": [
+   "hubspot",
+   "webfx"
+  ],
+  "urls": [
+   "hubspot-vs-webfx"
+  ],
+  "tag": "blog"
+ },
+ {
+  "q": "How does WorldDigital.ai compare with Profound and Otterly for GEO?",
+  "expect": [
+   "profound|otterly"
+  ],
+  "urls": [
+   "profound-vs-otterly"
+  ],
+  "tag": "blog"
+ },
+ {
+  "q": "Does WorldDigital.ai keep my Google Ads account in my name?",
+  "expect": [
+   "name|yes|own"
+  ],
+  "urls": [
+   "webfx-vs-scorpion",
+   "/help",
+   "/services"
+  ],
+  "tag": "blog"
+ },
+ {
+  "q": "How fast should a YouTube Shorts ad hook viewers?",
+  "expect": [
+   "2 seconds|two seconds"
+  ],
+  "urls": [
+   "youtube-shorts"
+  ],
+  "tag": "blog"
+ },
+ {
+  "q": "Do YouTube Shorts ads need captions?",
+  "expect": [
+   "caption|sound"
+  ],
+  "urls": [
+   "youtube-shorts"
+  ],
+  "tag": "blog"
+ },
+ {
+  "q": "What is AI-first content creation?",
+  "expect": [
+   "draft|ai"
+  ],
+  "urls": [
+   "essential-strategies"
+  ],
+  "tag": "blog"
+ },
+ {
+  "q": "how much is keyword research",
+  "expect": [
+   "9.99"
+  ],
+  "urls": [
+   "keyword-research",
+   "/tools"
+  ],
+  "tag": "visitor"
+ },
+ {
+  "q": "What does the free SEO report include?",
+  "expect": [
+   "speed|lighthouse|backlink|ranking"
+  ],
+  "urls": [
+   "free-seo-report",
+   "/tools"
+  ],
+  "tag": "visitor"
+ },
+ {
+  "q": "Do you build Epic FHIR integrations?",
+  "expect": [
+   "fhir|epic"
+  ],
+  "urls": [
+   "ehr-emr-integration"
+  ],
+  "tag": "visitor"
+ },
+ {
+  "q": "get a free seo report",
+  "expect": [
+   "free"
+  ],
+  "urls": [
+   "free-seo-report",
+   "/tools"
+  ],
+  "tag": "visitor"
+ },
+ {
+  "q": "how much is keywrod reserch?",
+  "expect": [
+   "9.99"
+  ],
+  "urls": [
+   "keyword-research",
+   "/tools"
+  ],
+  "tag": "reworded"
+ },
+ {
+  "q": "price of ur seo plan per month",
+  "expect": [
+   "199.99"
+  ],
+  "tag": "reworded"
+ },
+ {
+  "q": "is the seo report realy free",
+  "expect": [
+   "free"
+  ],
+  "urls": [
+   "free-seo-report",
+   "/tools"
+  ],
+  "tag": "reworded"
+ },
+ {
+  "q": "wat is GEO",
+  "expect": [
+   "ai"
+  ],
+  "urls": [
+   "generative-engine-optimization",
+   "ai-seo-agency"
+  ],
+  "tag": "reworded"
+ },
+ {
+  "q": "can i cancel the seo plan whenever i want",
+  "expect": [
+   "contract|cancel|month"
+  ],
+  "tag": "reworded"
+ },
+ {
+  "q": "where r u guys located",
+  "expect": [
+   "houston|murfreesboro"
+  ],
+  "tag": "reworded"
+ },
+ {
+  "q": "content generator how much",
+  "expect": [
+   "24.99"
+  ],
+  "urls": [
+   "content-marketing",
+   "/tools"
+  ],
+  "tag": "reworded"
+ },
+ {
+  "q": "Can you hook up our clinic's app to Epic?",
+  "expect": [
+   "fhir|epic"
+  ],
+  "urls": [
+   "ehr-emr-integration"
+  ],
+  "tag": "reworded"
+ },
+ {
+  "q": "best email to reach you?",
+  "expect": [
+   "support@worlddigital.ai"
+  ],
+  "tag": "reworded"
+ },
+ {
+  "q": "u do google ads for local shops?",
+  "expect": [
+   "google ads"
+  ],
+  "urls": [
+   "google-ads",
+   "/services"
+  ],
+  "tag": "reworded"
+ },
+ {
+  "q": "Do you repair laptops?",
+  "negative": true,
+  "tag": "trick"
+ },
+ {
+  "q": "Can you design my wedding invitations?",
+  "negative": true,
+  "tag": "trick"
+ },
+ {
+  "q": "Do you sell cryptocurrency trading bots?",
+  "negative": true,
+  "tag": "trick"
+ },
+ {
+  "q": "Do you have an office in London?",
+  "negative": true,
+  "tag": "trick"
+ },
+ {
+  "q": "Do you offer car insurance?",
+  "negative": true,
+  "tag": "trick"
+ },
+ {
+  "q": "Can you get my restaurant a liquor license?",
+  "negative": true,
+  "tag": "trick"
+ },
+ {
+  "q": "Do you give legal advice for lawsuits?",
+  "negative": true,
+  "tag": "trick"
+ },
+ {
+  "q": "Do you offer plumbing services?",
+  "negative": true,
+  "tag": "trick"
+ },
+ {
+  "q": "Do you run a dental clinic?",
+  "negative": true,
+  "tag": "trick"
+ },
+ {
+  "q": "Do you sell real estate?",
+  "negative": true,
+  "tag": "trick"
+ },
+ {
+  "q": "Can I buy concert tickets through you?",
+  "negative": true,
+  "tag": "trick"
+ },
+ {
+  "q": "Do you offer pet grooming?",
+  "negative": true,
+  "tag": "trick"
+ },
+ {
+  "q": "What is the stock price of WorldDigital.ai?",
+  "negative": true,
+  "tag": "trick"
+ },
+ {
+  "q": "Do you translate documents into Japanese?",
+  "negative": true,
+  "tag": "trick"
+ },
+ {
+  "q": "Do you offer catering for events?",
+  "negative": true,
+  "tag": "trick"
+ },
+ {
+  "q": "Do you sell gym memberships?",
+  "negative": true,
+  "tag": "trick"
+ },
+ {
+  "q": "Can you fix my car's transmission?",
+  "negative": true,
+  "tag": "trick"
+ }
 ]

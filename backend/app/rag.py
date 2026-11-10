@@ -20,6 +20,7 @@ status()            monitoring for the admin page
 """
 from __future__ import annotations
 
+import concurrent.futures
 import hashlib
 import json
 import logging
@@ -27,6 +28,7 @@ import math
 import os
 import pathlib
 import re
+import threading
 import time
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -74,6 +76,7 @@ MAX_TENANT_PAGES = 60
 SKIP = re.compile(r"/(media|blog-admin|api)/|\.(xml|png|jpg|jpeg|webp|gif|svg|pdf|zip)$|/thank-you|/unsubscribe|/404")
 BOILERPLATE = re.compile(r"^(Try our SEO tools, no sign-up|Try my SEO tools, no sign-up|Start free, or tell us what to build\.?|Let.s grow your business\.?)$", re.I)
 QUESTION_TTL = timedelta(days=180)
+EVAL_WORKERS = int(os.environ.get("RAG_EVAL_WORKERS") or 6)
 EVAL_FILE = pathlib.Path(__file__).with_name("rag_eval.json")
 MAX_ERRORS = 50
 
@@ -369,7 +372,7 @@ class Rag:
         self.meta = db["rag_meta"]
         self.syncs = db["rag_sync"]
         self.answers = db["rag_answers"]
-        self.last_timing: dict = {}   # public answers remembered for a day (see answer_stream)
+        self._local = threading.local()   # per-thread search timing (the quality test runs questions in parallel)   # public answers remembered for a day (see answer_stream)
 
     # indexes ------------------------------------------------------------------
     def _vector_def(self) -> dict:
@@ -820,7 +823,7 @@ class Rag:
         alt = variant == "alt"
         index, path = (ALT_INDEX, "embedding_alt") if alt else (INDEX_NAME, "embedding")
         q = self._query_vector(query, ALT_MODEL if alt else EMBED_MODEL, fresh)
-        self.last_timing = {"embed_ms": _ms(t0)}
+        timing = self._local.timing = {"embed_ms": _ms(t0)}
         t1 = time.monotonic()
         proj = {"_id": 0, "url": 1, "title": 1, "section": 1, "text": 1, "source": 1, "content_type": 1, "category": 1, "published_at": 1}
         vfilter = {f: {"$in": v} for f, v in flt.items()}
@@ -855,7 +858,7 @@ class Rag:
                 scored.append({**d, "score": 0.8 * sum(a * b for a, b in zip(q, v)) / (qn * vn) + 0.2 * kw})
             hits, method = sorted(scored, key=lambda d: d["score"], reverse=True)[:want], "scan"
         hits = [h for h in hits if allowed(h)]
-        self.last_timing["db_ms"] = _ms(t1)
+        timing["db_ms"] = _ms(t1)
         t2 = time.monotonic()
         if do_rerank and len(hits) > 1:
             try:
@@ -864,7 +867,7 @@ class Rag:
                 method += "+rerank"
             except ApiError as e:  # the reranker is an extra: without it the fused order stands
                 log.info("rerank skipped: %s", e)
-        self.last_timing["rerank_ms"] = _ms(t2)
+        timing["rerank_ms"] = _ms(t2)
         out = [dict(h, method=method) for h in hits[:k]]
         self._metric("search", _ms(t0))
         return out
@@ -1061,7 +1064,7 @@ class Rag:
             except Exception:  # noqa: BLE001  the cache is an extra
                 pass
         yield {"type": "done", "sources": srcl, "covered": covered, "undocumented": undoc, "cached": False,
-               "ms": ms, "first_ms": first_ms, "search_ms": search_ms, "timing": dict(self.last_timing), "hits": hits}
+               "ms": ms, "first_ms": first_ms, "search_ms": search_ms, "timing": dict(getattr(self._local, "timing", {})), "hits": hits}
 
     def answer(self, question: str, k: int = 6, sources=None, *, types=None, categories=None, language=None,
                allow_internal: bool = False, public: bool = False, fresh: bool = False) -> dict:
@@ -1119,13 +1122,20 @@ class Rag:
         results, lat, first, search_lat, stage = [], [], [], [], {}
         pos = neg = passed = hit = with_exp = cited_ok = answered_ok = unsupported = 0
         rr_sum = 0.0
-        for c in cases:
+        def ask(c):
             t0 = time.monotonic()
             try:
-                a = self.answer(c["q"], sources=c.get("sources") or ["ai"], fresh=True)
+                return self.answer(c["q"], sources=c.get("sources") or ["ai"], fresh=True), _ms(t0)
             except ApiError as e:
-                results.append({"q": c["q"], "ok": False, "why": e.public}); continue
-            ms = _ms(t0); lat.append(ms)
+                return e, _ms(t0)
+
+        # a handful of questions at a time keeps the whole test under a minute even with 100+ questions
+        with concurrent.futures.ThreadPoolExecutor(max_workers=EVAL_WORKERS) as pool:
+            answers = list(pool.map(ask, cases))
+        for c, (a, ms) in zip(cases, answers):
+            if isinstance(a, ApiError):
+                results.append({"q": c["q"], "ok": False, "tag": c.get("tag", ""), "why": a.public}); continue
+            lat.append(ms)
             if a.get("first_ms") is not None:
                 first.append(a["first_ms"])
             if a.get("search_ms") is not None:
@@ -1138,7 +1148,8 @@ class Rag:
                 ok = not a.get("covered", True)
                 unsupported += not ok
                 passed += ok
-                results.append({"q": c["q"], "ok": ok, "negative": True, "why": "" if ok else "answered something the site does not say",
+                results.append({"q": c["q"], "ok": ok, "negative": True, "tag": c.get("tag", "trick"),
+                                "why": "" if ok else "answered something the site does not say",
                                 "answer": a["answer"][:300], "ms": ms})
                 continue
             pos += 1
@@ -1157,11 +1168,16 @@ class Rag:
             answered_ok += answered
             ok = answered and cited and (not exp or rank is not None)
             passed += ok
-            results.append({"q": c["q"], "ok": ok, "missing": miss, "rank": rank, "source_ok": cited,
+            results.append({"q": c["q"], "ok": ok, "tag": c.get("tag", ""), "missing": miss, "rank": rank, "source_ok": cited,
                             "answer": a["answer"][:300], "sources": urls[:3], "ms": ms})
         pct = lambda a, b: round(100 * a / b) if b else None  # noqa: E731
         lat.sort(); first.sort()
+        by_tag: dict = {}
+        for r in results:
+            t = by_tag.setdefault(r.get("tag") or "other", [0, 0])
+            t[0] += bool(r["ok"]); t[1] += 1
         report = {"total": len(cases), "passed": passed, "score": pct(passed, len(cases)) or 0,
+                  "by_tag": {t: {"passed": a, "total": b} for t, (a, b) in sorted(by_tag.items())},
                   "metrics": {"retrieval_hit_rate": pct(hit, with_exp), "mrr": round(rr_sum / with_exp, 2) if with_exp else None,
                               "citation_accuracy": pct(cited_ok, pos), "answer_accuracy": pct(answered_ok, pos),
                               "unsupported_answer_rate": pct(unsupported, neg),

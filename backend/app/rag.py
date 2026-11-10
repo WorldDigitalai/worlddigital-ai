@@ -949,7 +949,7 @@ class Rag:
     # public questions remembered for a day (same question, same site content: instant). answer() collects the stream.
     ANSWER_TOKENS = 450
     NOT_COVERED = re.compile(r"\b(does not|doesn't|do not|don't) (say|cover|mention|show|include|list|specify|describe)|not documented|"
-                             r"no information|nothing (on|about) this|\bsources? (only )?(describe|list|mention|show|cover)s?\b(?:[^.]|\.(?=\S))*\bnot\b", re.I)
+                             r"no information|nothing (on|about) this|\b(sources?|available information|information provided|provided information|site|website|pages?) (only )?(describe|list|mention|show|cover)s?\b(?:[^.]|\.(?=\S))*\bnot\b", re.I)
 
     def _answer_prompt(self, question: str, hits: list[dict], who: str) -> tuple[str, str]:
         safe = lambda t: str(t).replace("</source", "<\\/source").replace("<source", "<\\source")  # noqa: E731
@@ -969,7 +969,8 @@ class Rag:
             "- Keep it short: 1 to 3 plain sentences, or up to 5 short bullet points for a list. No headings.\n"
             "Output format: the first line is exactly 'COVERED: yes' (the sources answer the question, fully or in part) "
             "or 'COVERED: no' (they do not). Use 'COVERED: no' whenever the asked-about thing is not in the sources, "
-            "even if you then describe what is offered instead. Then the answer.")
+            "even if you then describe what is offered instead. If your answer is 'no' only because the sources never "
+            "mention it, that is 'COVERED: no'. Then the answer.")
         return system, f"<sources>\n{ctx}\n</sources>\n\nQuestion: {question}"
 
     def _content_version(self) -> str:
@@ -1040,7 +1041,8 @@ class Rag:
                 yield {"type": "text", "text": rest}
         text = text.strip()
         body = "\n".join(l for l in text.splitlines() if not re.match(r"\s*not documented:", l, re.I))
-        first_sentence = re.split(r"(?<=[.!?\u201d\"])\s|\n", body.strip(), maxsplit=1)[0]
+        parts = re.split(r"(?<=[.!?\u201d\"])\s|\n", body.strip(), maxsplit=2)
+        first_sentence = " ".join(parts[:2]) if len(parts[0].split()) <= 3 else parts[0]  # "No." then the reason
         if covered and self.NOT_COVERED.search(first_sentence):
             covered = False  # the answer opens by saying the sources do not cover it (whatever the status line said)
         undoc = ""

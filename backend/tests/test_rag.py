@@ -580,3 +580,15 @@ def test_no_answer_phrased_as_what_we_do_instead(env, monkeypatch):
     assert c.post("/api/admin/rag/ask", headers=H, json={"q": "Do you sell gym memberships?"}).json()["covered"] is False
     monkeypatch.setattr(rag_mod, "openai_stream", lambda s, **kw: iter(["COVERED: yes\nNo. The report is free and needs no credit card [1]."]))
     assert c.post("/api/admin/rag/ask", headers=H, json={"q": "Do I need a credit card?"}).json()["covered"] is True
+
+
+def test_no_answer_from_absence_other_phrasings(env, monkeypatch):
+    c, w = env
+    c.post("/api/admin/rag/index", headers=H, json={})
+    for text, covered in [
+        ("No, the available information describes WorldDigital.ai as offering SEO and Google Ads, not gym memberships [1][2].", False),
+        ("No. The site only lists marketing software, not car insurance [1].", False),
+        ("No. Ad spend is not included in the management fee; you pay Google directly [1].", True),
+    ]:
+        monkeypatch.setattr(rag_mod, "openai_stream", lambda s, t=text, **kw: iter(["COVERED: yes\n" + t]))
+        assert c.post("/api/admin/rag/ask", headers=H, json={"q": "q?"}).json()["covered"] is covered, text

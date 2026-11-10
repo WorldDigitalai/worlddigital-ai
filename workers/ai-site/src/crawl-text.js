@@ -20,6 +20,7 @@ User-agent: Applebot-Extended
 User-agent: Google-Extended
 User-agent: GPTBot
 User-agent: OAI-SearchBot
+User-agent: OAI-AdsBot
 User-agent: ChatGPT-User
 User-agent: ClaudeBot
 User-agent: Claude-SearchBot

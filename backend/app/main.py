@@ -552,9 +552,12 @@ async def rag_eval(request: Request):
     """Runs the quality test. {"model": "..."} tries another answer model (allow-listed) without changing the site."""
     b = await body_of(request) if (await request.body()).strip() else {}
     model = str(b.get("model") or "").strip() or None
+    tier = str(b.get("tier") or "").strip() or None
     if model and model not in EVAL_MODELS:
         raise ApiError("model not allowed", 400, f"Model must be one of: {', '.join(EVAL_MODELS)}")
-    return json_ok(await run_in_threadpool(_rag_call, lambda: rag().evaluate(model)))
+    if tier and tier not in ("priority", "default", "flex"):
+        raise ApiError("tier not allowed", 400, "Tier must be priority, default or flex.")
+    return json_ok(await run_in_threadpool(_rag_call, lambda: rag().evaluate(model, tier)))
 
 
 EVAL_MODELS = ("gpt-5.4-mini", "gpt-5.4-nano", "gpt-5-mini", "gpt-5-nano", "gpt-4.1-mini", "gpt-4.1-nano", "gpt-4o-mini")

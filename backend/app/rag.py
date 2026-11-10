@@ -59,7 +59,8 @@ RERANK_MODEL = "@cf/baai/bge-reranker-base"
 RERANK = os.environ.get("RAG_RERANK", "") == "1"   # rerank search results with RERANK_MODEL (Workers AI)
 # Written answers skip the reranker by default: the model reads all top sources anyway, and it saves ~0.6 s
 RERANK_ANSWERS = os.environ.get("RAG_RERANK_ANSWERS", "") == "1"
-ANSWER_MODEL = os.environ.get("RAG_ANSWER_MODEL", "")            # empty: the site's main model (OPENAI_MODEL)
+ANSWER_MODEL = os.environ.get("RAG_ANSWER_MODEL", "")
+ANSWER_TIER = os.environ.get("RAG_ANSWER_TIER", "")              # "priority": OpenAI serves answers first (costs more)            # empty: the site's main model (OPENAI_MODEL)
 ANSWER_SOURCES = int(os.environ.get("RAG_ANSWER_SOURCES") or 5)  # passages the model reads per answer
 ANSWER_CHARS = int(os.environ.get("RAG_ANSWER_CHARS") or 1200)   # characters per passage
 ALT_MODEL = os.environ.get("RAG_COMPARE_MODEL", "@cf/baai/bge-m3")  # side-by-side test (Rag.compare)
@@ -1022,7 +1023,7 @@ class Rag:
         system, user = self._answer_prompt(question, hits, who)
         head, text, first_ms, covered = "", "", None, None
         for piece in openai_stream(self.s, system=system, user=user, max_tokens=self.ANSWER_TOKENS, feature="rag.answer",
-                                   model=model or ANSWER_MODEL or None):
+                                   model=model or ANSWER_MODEL or None, tier=getattr(self._local, "tier", None) or ANSWER_TIER or None):
             if covered is None:  # hold back the status line, then stream the answer
                 head += piece
                 if "\n" not in head and len(head) < 24:
@@ -1124,7 +1125,7 @@ class Rag:
                 "questions": [{**r, "at": _iso(r["at"]), "expires_at": None} for r in rows]}
 
     # answer-quality tests ------------------------------------------------------
-    def evaluate(self, model: str | None = None) -> dict:
+    def evaluate(self, model: str | None = None, tier: str | None = None) -> dict:
         """Golden questions. Per question: expected page retrieved (and at which rank), expected page cited,
         expected words in the answer, and for questions we have no answer to, that the assistant says so."""
         cases = json.loads(EVAL_FILE.read_text())
@@ -1132,6 +1133,7 @@ class Rag:
         pos = neg = passed = hit = with_exp = cited_ok = answered_ok = unsupported = 0
         rr_sum = 0.0
         def ask(c):
+            self._local.tier = tier
             t0 = time.monotonic()
             try:
                 return self.answer(c["q"], sources=c.get("sources") or ["ai"], fresh=True, model=model), _ms(t0)
@@ -1184,6 +1186,7 @@ class Rag:
         # Speed is measured separately, one question at a time (answers in parallel are slower and would mislead):
         # a fixed sample of the first SPEED_SAMPLE non-trick questions, asked fresh.
         lat, first, search_lat, stage = [], [], [], {}
+        self._local.tier = tier
         for c in [c for c in cases if not c.get("negative")][:SPEED_SAMPLE]:
             t0 = time.monotonic()
             try:

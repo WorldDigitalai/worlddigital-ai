@@ -70,7 +70,8 @@ _effort_refused: set[tuple[str, str]] = set()   # (model, effort) pairs OpenAI r
 
 
 def openai_stream(s: Settings, *, system: str, user: str, max_tokens: int = 500, temperature: float = 0.2,
-                  timeout: float = 60, effort: str | None = "none", feature: str | None = None, model: str | None = None):
+                  timeout: float = 60, effort: str | None = "none", feature: str | None = None, model: str | None = None,
+                  tier: str | None = None):
     """Yields the model's text as it is written (chat completions with stream=True), so callers can show the first
     words in well under a second. Reasoning models get reasoning_effort (default "none": answer straight away);
     a model that does not take it is asked again without."""
@@ -79,7 +80,7 @@ def openai_stream(s: Settings, *, system: str, user: str, max_tokens: int = 500,
         raise ApiError("OPENAI_API_KEY missing", 503, "The generator is being set up. Please try again later.")
     model = model or (_working_model or [s.openai_model])[0]
     reasoning = model.startswith(("gpt-5", "o1", "o3", "o4"))
-    body = {"model": model, "stream": True, "stream_options": {"include_usage": True},
+    body = {"model": model, "stream": True, "stream_options": {"include_usage": True}, **({"service_tier": tier} if tier else {}),
             "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
     if reasoning:
         body["max_completion_tokens"] = max_tokens * 4

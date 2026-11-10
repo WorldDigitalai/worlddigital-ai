@@ -84,6 +84,8 @@ jobs:
               print(f"::notice title=Ready answers (what visitors get)::{rd.get('correct')}/{rd.get('checked')} correct "
                     f"(reworded, visitor and trick questions), {rd.get('from_ready')} served ready | first words {rd.get('first_words_ms')} ms "
                     f"(p95 {rd.get('first_words_p95_ms')}) | prepared {rd.get('prepared', {}).get('questions')} questions")
+          for x in sorted((rd.get("similarity") or []), key=lambda x: -x["best"]):
+              print(f"similarity {x['best']:.3f} [{x['tag']}] {x['q'][:60]!r} ~ {x['nearest']!r}")
           bt = d.get("by_tag") or {}
           if bt:
               print("::notice title=By question type::" + " | ".join(f"{t}: {v['passed']}/{v['total']}" for t, v in bt.items()))

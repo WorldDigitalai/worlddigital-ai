@@ -1161,7 +1161,7 @@ class Rag:
     def _similar_answer(self, qvec: list[float], srcs: list[str], exclude: str | None = None) -> dict | None:
         """The ready answer whose question means the same (cosine >= SIMILAR_AT), for the current content only.
         exclude: skip answers stored for this exact question (the quality test checks matching by meaning)."""
-        best, best_sim = None, SIMILAR_AT
+        best, best_sim, top = None, SIMILAR_AT, (0.0, "")
         norm = lambda t: " ".join(re.findall(r"[a-z0-9$.]+", str(t).lower()))  # noqa: E731
         skip = norm(exclude) if exclude else None
         qn = math.sqrt(sum(x * x for x in qvec)) or 1
@@ -1171,8 +1171,11 @@ class Rag:
             if skip is not None and norm(d.get("q", "")) == skip:
                 continue
             sim = sum(a * b for a, b in zip(qvec, v)) / (qn * (math.sqrt(sum(x * x for x in v)) or 1))
+            if sim > top[0]:
+                top = (sim, d.get("q", ""))
             if sim >= best_sim:
                 best, best_sim = d, sim
+        self._local.last_similar = top
         return best
 
     def _ready_check(self, cases: list[dict]) -> dict:
@@ -1181,7 +1184,7 @@ class Rag:
         ready answer) and times them."""
         ready_now = self.answers.count_documents({"v": self._content_version(), "qv": {"$exists": True}})
         check = [c for c in cases if c.get("tag") in ("reworded", "visitor", "trick")]
-        times, ok, ready = [], 0, 0
+        times, ok, ready, sims = [], 0, 0, []
         self._local.ready_check = True
         for c in check:
             try:
@@ -1193,6 +1196,8 @@ class Rag:
             done_ms = a.get("ms")
             if a.get("cached"):
                 ready += 1
+            sim, near = getattr(self._local, "last_similar", (0.0, ""))
+            sims.append({"q": c["q"], "tag": c.get("tag"), "best": round(sim, 3), "nearest": near[:80]})
             if c.get("negative"):
                 good = not a.get("covered")
             else:
@@ -1202,7 +1207,7 @@ class Rag:
                 times.append(a["first_ms"])
         self._local.ready_check = False
         times.sort()
-        return {"prepared": {"questions": ready_now}, "checked": len(check), "correct": ok, "from_ready": ready,
+        return {"prepared": {"questions": ready_now}, "checked": len(check), "correct": ok, "from_ready": ready, "similarity": sims,
                 "first_words_ms": round(sum(times) / len(times)) if times else None,
                 "first_words_p95_ms": times[min(len(times) - 1, int(len(times) * 0.95))] if times else None}
 

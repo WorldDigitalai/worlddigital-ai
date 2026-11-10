@@ -78,6 +78,7 @@ def openai_stream(s: Settings, *, system: str, user: str, max_tokens: int = 500,
     feature = feature or _caller()
     if not s.openai_api_key:
         raise ApiError("OPENAI_API_KEY missing", 503, "The generator is being set up. Please try again later.")
+    asked = model  # a model the caller chose on purpose (RAG_ANSWER_MODEL, a quality-test comparison) is not a fallback
     model = model or (_working_model or [s.openai_model])[0]
     reasoning = model.startswith(("gpt-5", "o1", "o3", "o4"))
     body = {"model": model, "stream": True, "stream_options": {"include_usage": True}, **({"service_tier": tier} if tier else {}),
@@ -116,7 +117,7 @@ def openai_stream(s: Settings, *, system: str, user: str, max_tokens: int = 500,
                     piece = (ch.get("delta") or {}).get("content")
                     if piece:
                         yield piece
-            record_usage(feature, model, usage, fallback=model != s.openai_model)
+            record_usage(feature, model, usage, fallback=not asked and model != s.openai_model)
             return
     raise ApiError("OpenAI stream failed", 502)
 

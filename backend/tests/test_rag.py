@@ -606,3 +606,30 @@ def test_answer_on_workers_ai_model(env):
     assert a["answer"] == "All 10 keywords cost $9.99 [1]." and a["covered"] and a["sources"] and a["first_ms"] is not None
     assert w.cf_generate["model"] == "@cf/google/gemma-4-26b-a4b-it" and "COVERED" in w.cf_generate["system"]
     assert c.post("/api/admin/rag/eval", headers=H, json={"model": "@cf/evil/x"}).status_code == 400
+
+
+def test_stream_counts_only_unplanned_model_changes_as_fallbacks(env, monkeypatch):
+    """A model the caller asked for (quality-test comparison, RAG_ANSWER_MODEL) is not a fallback;
+    the default model is not one either; a different model used without being asked for is."""
+    from app import services as sv
+    seen = []
+    monkeypatch.setattr(sv, "_usage_sink", lambda **kw: seen.append(kw["fallback"]))
+
+    class Resp:
+        status_code = 200
+        text = ""
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def read(self): return b""
+        def iter_lines(self):
+            yield 'data: {"choices":[{"delta":{"content":"hi"}}],"usage":{"prompt_tokens":3,"completion_tokens":1}}'
+            yield "data: [DONE]"
+    monkeypatch.setattr(sv.http, "stream", lambda *a, **k: Resp())
+    from app.config import Settings
+    monkeypatch.setenv("OPENAI_API_KEY", "test")
+    s = Settings()
+    list(sv.openai_stream(s, system="x", user="y", model="gpt-4.1-mini"))
+    list(sv.openai_stream(s, system="x", user="y"))
+    monkeypatch.setattr(sv, "_working_model", ["gpt-4.1-mini"])
+    list(sv.openai_stream(s, system="x", user="y"))
+    assert seen == [False, False, True]

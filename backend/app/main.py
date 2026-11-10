@@ -568,6 +568,12 @@ EVAL_MODELS = ("gpt-5.4-mini", "gpt-5.4-nano", "gpt-5-mini", "gpt-5-nano", "gpt-
                "@cf/google/gemma-4-26b-a4b-it", "@cf/meta/llama-4-scout-17b-16e-instruct", "@cf/meta/llama-3.3-70b-instruct-fp8-fast")
 
 
+@app.post("/api/admin/rag/warm", dependencies=[Depends(guard)])
+async def rag_warm():
+    """Prepares ready answers (quality-test questions and recent visitor questions) for instant replies."""
+    return json_ok(await run_in_threadpool(_rag_call, lambda: rag().warm()))
+
+
 @app.post("/api/admin/rag/compare", dependencies=[Depends(guard)])
 async def rag_compare(request: Request):
     """Side-by-side test of the current embedding model against RAG_COMPARE_MODEL (default BGE-M3 on Workers AI).

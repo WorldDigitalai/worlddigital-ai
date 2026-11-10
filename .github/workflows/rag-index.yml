@@ -74,6 +74,11 @@ jobs:
           print(f"::notice title=Answer quality::{d['passed']}/{d['total']} passed ({d['score']}%) | right page found {m.get('retrieval_hit_rate')}% "
                 f"(MRR {m.get('mrr')}) | right page cited {m.get('citation_accuracy')}% | answers correct {m.get('answer_accuracy')}% | "
                 f"made-up answers {m.get('unsupported_answer_rate')}% | search {m.get('search_ms')} ms (embed {m.get('search_embed_ms')}, database {m.get('search_db_ms')}, rerank {m.get('search_rerank_ms')}) | speed (20 questions, one at a time): first words {m.get('first_words_ms')} ms (p95 {m.get('first_words_p95_ms')}) | full answer {m.get('avg_ms')} ms (p95 {m.get('p95_ms')})")
+          rd = d.get("ready") or {}
+          if rd:
+              print(f"::notice title=Ready answers (what visitors get)::{rd.get('correct')}/{rd.get('checked')} correct "
+                    f"(reworded, visitor and trick questions), {rd.get('from_ready')} served ready | first words {rd.get('first_words_ms')} ms "
+                    f"(p95 {rd.get('first_words_p95_ms')}) | prepared {rd.get('prepared', {}).get('questions')} questions")
           bt = d.get("by_tag") or {}
           if bt:
               print("::notice title=By question type::" + " | ".join(f"{t}: {v['passed']}/{v['total']}" for t, v in bt.items()))

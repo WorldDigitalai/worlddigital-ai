@@ -63,7 +63,11 @@ ANSWER_MODEL = os.environ.get("RAG_ANSWER_MODEL", "")
 ANSWER_TIER = os.environ.get("RAG_ANSWER_TIER", "")
 # "text": answers use the keyword index only (typo-tolerant), skipping the ~0.3 s embedding call; when it finds too
 # little, the answer falls back to the normal hybrid search. "hybrid" (default): meaning + words.
-ANSWER_RETRIEVAL = os.environ.get("RAG_ANSWER_RETRIEVAL", "hybrid")              # "priority": OpenAI serves answers first (costs more)            # empty: the site's main model (OPENAI_MODEL)
+ANSWER_RETRIEVAL = os.environ.get("RAG_ANSWER_RETRIEVAL", "hybrid")
+# Ready answers: a visitor question close in meaning to one already answered (same site content) gets that answer
+# straight away. 0.93 cosine similarity is strict: rewordings and typos match, different questions do not.
+SIMILAR_AT = float(os.environ.get("RAG_SIMILAR_AT") or 0.93)
+ANSWER_TTL_H = 30   # ready answers live a little over a day; the nightly run prepares them again              # "priority": OpenAI serves answers first (costs more)            # empty: the site's main model (OPENAI_MODEL)
 ANSWER_SOURCES = int(os.environ.get("RAG_ANSWER_SOURCES") or 5)  # passages the model reads per answer
 ANSWER_CHARS = int(os.environ.get("RAG_ANSWER_CHARS") or 1200)   # characters per passage
 ALT_MODEL = os.environ.get("RAG_COMPARE_MODEL", "@cf/baai/bge-m3")  # side-by-side test (Rag.compare)
@@ -445,7 +449,7 @@ class Rag:
             self.pages.create_index([("source", 1), ("sections", 1)])
             self.pages.create_index([("source", 1), ("content_type", 1)])
             self.syncs.create_index([("started", -1)])
-            self.answers.create_index("at", expireAfterSeconds=86400)
+            self._ensure_ttl(self.answers, "at", ANSWER_TTL_H * 3600)
             self.syncs.create_index("finished", expireAfterSeconds=180 * 86400)  # keep 180 days of sync history
         except Exception:  # noqa: BLE001
             pass
@@ -1047,14 +1051,20 @@ class Rag:
         srcs = self._sources(sources, allow_internal)
         filters = {"types": types, "categories": categories, "language": language}
         key = self._cache_key(question, srcs, filters) if public else None
+        qvec = None
         if key:
             hit = self.answers.find_one({"_id": key})
+            if not hit and not any(filters.values()):
+                # same meaning, other words: compare with the ready answers for this content (the embedding is reused
+                # by the search below if nothing matches, so a miss costs nothing extra)
+                qvec = self._query_vector(" ".join(question.split())[:500], EMBED_MODEL, fresh)
+                hit = self._similar_answer(qvec, srcs)
             if hit:
                 yield {"type": "text", "text": hit["answer"]}
                 ms = _ms(t0)
                 self._metric("public_answer_cached", ms)
                 yield {"type": "done", "sources": hit["sources"], "covered": hit["covered"], "undocumented": hit.get("undocumented", ""),
-                       "cached": True, "ms": ms, "first_ms": ms}
+                       "cached": True, "matched": hit.get("q"), "ms": ms, "first_ms": ms}
                 return
         mode = getattr(self._local, "retrieval", None) or ANSWER_RETRIEVAL
         hits = []
@@ -1125,12 +1135,93 @@ class Rag:
             self._metric("first_words", first_ms)
         if key and text:
             try:
+                if qvec is None and not any(filters.values()):
+                    qvec = self._query_vector(" ".join(question.split())[:500], EMBED_MODEL, False)
                 self.answers.replace_one({"_id": key}, {"_id": key, "q": question[:300], "answer": text, "sources": srcl,
-                                                       "covered": covered, "undocumented": undoc, "at": now()}, upsert=True)
+                                                       "covered": covered, "undocumented": undoc, "at": now(),
+                                                       "v": self._content_version(), "src": srcs,
+                                                       **({"qv": [round(x, 5) for x in qvec]} if qvec else {})}, upsert=True)
             except Exception:  # noqa: BLE001  the cache is an extra
                 pass
         yield {"type": "done", "sources": srcl, "covered": covered, "undocumented": undoc, "cached": False,
                "ms": ms, "first_ms": first_ms, "search_ms": search_ms, "timing": dict(getattr(self._local, "timing", {})), "hits": hits}
+
+    @staticmethod
+    def _ensure_ttl(coll, field: str, seconds: int) -> None:
+        """A TTL index on `field`; an existing one with another lifetime is changed in place."""
+        try:
+            coll.create_index(field, expireAfterSeconds=seconds)
+        except Exception:  # noqa: BLE001  same index, other lifetime
+            try:
+                coll.database.command("collMod", coll.name, index={"keyPattern": {field: 1}, "expireAfterSeconds": seconds})
+            except Exception as e:  # noqa: BLE001
+                log.info("TTL index on %s.%s not changed (%s)", coll.name, field, type(e).__name__)
+
+    def _similar_answer(self, qvec: list[float], srcs: list[str]) -> dict | None:
+        """The ready answer whose question means the same (cosine >= SIMILAR_AT), for the current content only."""
+        best, best_sim = None, SIMILAR_AT
+        qn = math.sqrt(sum(x * x for x in qvec)) or 1
+        for d in self.answers.find({"v": self._content_version(), "src": srcs, "qv": {"$exists": True}},
+                                   {"answer": 1, "sources": 1, "covered": 1, "undocumented": 1, "q": 1, "qv": 1}).limit(2000):
+            v = d.pop("qv")
+            sim = sum(a * b for a, b in zip(qvec, v)) / (qn * (math.sqrt(sum(x * x for x in v)) or 1))
+            if sim >= best_sim:
+                best, best_sim = d, sim
+        return best
+
+    def _ready_check(self, cases: list[dict]) -> dict:
+        """What visitors get with ready answers: prepare answers (warm), then ask the reworded, visitor and trick
+        questions the way visitors do. Checks the answers are still right (trick questions must never pick up a
+        ready answer) and times them."""
+        warm = self.warm()
+        check = [c for c in cases if c.get("tag") in ("reworded", "visitor", "trick")]
+        times, ok, ready = [], 0, 0
+        for c in check:
+            try:
+                a = self.answer(c["q"], public=True)
+            except ApiError:
+                continue
+            done_ms = a.get("ms")
+            if a.get("cached"):
+                ready += 1
+            if c.get("negative"):
+                good = not a.get("covered")
+            else:
+                good = a.get("covered") and all(any(x.strip().lower() in a["answer"].lower() for x in w.split("|")) for w in c.get("expect", []))
+            ok += bool(good)
+            if a.get("first_ms") is not None:
+                times.append(a["first_ms"])
+        times.sort()
+        return {"prepared": warm, "checked": len(check), "correct": ok, "from_ready": ready,
+                "first_words_ms": round(sum(times) / len(times)) if times else None,
+                "first_words_p95_ms": times[min(len(times) - 1, int(len(times) * 0.95))] if times else None}
+
+    def warm(self, extra: list[str] | None = None, workers: int = 4) -> dict:
+        """Prepares ready answers: every quality-test question (except trick ones) plus recent visitor questions.
+        Run after each content sync (nightly), so common questions are answered instantly."""
+        t0 = time.monotonic()
+        qs = [c["q"] for c in json.loads(EVAL_FILE.read_text()) if not c.get("negative")]
+        since = now() - timedelta(days=30)
+        try:
+            qs += [d["_id"] for d in self.questions.aggregate([
+                {"$match": {"at": {"$gte": since}, "channel": {"$in": ["api", "chat"]}, "covered": True}},
+                {"$group": {"_id": "$q", "n": {"$sum": 1}}}, {"$sort": {"n": -1}}, {"$limit": 100}])]
+        except Exception:  # noqa: BLE001
+            pass
+        qs = list(dict.fromkeys(q.strip() for q in qs + (extra or []) if q and q.strip()))
+        done = errors = cached = 0
+
+        def one(q):
+            a = self.answer(q, public=True)
+            return a.get("cached", False)
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+            for f in [pool.submit(one, q) for q in qs]:
+                try:
+                    cached += bool(f.result()); done += 1
+                except Exception:  # noqa: BLE001
+                    errors += 1
+        return {"questions": len(qs), "prepared": done - cached, "already_ready": cached, "errors": errors, "ms": _ms(t0)}
 
     def answer(self, question: str, k: int | None = None, sources=None, *, types=None, categories=None, language=None,
                allow_internal: bool = False, public: bool = False, fresh: bool = False, model: str | None = None) -> dict:
@@ -1145,7 +1236,7 @@ class Rag:
         res = {"answer": text.strip(), "sources": done.get("sources", []), "covered": done.get("covered", False),
                "undocumented": done.get("undocumented", "")}
         if public:
-            return {**res, "cached": done.get("cached", False)}
+            return {**res, "cached": done.get("cached", False), "ms": done.get("ms"), "first_ms": done.get("first_ms")}
         return {**res, "method": hits[0].get("method") if hits else None, "ms": done.get("ms"), "first_ms": done.get("first_ms"),
                 "search_ms": done.get("search_ms"), "timing": done.get("timing") or {},
                 "passages": [{"title": h["title"], "url": h["url"], "section": h.get("section"), "score": h.get("score"),
@@ -1278,6 +1369,8 @@ class Rag:
                               **{f"search_{k}": round(sum(v) / len(v)) for k, v in stage.items() if v},
                               "first_words_p95_ms": first[min(len(first) - 1, int(len(first) * 0.95))] if first else None},
                   "results": results, "at": now()}
+        if not limit and not model and not tier and not retrieval:
+            report["ready"] = self._ready_check(cases)
         self.meta.replace_one({"_id": "eval"}, {"_id": "eval", **report}, upsert=True)
         return {**report, "at": _iso(report["at"])}
 

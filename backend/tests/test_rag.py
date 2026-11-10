@@ -606,3 +606,24 @@ def test_answer_on_workers_ai_model(env):
     assert a["answer"] == "All 10 keywords cost $9.99 [1]." and a["covered"] and a["sources"] and a["first_ms"] is not None
     assert w.cf_generate["model"] == "@cf/google/gemma-4-26b-a4b-it" and "COVERED" in w.cf_generate["system"]
     assert c.post("/api/admin/rag/eval", headers=H, json={"model": "@cf/evil/x"}).status_code == 400
+
+
+def test_ready_answers_match_rewordings_not_other_questions(env, monkeypatch):
+    c, w = env
+    c.post("/api/admin/rag/index", headers=H, json={})
+    r = rag_mod.Rag(main.settings(), db())
+    first = r.answer("How much is keyword research?", public=True)
+    assert not first["cached"]
+    calls = len(w.prompts)
+    # same words in another order and case: same meaning -> ready answer, no new AI call
+    again = r.answer("keyword research, how much is?", public=True)
+    assert again["cached"] and again["answer"] == first["answer"] and len(w.prompts) == calls
+    # a different question is answered fresh
+    other = r.answer("Do you build Epic FHIR integrations?", public=True)
+    assert not other["cached"] and len(w.prompts) == calls + 1
+    # site content changed: ready answers are not reused
+    r._bump_content()
+    assert not r.answer("keyword research, how much is?", public=True)["cached"]
+    # warm prepares answers for the test questions
+    out = c.post("/api/admin/rag/warm", headers=H, json={}).json()
+    assert out["questions"] > 5 and out["errors"] == 0

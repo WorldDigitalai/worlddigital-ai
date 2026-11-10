@@ -4,7 +4,7 @@ name: Feature tests (worlddigital.ai)
 # Runs after every site deploy, nightly, and on demand. A failure fails the run, and GitHub emails you.
 on:
   workflow_run:
-    workflows: ["Deploy worlddigital.ai site"]
+    workflows: ["Deploy worlddigital.ai site", "Deploy tools API (Python + MongoDB → Cloud Run)"]
     types: [completed]
   schedule:
     - cron: "37 4 * * *"   # nightly ~10:30 pm Chicago
@@ -18,7 +18,7 @@ permissions:
 jobs:
   e2e:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04   # pinned: Playwright cannot install its browser libraries on ubuntu-latest (26.04) yet
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
@@ -33,6 +33,13 @@ jobs:
           sleep 20   # let the new version reach the edge after a deploy
           python tools/e2e_check.py --only "$ONLY" | tee out.txt
           code=${PIPESTATUS[0]}
+          if [ $code -ne 0 ]; then
+            # one retry of the failed checks: right after a deploy the site and backend can briefly be out of step
+            failed=$(grep '^SUMMARY' out.txt | sed -n 's/.*failed: //p' | tr -d ' ')
+            echo "retrying in 90 s: $failed"; sleep 90
+            python tools/e2e_check.py --only "$failed" | tee out.txt
+            code=${PIPESTATUS[0]}
+          fi
           grep '^FAIL' out.txt | while read -r l; do echo "::error title=Feature test::$l"; done
           echo "::notice title=Feature tests::$(grep '^SUMMARY' out.txt | cut -c9-)"
           exit $code

@@ -1052,13 +1052,14 @@ class Rag:
         filters = {"types": types, "categories": categories, "language": language}
         key = self._cache_key(question, srcs, filters) if public else None
         qvec = None
+        check_only = getattr(self._local, "ready_check", False)  # quality test: match by meaning only, store nothing
         if key:
-            hit = self.answers.find_one({"_id": key})
+            hit = None if check_only else self.answers.find_one({"_id": key})
             if not hit and not any(filters.values()):
                 # same meaning, other words: compare with the ready answers for this content (the embedding is reused
                 # by the search below if nothing matches, so a miss costs nothing extra)
                 qvec = self._query_vector(" ".join(question.split())[:500], EMBED_MODEL, fresh)
-                hit = self._similar_answer(qvec, srcs)
+                hit = self._similar_answer(qvec, srcs, exclude=question if check_only else None)
             if hit:
                 yield {"type": "text", "text": hit["answer"]}
                 ms = _ms(t0)
@@ -1133,7 +1134,7 @@ class Rag:
         self._metric("public_answer" if public else "answer", ms)
         if first_ms is not None:
             self._metric("first_words", first_ms)
-        if key and text:
+        if key and text and not check_only:
             try:
                 if qvec is None and not any(filters.values()):
                     qvec = self._query_vector(" ".join(question.split())[:500], EMBED_MODEL, False)
@@ -1157,13 +1158,18 @@ class Rag:
             except Exception as e:  # noqa: BLE001
                 log.info("TTL index on %s.%s not changed (%s)", coll.name, field, type(e).__name__)
 
-    def _similar_answer(self, qvec: list[float], srcs: list[str]) -> dict | None:
-        """The ready answer whose question means the same (cosine >= SIMILAR_AT), for the current content only."""
+    def _similar_answer(self, qvec: list[float], srcs: list[str], exclude: str | None = None) -> dict | None:
+        """The ready answer whose question means the same (cosine >= SIMILAR_AT), for the current content only.
+        exclude: skip answers stored for this exact question (the quality test checks matching by meaning)."""
         best, best_sim = None, SIMILAR_AT
+        norm = lambda t: " ".join(re.findall(r"[a-z0-9$.]+", str(t).lower()))  # noqa: E731
+        skip = norm(exclude) if exclude else None
         qn = math.sqrt(sum(x * x for x in qvec)) or 1
         for d in self.answers.find({"v": self._content_version(), "src": srcs, "qv": {"$exists": True}},
                                    {"answer": 1, "sources": 1, "covered": 1, "undocumented": 1, "q": 1, "qv": 1}).limit(2000):
             v = d.pop("qv")
+            if skip is not None and norm(d.get("q", "")) == skip:
+                continue
             sim = sum(a * b for a, b in zip(qvec, v)) / (qn * (math.sqrt(sum(x * x for x in v)) or 1))
             if sim >= best_sim:
                 best, best_sim = d, sim
@@ -1173,14 +1179,17 @@ class Rag:
         """What visitors get with ready answers: prepare answers (warm), then ask the reworded, visitor and trick
         questions the way visitors do. Checks the answers are still right (trick questions must never pick up a
         ready answer) and times them."""
-        warm = self.warm()
+        ready_now = self.answers.count_documents({"v": self._content_version(), "qv": {"$exists": True}})
         check = [c for c in cases if c.get("tag") in ("reworded", "visitor", "trick")]
         times, ok, ready = [], 0, 0
+        self._local.ready_check = True
         for c in check:
             try:
                 a = self.answer(c["q"], public=True)
             except ApiError:
                 continue
+            finally:
+                pass
             done_ms = a.get("ms")
             if a.get("cached"):
                 ready += 1
@@ -1191,8 +1200,9 @@ class Rag:
             ok += bool(good)
             if a.get("first_ms") is not None:
                 times.append(a["first_ms"])
+        self._local.ready_check = False
         times.sort()
-        return {"prepared": warm, "checked": len(check), "correct": ok, "from_ready": ready,
+        return {"prepared": {"questions": ready_now}, "checked": len(check), "correct": ok, "from_ready": ready,
                 "first_words_ms": round(sum(times) / len(times)) if times else None,
                 "first_words_p95_ms": times[min(len(times) - 1, int(len(times) * 0.95))] if times else None}
 

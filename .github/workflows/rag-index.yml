@@ -65,6 +65,11 @@ jobs:
           PY
       - name: Answer-quality test
         run: |
+          # prepare ready answers first (own request: it can take a couple of minutes after content changes)
+          if [ -z "${{ inputs.answer_model }}${{ inputs.answer_tier }}${{ inputs.eval_limit }}${{ inputs.answer_retrieval }}" ]; then
+            wc=$(curl -s -o warm.json -w "%{http_code}" -X POST "$API/api/admin/rag/warm" -H "x-internal-token: $TOKEN" --max-time 290)
+            echo "::notice title=Ready answers prepared::HTTP $wc $(head -c 300 warm.json)"
+          fi
           code=$(curl -s -o ev.json -w "%{http_code}" -X POST "$API/api/admin/rag/eval" -H "x-internal-token: $TOKEN" -H "content-type: application/json" -d "{\"model\": \"${{ inputs.answer_model }}\", \"tier\": \"${{ inputs.answer_tier }}\", \"limit\": \"${{ inputs.eval_limit }}\", \"retrieval\": \"${{ inputs.answer_retrieval }}\"}" --max-time 290)
           [ "$code" = "200" ] || { echo "::error::eval returned $code: $(head -c 300 ev.json)"; exit 1; }
           python3 - <<'PY'

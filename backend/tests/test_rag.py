@@ -627,3 +627,16 @@ def test_ready_answers_match_rewordings_not_other_questions(env, monkeypatch):
     # warm prepares answers for the test questions
     out = c.post("/api/admin/rag/warm", headers=H, json={}).json()
     assert out["questions"] > 5 and out["errors"] == 0
+
+
+def test_ready_check_matches_by_meaning_only(env):
+    c, w = env
+    c.post("/api/admin/rag/index", headers=H, json={})
+    r = rag_mod.Rag(main.settings(), db())
+    r.answer("How much is keyword research?", public=True)
+    n = db()["rag_answers"].count_documents({})
+    r._local.ready_check = True
+    a = r.answer("keyword research, how much is?", public=True)   # matched by meaning
+    b = r.answer("Do you sell used boats?", public=True)          # no match: answered fresh, not stored
+    r._local.ready_check = False
+    assert a["cached"] and not b["cached"] and db()["rag_answers"].count_documents({}) == n

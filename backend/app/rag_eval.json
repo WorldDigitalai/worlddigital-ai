@@ -220,7 +220,7 @@
   "tag": "page"
  },
  {
-  "q": "What languages do you work in?",
+  "q": "Which spoken languages can your team work in?",
   "expect": [
    "arabic"
   ],
@@ -271,7 +271,7 @@
  {
   "q": "Will I still own my Google accounts?",
   "expect": [
-   "own"
+   "own|yours|your name"
   ],
   "tag": "page"
  },

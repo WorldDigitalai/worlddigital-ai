@@ -77,6 +77,7 @@ SKIP = re.compile(r"/(media|blog-admin|api)/|\.(xml|png|jpg|jpeg|webp|gif|svg|pd
 BOILERPLATE = re.compile(r"^(Try our SEO tools, no sign-up|Try my SEO tools, no sign-up|Start free, or tell us what to build\.?|Let.s grow your business\.?)$", re.I)
 QUESTION_TTL = timedelta(days=180)
 EVAL_WORKERS = int(os.environ.get("RAG_EVAL_WORKERS") or 6)
+SPEED_SAMPLE = int(os.environ.get("RAG_EVAL_SPEED_SAMPLE") or 20)
 EVAL_FILE = pathlib.Path(__file__).with_name("rag_eval.json")
 MAX_ERRORS = 50
 
@@ -1038,7 +1039,8 @@ class Rag:
                 text += rest
                 yield {"type": "text", "text": rest}
         text = text.strip()
-        first_sentence = re.split(r"(?<=[.!?])\s", text, maxsplit=1)[0]
+        body = "\n".join(l for l in text.splitlines() if not re.match(r"\s*not documented:", l, re.I))
+        first_sentence = re.split(r"(?<=[.!?\u201d\"])\s|\n", body.strip(), maxsplit=1)[0]
         if covered and self.NOT_COVERED.search(first_sentence):
             covered = False  # the answer opens by saying the sources do not cover it (whatever the status line said)
         undoc = ""
@@ -1168,8 +1170,26 @@ class Rag:
             answered_ok += answered
             ok = answered and cited and (not exp or rank is not None)
             passed += ok
-            results.append({"q": c["q"], "ok": ok, "tag": c.get("tag", ""), "missing": miss, "rank": rank, "source_ok": cited,
+            why = ("" if ok else "answer missing: " + ", ".join(miss) if miss else "said the site does not cover it" if not a.get("covered", True)
+                   else "right page not found" if exp and rank is None else "right page not cited" if not cited else "")
+            results.append({"q": c["q"], "ok": ok, "tag": c.get("tag", ""), "why": why, "missing": miss, "rank": rank, "source_ok": cited,
                             "answer": a["answer"][:300], "sources": urls[:3], "ms": ms})
+        # Speed is measured separately, one question at a time (answers in parallel are slower and would mislead):
+        # a fixed sample of the first SPEED_SAMPLE non-trick questions, asked fresh.
+        lat, first, search_lat, stage = [], [], [], {}
+        for c in [c for c in cases if not c.get("negative")][:SPEED_SAMPLE]:
+            t0 = time.monotonic()
+            try:
+                a = self.answer(c["q"], sources=c.get("sources") or ["ai"], fresh=True)
+            except ApiError:
+                continue
+            lat.append(_ms(t0))
+            if a.get("first_ms") is not None:
+                first.append(a["first_ms"])
+            if a.get("search_ms") is not None:
+                search_lat.append(a["search_ms"])
+            for tk, tv in (a.get("timing") or {}).items():
+                stage.setdefault(tk, []).append(tv)
         pct = lambda a, b: round(100 * a / b) if b else None  # noqa: E731
         lat.sort(); first.sort()
         by_tag: dict = {}

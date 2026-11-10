@@ -561,3 +561,12 @@ def test_not_covered_even_when_status_line_says_yes(env, monkeypatch):
     monkeypatch.setattr(rag_mod, "openai_stream", lambda s, **kw: iter([
         "COVERED: yes\nKeyword research costs $9.99 [1]. The sources do not mention a refund policy."]))
     assert c.post("/api/admin/rag/ask", headers=H, json={"q": "price and refunds"}).json()["covered"] is True
+
+
+def test_answer_with_not_documented_note_is_still_covered(env, monkeypatch):
+    c, w = env
+    c.post("/api/admin/rag/index", headers=H, json={})
+    monkeypatch.setattr(rag_mod, "openai_stream", lambda s, **kw: iter([
+        "COVERED: yes\nYes — the careers page says they offer “Flexible Remote Work.” [1]  \nNot documented: which remote jobs are open."]))
+    a = c.post("/api/admin/rag/ask", headers=H, json={"q": "Do you offer remote jobs?"}).json()
+    assert a["covered"] is True and a["undocumented"].startswith("which remote jobs")

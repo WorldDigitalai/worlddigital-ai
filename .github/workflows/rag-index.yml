@@ -61,13 +61,13 @@ jobs:
           m = d.get("metrics", {})
           print(f"::notice title=Answer quality::{d['passed']}/{d['total']} passed ({d['score']}%) | right page found {m.get('retrieval_hit_rate')}% "
                 f"(MRR {m.get('mrr')}) | right page cited {m.get('citation_accuracy')}% | answers correct {m.get('answer_accuracy')}% | "
-                f"made-up answers {m.get('unsupported_answer_rate')}% | search {m.get('search_ms')} ms (embed {m.get('search_embed_ms')}, database {m.get('search_db_ms')}, rerank {m.get('search_rerank_ms')}) | first words {m.get('first_words_ms')} ms (p95 {m.get('first_words_p95_ms')}) | full answer {m.get('avg_ms')} ms (p95 {m.get('p95_ms')})")
+                f"made-up answers {m.get('unsupported_answer_rate')}% | search {m.get('search_ms')} ms (embed {m.get('search_embed_ms')}, database {m.get('search_db_ms')}, rerank {m.get('search_rerank_ms')}) | speed (20 questions, one at a time): first words {m.get('first_words_ms')} ms (p95 {m.get('first_words_p95_ms')}) | full answer {m.get('avg_ms')} ms (p95 {m.get('p95_ms')})")
           bt = d.get("by_tag") or {}
           if bt:
               print("::notice title=By question type::" + " | ".join(f"{t}: {v['passed']}/{v['total']}" for t, v in bt.items()))
           for r in d.get("results", []):
               if not r.get("ok"):
-                  why = r.get("why") or (("missing: " + ", ".join(r["missing"])) if r.get("missing") else "wrong source page")
+                  why = r.get("why") or "failed"
                   print(f"::warning title=Failed question ({r.get('tag') or 'other'})::{r['q']} | {why} | sources {r.get('sources')} | {r.get('answer','')[:200]}")
           if d["score"] < 75:
               raise SystemExit(f"::error::answer quality dropped to {d['score']}%")

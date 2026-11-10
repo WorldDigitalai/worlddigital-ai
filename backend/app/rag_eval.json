@@ -660,7 +660,8 @@
    "a+"
   ],
   "urls": [
-   "/testimonials"
+   "/testimonials",
+   "/about"
   ],
   "tag": "page"
  },

@@ -949,7 +949,7 @@ class Rag:
     # public questions remembered for a day (same question, same site content: instant). answer() collects the stream.
     ANSWER_TOKENS = 450
     NOT_COVERED = re.compile(r"\b(does not|doesn't|do not|don't) (say|cover|mention|show|include|list|specify|describe)|not documented|"
-                             r"no information|nothing (on|about) this|\bsources? (only )?(describe|list|mention|show|cover)s?\b[^.]*\bnot\b", re.I)
+                             r"no information|nothing (on|about) this|\bsources? (only )?(describe|list|mention|show|cover)s?\b(?:[^.]|\.(?=\S))*\bnot\b", re.I)
 
     def _answer_prompt(self, question: str, hits: list[dict], who: str) -> tuple[str, str]:
         safe = lambda t: str(t).replace("</source", "<\\/source").replace("<source", "<\\source")  # noqa: E731

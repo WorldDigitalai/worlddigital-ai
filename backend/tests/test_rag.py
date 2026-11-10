@@ -549,3 +549,15 @@ def test_answer_reuses_the_search_embedding_and_skips_rerank(env, monkeypatch):
     # the quality test never uses remembered embeddings
     c.post("/api/admin/rag/eval", headers=H, json={})
     assert w.embeds > before
+
+
+def test_not_covered_even_when_status_line_says_yes(env, monkeypatch):
+    c, w = env
+    c.post("/api/admin/rag/index", headers=H, json={})
+    monkeypatch.setattr(rag_mod, "openai_stream", lambda s, **kw: iter([
+        "COVERED: yes\nThe available information does not show any boat sales; it only describes software services [1][3]."]))
+    assert c.post("/api/admin/rag/ask", headers=H, json={"q": "Do you sell used boats?"}).json()["covered"] is False
+    # a partial answer that only says "does not mention" later is still covered
+    monkeypatch.setattr(rag_mod, "openai_stream", lambda s, **kw: iter([
+        "COVERED: yes\nKeyword research costs $9.99 [1]. The sources do not mention a refund policy."]))
+    assert c.post("/api/admin/rag/ask", headers=H, json={"q": "price and refunds"}).json()["covered"] is True

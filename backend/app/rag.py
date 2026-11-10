@@ -190,8 +190,8 @@ def workers_stream(s: Settings, *, system: str, user: str, model: str, max_token
             except ValueError:
                 continue
             piece = ev.get("response")
-            if piece is None:
-                piece = "".join((c.get("delta") or {}).get("content") or "" for c in ev.get("choices") or [])
+            if not isinstance(piece, str):  # the last event can carry usage numbers instead of text
+                piece = "".join(str((c.get("delta") or {}).get("content") or "") for c in ev.get("choices") or [] if isinstance(c, dict))
             if piece:
                 out += len(piece)
                 yield piece
@@ -1159,10 +1159,13 @@ class Rag:
                 "questions": [{**r, "at": _iso(r["at"]), "expires_at": None} for r in rows]}
 
     # answer-quality tests ------------------------------------------------------
-    def evaluate(self, model: str | None = None, tier: str | None = None) -> dict:
+    def evaluate(self, model: str | None = None, tier: str | None = None, limit: int | None = None) -> dict:
         """Golden questions. Per question: expected page retrieved (and at which rank), expected page cited,
         expected words in the answer, and for questions we have no answer to, that the assistant says so."""
         cases = json.loads(EVAL_FILE.read_text())
+        if limit:  # quick check (e.g. a slow model): an even spread of question types
+            step = max(1, len(cases) // limit)
+            cases = cases[::step][:limit]
         results, lat, first, search_lat, stage = [], [], [], [], {}
         pos = neg = passed = hit = with_exp = cited_ok = answered_ok = unsupported = 0
         rr_sum = 0.0

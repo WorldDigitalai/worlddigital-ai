@@ -18,6 +18,9 @@ on:
       answer_model:
         description: "Optional: run the quality test with another answer model (does not change the site)"
         default: ""
+      eval_limit:
+        description: "Optional: quick quality test on this many questions (spread across types)"
+        default: ""
       answer_tier:
         description: "Optional: OpenAI service tier for the quality test, e.g. priority (does not change the site)"
         default: ""
@@ -59,7 +62,7 @@ jobs:
           PY
       - name: Answer-quality test
         run: |
-          code=$(curl -s -o ev.json -w "%{http_code}" -X POST "$API/api/admin/rag/eval" -H "x-internal-token: $TOKEN" -H "content-type: application/json" -d "{\"model\": \"${{ inputs.answer_model }}\", \"tier\": \"${{ inputs.answer_tier }}\"}" --max-time 290)
+          code=$(curl -s -o ev.json -w "%{http_code}" -X POST "$API/api/admin/rag/eval" -H "x-internal-token: $TOKEN" -H "content-type: application/json" -d "{\"model\": \"${{ inputs.answer_model }}\", \"tier\": \"${{ inputs.answer_tier }}\", \"limit\": \"${{ inputs.eval_limit }}\"}" --max-time 290)
           [ "$code" = "200" ] || { echo "::error::eval returned $code: $(head -c 300 ev.json)"; exit 1; }
           python3 - <<'PY'
           import json

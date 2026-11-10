@@ -557,7 +557,8 @@ async def rag_eval(request: Request):
         raise ApiError("model not allowed", 400, f"Model must be one of: {', '.join(EVAL_MODELS)}")
     if tier and tier not in ("priority", "default", "flex"):
         raise ApiError("tier not allowed", 400, "Tier must be priority, default or flex.")
-    return json_ok(await run_in_threadpool(_rag_call, lambda: rag().evaluate(model, tier)))
+    limit = max(5, min(int(b.get("limit") or 0), 124)) if b.get("limit") else None
+    return json_ok(await run_in_threadpool(_rag_call, lambda: rag().evaluate(model, tier, limit)))
 
 
 EVAL_MODELS = ("gpt-5.4-mini", "gpt-5.4-nano", "gpt-5-mini", "gpt-5-nano", "gpt-4.1-mini", "gpt-4.1-nano", "gpt-4o-mini",

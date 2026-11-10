@@ -167,6 +167,37 @@ def embed(s: Settings, texts: list[str], model: str | None = None) -> list[list[
     return out
 
 
+def workers_stream(s: Settings, *, system: str, user: str, model: str, max_tokens: int = 450):
+    """Yields answer text from a Workers AI model, streamed through the site worker (op "generate").
+    Handles both stream formats Workers AI uses: {"response": "..."} and OpenAI-style choices[].delta.content."""
+    if not s.internal_token:
+        raise ApiError("no internal token", 503, "The knowledge base is being set up.")
+    payload = {"op": "generate", "model": model, "system": system, "user": user, "max_tokens": max_tokens}
+    headers = {"x-internal-token": s.internal_token, "User-Agent": "WorldDigitalRAG/1.0"}
+    with services.http.stream("POST", WORKERS_AI_URL, headers=headers, json=payload, timeout=60) as r:
+        if r.status_code >= 400:
+            r.read()
+            raise ApiError(f"workers-ai generate {r.status_code}: {r.text[:200]}", 502, "The knowledge base is busy. Please try again.")
+        out = 0
+        for line in r.iter_lines():
+            if not line.startswith("data:"):
+                continue
+            data = line[5:].strip()
+            if data == "[DONE]":
+                break
+            try:
+                ev = json.loads(data)
+            except ValueError:
+                continue
+            piece = ev.get("response")
+            if piece is None:
+                piece = "".join((c.get("delta") or {}).get("content") or "" for c in ev.get("choices") or [])
+            if piece:
+                out += len(piece)
+                yield piece
+    record_usage("rag.answer", model, {"prompt_tokens": (len(system) + len(user)) // 4, "completion_tokens": out // 4})
+
+
 def rerank(s: Settings, query: str, texts: list[str]) -> list[float]:
     """Relevance score per text (same order), from the Workers AI reranker."""
     if not texts:
@@ -1022,8 +1053,11 @@ class Rag:
             return
         system, user = self._answer_prompt(question, hits, who)
         head, text, first_ms, covered = "", "", None, None
-        for piece in openai_stream(self.s, system=system, user=user, max_tokens=self.ANSWER_TOKENS, feature="rag.answer",
-                                   model=model or ANSWER_MODEL or None, tier=getattr(self._local, "tier", None) or ANSWER_TIER or None):
+        use = model or ANSWER_MODEL or None
+        writer = (workers_stream(self.s, system=system, user=user, model=use, max_tokens=self.ANSWER_TOKENS) if use and use.startswith("@cf/")
+                  else openai_stream(self.s, system=system, user=user, max_tokens=self.ANSWER_TOKENS, feature="rag.answer",
+                                     model=use, tier=getattr(self._local, "tier", None) or ANSWER_TIER or None))
+        for piece in writer:
             if covered is None:  # hold back the status line, then stream the answer
                 head += piece
                 if "\n" not in head and len(head) < 24:

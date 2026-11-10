@@ -2,11 +2,14 @@
 // by the backend. POST /api/internal/ai  (header x-internal-token = TOOLS_API_TOKEN)
 //   {op: "embed",  model?, texts: [...]}          -> {vectors: [[...]], model, dims}
 //   {op: "rerank", model?, query, texts: [...]}   -> {scores: [...]}   (one score per text, same order)
+//   {op: "generate", model, system, user, max_tokens?} -> the answer streamed as server-sent events (Workers AI format)
 // Only the models below can be called, so the endpoint cannot be used to run anything else on the account.
 import { sha256 } from './admin.js';
 
 export const EMBED_MODELS = { '@cf/baai/bge-m3': 1024 };
 export const RERANK_MODELS = ['@cf/baai/bge-reranker-base'];
+// Answer models on Cloudflare, close to visitors (tested against the quality test before any is used on the site)
+export const GENERATE_MODELS = ['@cf/google/gemma-4-26b-a4b-it', '@cf/meta/llama-4-scout-17b-16e-instruct', '@cf/meta/llama-3.3-70b-instruct-fp8-fast'];
 const MAX_TEXTS = 32;
 const MAX_CHARS = 4000;
 
@@ -33,6 +36,20 @@ export async function internalAi(req, env) {
   if (!want || a !== b) return j({ error: 'Forbidden' }, 403);
   if (!env.AI) return j({ error: 'Workers AI binding missing' }, 503);
   let body; try { body = JSON.parse((await req.text()).slice(0, 200000)); } catch { return j({ error: 'JSON body required' }, 400); }
+  if (body?.op === 'generate') {
+    const model = String(body.model || '');
+    if (!GENERATE_MODELS.includes(model)) return j({ error: 'model not allowed' }, 400);
+    const system = String(body.system || '').slice(0, 4000), user = String(body.user || '').slice(0, 24000);
+    if (!user) return j({ error: 'user prompt required' }, 400);
+    try {
+      const stream = await env.AI.run(model, { messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
+        stream: true, max_tokens: Math.min(Number(body.max_tokens) || 450, 800), temperature: 0.2 });
+      return new Response(stream, { headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store' } });
+    } catch (e) {
+      const msg = String(e?.message || e);
+      return j({ error: msg.slice(0, 300) }, /3036|limit/i.test(msg) ? 429 : 502);
+    }
+  }
   const texts = Array.isArray(body?.texts) ? body.texts.map((t) => String(t ?? '').slice(0, MAX_CHARS)) : [];
   if (!texts.length || texts.length > MAX_TEXTS) return j({ error: `texts: 1 to ${MAX_TEXTS} strings` }, 400);
   try {

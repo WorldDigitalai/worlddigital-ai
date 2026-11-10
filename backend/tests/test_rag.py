@@ -80,6 +80,11 @@ class World:
         if b["op"] == "embed":
             self.cf_embeds += len(b["texts"])
             return httpx.Response(200, json={"vectors": [vec(t, 1024) for t in b["texts"]], "dims": 1024})
+        if b["op"] == "generate":
+            self.cf_generate = b
+            text = "COVERED: yes\nAll 10 keywords cost $9.99 [1]."
+            sse = "".join(f"data: {json.dumps({'response': text[i:i + 6]})}\n\n" for i in range(0, len(text), 6)) + "data: [DONE]\n\n"
+            return httpx.Response(200, text=sse, headers={"content-type": "text/event-stream"})
         words = set(b["query"].lower().split())
         return httpx.Response(200, json={"scores": [len(words & set(t.lower().split())) / 10 for t in b["texts"]]})
 
@@ -592,3 +597,12 @@ def test_no_answer_from_absence_other_phrasings(env, monkeypatch):
     ]:
         monkeypatch.setattr(rag_mod, "openai_stream", lambda s, t=text, **kw: iter(["COVERED: yes\n" + t]))
         assert c.post("/api/admin/rag/ask", headers=H, json={"q": "q?"}).json()["covered"] is covered, text
+
+
+def test_answer_on_workers_ai_model(env):
+    c, w = env
+    c.post("/api/admin/rag/index", headers=H, json={})
+    a = rag_mod.Rag(main.settings(), db()).answer("How much is keyword research?", model="@cf/google/gemma-4-26b-a4b-it")
+    assert a["answer"] == "All 10 keywords cost $9.99 [1]." and a["covered"] and a["sources"] and a["first_ms"] is not None
+    assert w.cf_generate["model"] == "@cf/google/gemma-4-26b-a4b-it" and "COVERED" in w.cf_generate["system"]
+    assert c.post("/api/admin/rag/eval", headers=H, json={"model": "@cf/evil/x"}).status_code == 400

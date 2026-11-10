@@ -88,3 +88,16 @@ test('official profile links are the same everywhere (footer, structured data, A
   }
   assert.ok(!/facebook\.com\/worlddigitalai|youtube\.com\/@worlddigitalai|company\/worlddigitalai/.test(layout + about + help), 'old unverified links remain');
 });
+
+test('internal AI endpoint: answer generation streams, only allow-listed models', async () => {
+  const { internalAi } = await import('../src/ai.js');
+  const env = { TOOLS_API_TOKEN: 'secret', AI: { run: async (m, i) => {
+    assert.equal(i.stream, true); assert.equal(i.messages[1].content, 'question');
+    return new Response('data: {"response":"Hi"}\n\ndata: [DONE]\n\n').body;
+  } } };
+  const post = (b) => internalAi(new Request('https://worlddigital.ai/api/internal/ai', { method: 'POST', headers: { 'x-internal-token': 'secret' }, body: JSON.stringify(b) }), env);
+  assert.equal((await post({ op: 'generate', model: '@cf/evil/model', user: 'question' })).status, 400);
+  const r = await post({ op: 'generate', model: '@cf/google/gemma-4-26b-a4b-it', system: 's', user: 'question' });
+  assert.equal(r.headers.get('content-type'), 'text/event-stream');
+  assert.match(await r.text(), /"response":"Hi"/);
+});

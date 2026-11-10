@@ -65,8 +65,9 @@ ANSWER_TIER = os.environ.get("RAG_ANSWER_TIER", "")
 # little, the answer falls back to the normal hybrid search. "hybrid" (default): meaning + words.
 ANSWER_RETRIEVAL = os.environ.get("RAG_ANSWER_RETRIEVAL", "hybrid")
 # Ready answers: a visitor question close in meaning to one already answered (same site content) gets that answer
-# straight away. 0.93 cosine similarity is strict: rewordings and typos match, different questions do not.
-SIMILAR_AT = float(os.environ.get("RAG_SIMILAR_AT") or 0.93)
+# straight away. 0.86 was set from measurements: near rewordings score 0.88-0.93; the closest unrelated (trick) question
+# scored 0.77, so a wrong match needs a question far closer than any seen.
+SIMILAR_AT = float(os.environ.get("RAG_SIMILAR_AT") or 0.86)
 ANSWER_TTL_H = 30   # ready answers live a little over a day; the nightly run prepares them again              # "priority": OpenAI serves answers first (costs more)            # empty: the site's main model (OPENAI_MODEL)
 ANSWER_SOURCES = int(os.environ.get("RAG_ANSWER_SOURCES") or 5)  # passages the model reads per answer
 ANSWER_CHARS = int(os.environ.get("RAG_ANSWER_CHARS") or 1200)   # characters per passage

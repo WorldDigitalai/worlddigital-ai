@@ -69,9 +69,14 @@ POST_TYPES = {
     "pricing": "Cost / pricing guide",
 }
 
-ABOUT_US = """WorldDigital.ai (WorldDigital.ai Corporation LLC) is a software company with hubs in Houston, TX and
-Murfreesboro, TN, serving businesses across the US and Canada. BBB A+ rated, 5.0 on Google.
-Software (every tool has a free version, pay once, no subscription):
+ABOUT_US = """WorldDigital.ai (WorldDigital.ai Corporation LLC) is an AI marketing company with hubs in Houston, TX and
+Murfreesboro, TN, serving businesses across the US and Canada. BBB A+ rated, 5.0 on Google. It gets businesses
+found on Google, Maps and AI answers with SEO and AI search optimization (GEO and AEO) and manages Google Ads,
+backed by AI tools and custom software it builds itself.
+Services: SEO & AI Search plan $199.99/month, no contract, covers SEO, AEO and GEO (/ai-seo-agency);
+Google Ads & PPC management (/google-ads-agency); local SEO (/local-seo-services); GEO
+(/generative-engine-optimization); websites (/build).
+AI tools (every tool has a free version, pay once, no subscription):
 - Free SEO & AI Visibility Report (/free-seo-report): on-page SEO, mobile speed, Google rankings, backlinks and
   ChatGPT mentions with top fixes in about 60 seconds. Data from DataForSEO and Google Lighthouse.
 - Keyword Research (/services/keyword-research): 3 keywords free, 10 for $9.99 one-time.
@@ -79,9 +84,7 @@ Software (every tool has a free version, pay once, no subscription):
   TikTok, YouTube Shorts and Snapchat. 1 free, 5 for $24.99 one-time.
 Custom software (custom quote, fixed-scope proposal after a discovery call): web apps & portals, AI automation &
 agents, APIs & integrations, EHR & EMR integration (/ehr-emr-integration) (/custom-software).
-Add-on services: SEO & AI Search plan $199.99/month, no contract, covers SEO, AEO and GEO (/ai-seo-agency);
-Google Ads & PPC management (/google-ads-agency); websites (/build); local SEO (/local-seo-services);
-GEO (/generative-engine-optimization). Contact: /contact, support@worlddigital.ai, (832) 834-0680.
+Contact: /contact, support@worlddigital.ai, (832) 834-0680.
 Every account stays in the client's name. Replies within one business day."""
 
 

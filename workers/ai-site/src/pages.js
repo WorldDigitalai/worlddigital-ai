@@ -27,11 +27,11 @@ import unsubscribe from './pages/unsubscribe.html';
 import privacy from '../content/legal/privacy-policy.md';
 import terms from '../content/legal/terms-and-conditions.md';
 import cookies from '../content/legal/cookies-policy.md';
-import { ORG, SITE, crumbs, esc, toolCards, TOOLS } from './layout.js';
+import { ORG, WEBSITE, SITE, crumbs, esc, toolCards, TOOLS } from './layout.js';
 import { mdToHtml, parseFrontmatter } from './md.js';
 
 const svc = (name, path, description, serviceType) => ({
-  '@context': 'https://schema.org', '@type': 'Service', name, serviceType, description, url: SITE + path,
+  '@context': 'https://schema.org', '@type': 'Service', '@id': `${SITE}${path}#service`, name, serviceType, description, url: SITE + path,
   provider: { '@id': `${SITE}/#org` }, areaServed: [{ '@type': 'Country', name: 'United States' }, { '@type': 'Country', name: 'Canada' }],
 });
 const local = (city, region, path) => ({
@@ -122,10 +122,10 @@ function legal(md, path) {
 }
 
 export const PAGES = {
-  '/': { keywords: 'seo software, ai seo tools, marketing software for small business, custom software development, ai automation, software company, seo services, ai visibility checker', body: home, cta: false, tools: false, title: 'SEO & AI Marketing Software, Custom Software | WorldDigital.ai',
-    description: 'WorldDigital.ai is a software company: AI tools for SEO and AI search visibility, plus custom software, AI automation and integrations for SMBs and enterprises.',
-    schema: [ORG, { '@context': 'https://schema.org', '@type': 'WebSite', '@id': `${SITE}/#site`, name: 'WorldDigital.ai', url: `${SITE}/`, publisher: { '@id': `${SITE}/#org` } }],
-    sitemap: { priority: '1.0', changefreq: 'weekly' } },
+  '/': { keywords: 'ai marketing company, ai marketing agency, ai seo agency, ai seo services, generative engine optimization, answer engine optimization, google ads management, seo tools for small business, custom software development', body: home, cta: false, tools: false, title: 'AI Marketing Company for SEO, AI Search & Ads | WorldDigital.ai',
+    description: 'WorldDigital.ai is an AI marketing company for SMBs in the US and Canada: SEO and AI search visibility (GEO, AEO), Google Ads, AI tools and custom software.',
+    schema: [ORG, WEBSITE],
+    sitemap: { priority: '1.0', changefreq: 'weekly', lastmod: '2026-11-10' } },
   '/services': { keywords: 'digital marketing services for small business, digital marketing company, seo services, google ads management, small business website design', body: services, cta: false, title: 'Managed SEO, Google Ads & Website Services | WorldDigital.ai',
     description: 'Managed services from WorldDigital.ai: SEO and AI search ($199.99/month), Google Ads management and websites for SMBs, SMEs and enterprises in the US and Canada.',
     schema: [crumbs([['Home', '/'], ['Services', '/services']])], sitemap: { priority: '0.9' } },
@@ -153,9 +153,9 @@ export const PAGES = {
     description: 'Epic integration and EHR and EMR integration services: Epic FHIR API apps, SMART on FHIR, HL7 integration, patient portal tools and medical websites.',
     schema: [svc('EHR & EMR integration', '/ehr-emr-integration', 'Epic and FHIR-based integrations, AI booking and attribution for Epic clinics, patient-facing AI tools, medical websites and workflow automation for clinics, health systems and health tech companies.', 'Epic integration, EHR and EMR integration, FHIR and HL7 integration'),
       crumbs([['Home', '/'], ['Services', '/services'], ['EHR & EMR integration', '/ehr-emr-integration']])], sitemap: { priority: '0.9', lastmod: '2026-10-27' } },
-  '/about': { body: about, cta: false, title: 'About WorldDigital.ai | Software Company',
-    description: 'WorldDigital.ai is a software company in Houston, TX and Murfreesboro, TN making AI marketing tools and custom software for businesses across the US and Canada.',
-    schema: [ORG, crumbs([['Home', '/'], ['About us', '/about']])], sitemap: { priority: '0.7' } },
+  '/about': { body: about, cta: false, title: 'About WorldDigital.ai | AI Marketing Company',
+    description: 'WorldDigital.ai is an AI marketing company in Houston, TX and Murfreesboro, TN: SEO, AI search (GEO, AEO) and Google Ads, plus AI tools and custom software.',
+    schema: [ORG, crumbs([['Home', '/'], ['About us', '/about']])], sitemap: { priority: '0.7', lastmod: '2026-11-10' } },
   '/houston': { keywords: 'houston seo company, seo company houston tx, seo houston, houston seo, web design houston, houston web design, digital marketing agency houston', body: houston, cta: false, title: 'Houston SEO Company & Web Design Houston | WorldDigital.ai',
     description: 'Houston SEO company and digital marketing agency for small businesses: local SEO, AI search, Google Ads (PPC) and web design in Houston, TX, from $199.99/month.',
     schema: [local('Houston', 'TX', '/houston'), crumbs([['Home', '/'], ['Houston, TX', '/houston']])], sitemap: { priority: '0.8' } },
@@ -180,9 +180,9 @@ export const PAGES = {
   '/help': { body: help, title: 'Help Center: Plans, Billing & Results | WorldDigital.ai',
     description: 'Answers about WorldDigital.ai plans, billing, cancelling, results and reporting. Contact support@worlddigital.ai or (832) 834-0680.',
     schema: [crumbs([['Home', '/'], ['Help center', '/help']])], sitemap: { priority: '0.5' } },
-  '/career': { body: career, title: 'Careers at WorldDigital.ai | Software & AI Jobs',
+  '/career': { body: career, title: 'Careers at WorldDigital.ai | AI Marketing & Software Jobs',
     description: 'Join WorldDigital.ai: remote-friendly software, AI and digital marketing roles with flexible hours, learning and growth. Apply online.',
-    schema: [crumbs([['Home', '/'], ['Careers', '/career']])], sitemap: { priority: '0.4' } },
+    schema: [crumbs([['Home', '/'], ['Careers', '/career']])], sitemap: { priority: '0.4', lastmod: '2026-11-10' } },
   '/local-seo-services': { keywords: 'local seo services, local seo, local seo company, google business profile optimization, near me seo, google maps seo, local seo agency', body: localSeo + LOCAL_FAQ.html, title: 'Local SEO Services: Google Maps & Near Me | WorldDigital.ai',
     description: 'Local SEO services for SMBs, SMEs and multi-location brands in the US and Canada: Google Business Profile, Maps rankings, citations and reviews. $199.99/month.',
     schema: [svc('Local SEO services', '/local-seo-services', 'Google Business Profile, location pages, citations, reviews and local schema.', 'Local SEO'),
@@ -200,10 +200,10 @@ export const PAGES = {
     description: 'Custom software development for SMBs, SMEs and enterprises: web apps and portals, AI automation and agents, API and EHR/EMR integrations. Fixed-scope proposals.',
     schema: [svc('Custom software development', '/custom-software', 'Web apps and customer portals, AI automation and agents, API and data integrations, and EHR/EMR integrations.', 'Software development'),
       crumbs([['Home', '/'], ['Custom software', '/custom-software']])], sitemap: { priority: '0.9' } },
-  '/contact': { body: contact, cta: false, tools: false, title: 'Contact WorldDigital.ai | Software & Custom Development',
-    description: 'Contact WorldDigital.ai about our marketing software, a custom software or AI automation project, an integration or a managed service. We reply in one business day.',
+  '/contact': { body: contact, cta: false, tools: false, title: 'Contact WorldDigital.ai | AI Marketing, SEO & Software',
+    description: 'Contact WorldDigital.ai about SEO and AI search, Google Ads, our marketing tools, or a custom software or AI automation project. We reply in one business day.',
     schema: [{ '@context': 'https://schema.org', '@type': 'ContactPage', name: 'Contact WorldDigital.ai', url: `${SITE}/contact`, about: { '@id': `${SITE}/#org` } },
-      crumbs([['Home', '/'], ['Contact', '/contact']])], sitemap: { priority: '0.6' } },
+      crumbs([['Home', '/'], ['Contact', '/contact']])], sitemap: { priority: '0.6', lastmod: '2026-11-10' } },
   '/tools': { keywords: 'free seo tools, free keyword research tool, ai content generator, free seo checker, seo tools for small business', body: TOOLS_BODY, tools: false,
     title: 'Products: SEO & AI Marketing Software | WorldDigital.ai',
     description: 'WorldDigital.ai software, free to start: SEO and AI visibility report (free), keyword research (3 free, 10 for $9.99) and content generator (1 free, 5 for $24.99).',

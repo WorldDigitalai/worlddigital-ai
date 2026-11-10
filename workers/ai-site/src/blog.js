@@ -10,6 +10,17 @@ import p6 from '../content/blog/snapchat-marketing-strategies.md';
 import p7 from '../content/blog/tiktok-vs-instagram-ads.md';
 import p8 from '../content/blog/youtube-shorts-marketing-guide.md';
 
+// Post author for the byline and the schema. No author (or the old team label) = the company itself, so the
+// schema points at the one Organization node; Ahmad = the Person node on worlddigital.us.
+const TEAM = /^(worlddigital\.ai( team)?)?$/i;
+export const byline = (p) => (TEAM.test(String(p.author || '').trim()) ? 'WorldDigital.ai' : String(p.author).trim());
+export function authorNode(p) {
+  const name = byline(p);
+  if (name === 'WorldDigital.ai') return { '@type': 'Organization', '@id': `${SITE}/#org`, name };
+  if (/^ahmad awwad$/i.test(name)) return { '@type': 'Person', '@id': 'https://worlddigital.us/#person', name: 'Ahmad Awwad', url: 'https://worlddigital.us/about' };
+  return { '@type': 'Person', name };
+}
+
 const SEED_FILES = {
   'how-ai-marketing-automation-works': p1, 'google-ads-management-local-businesses': p2,
   'essential-strategies-for-effective-digital-marketing-in-2026': p3, 'best-google-ads-automation-tool': p4,
@@ -63,7 +74,7 @@ ${filters}
       : 'Plain-English guides for local businesses on SEO, AI search visibility (AEO, GEO), Google Ads and digital marketing, from the WorldDigital.ai team.',
     schema: [{ '@context': 'https://schema.org', '@type': 'Blog', name: 'WorldDigital.ai Blog', url: `${SITE}/blog`, publisher: { '@id': `${SITE}/#org` },
       blogPost: shown.slice(0, 20).map((p) => ({ '@type': 'BlogPosting', headline: p.title, url: `${SITE}/blog/${p.slug}`, datePublished: p.published_at,
-        image: cover(p) ? SITE + cover(p) : `${SITE}/og.png`, author: { '@type': 'Organization', name: p.author || 'WorldDigital.ai Team', url: `${SITE}/about` } })) },
+        image: cover(p) ? SITE + cover(p) : `${SITE}/og.png`, author: authorNode(p) })) },
     crumbs(catName ? [['Home', '/'], ['Blog', '/blog'], [catName, `/blog?topic=${category}`]] : [['Home', '/'], ['Blog', '/blog']])],
     body,
   });
@@ -82,7 +93,7 @@ export function blogPost(p, others, { prod, preview = false }) {
 <a class="chip" href="/blog?topic=${catSlug(p.category)}" style="margin-top:16px;text-decoration:none">${esc(p.category || 'Guide')}</a>
 <h1 class="h" style="font-size:44px;line-height:1.12;margin-top:14px">${esc(p.title)}</h1>
 ${p.excerpt ? `<p style="font-size:19px;line-height:1.6;color:#33445A;margin:16px 0 0">${esc(p.excerpt)}</p>` : ''}
-<p class="muted" style="margin:18px 0 0;font-size:15px">${esc(p.author || 'WorldDigital.ai Team')} · <time datetime="${esc(date)}">${esc(fmtDate(date))}</time> · ${minutes} min read</p>
+<p class="muted" style="margin:18px 0 0;font-size:15px">${esc(byline(p))} · <time datetime="${esc(date)}">${esc(fmtDate(date))}</time> · ${minutes} min read</p>
 </div></header>
 <div class="wrap" style="max-width:860px;padding-top:36px;padding-bottom:20px">
 ${img ? `<img src="${img}" alt="${esc(p.cover_alt || p.title || '')}" width="1200" height="675" style="border-radius:16px;width:100%;margin-bottom:28px">` : ''}
@@ -104,7 +115,7 @@ ${related.length ? `<section class="sec" style="padding-top:40px"><div class="wr
       '@context': 'https://schema.org', '@type': 'BlogPosting', headline: p.title, description: p.description || p.excerpt || '',
       datePublished: date, dateModified: p.updated_at || date, mainEntityOfPage: `${SITE}/blog/${p.slug}`,
       image: img ? SITE + img : `${SITE}/og.png`, articleSection: p.category || undefined, wordCount: mdToText(p.body).split(' ').length,
-      author: { '@type': 'Organization', name: p.author || 'WorldDigital.ai Team', url: `${SITE}/about` }, publisher: { '@id': `${SITE}/#org` },
+      author: authorNode(p), publisher: { '@id': `${SITE}/#org` },
     }, crumbs([['Home', '/'], ['Blog', '/blog'], [p.title, `/blog/${p.slug}`]])],
     body,
   });

@@ -170,7 +170,7 @@ function header(path) {
   const links = NAV.map(([h, t]) => `<a href="${h}"${cur(h)}>${esc(t)}</a>`).join('');
   return `<a class="skip" href="#main">Skip to content</a>
 <header class="top"><div class="wrap topin">
-<a class="brand" href="/"><img src="/icon-72.webp" alt="WorldDigital.ai logo" width="36" height="36"><span>WorldDigital.ai<small>Software company · Serving the US &amp; Canada</small></span></a>
+<a class="brand" href="/"><img src="/icon-72.webp" alt="WorldDigital.ai logo" width="36" height="36"><span>WorldDigital.ai<small>AI marketing company · Serving the US &amp; Canada</small></span></a>
 <nav class="nav" aria-label="Main">${links}</nav>
 <div class="nav-cta"><a class="srch" href="/search" aria-label="Search the site" title="Search"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg></a><a class="btn ghost" href="${CONTACT}">Contact</a><a class="btn red" href="${START}">Start free</a></div>
 <details class="menu"><summary aria-label="Menu">Menu</summary><nav aria-label="Mobile">${links}<a href="/search">Search</a><a href="${START}">Start free</a><a href="${CONTACT}">Contact</a></nav></details>
@@ -291,8 +291,14 @@ export function page(o) {
   const url = SITE + (o.path === '/' ? '/' : o.path);
   const og = o.ogImage || `${SITE}/og.png`;
   const list = [].concat(o.schema || []).filter(Boolean);
-  // Every page carries the Organization, so search engines and AI tools never have to resolve it from another page.
-  if (!o.noindex && !list.some((s) => s['@id'] === ORG['@id'])) list.unshift(ORG);
+  // Every page carries the Organization and WebSite, so search engines and AI tools never have to resolve them from
+  // another page, plus a WebPage that ties this URL to both (and to its Service on service pages).
+  if (!o.noindex) {
+    const webPage = webPageNode(o, url, list);
+    if (!list.some((s) => s['@id'] === WEBSITE['@id'])) list.unshift(WEBSITE);
+    if (!list.some((s) => s['@id'] === ORG['@id'])) list.unshift(ORG);
+    if (webPage) list.push(webPage);
+  }
   const schema = list
     .map((s) => `<script type="application/ld+json">${JSON.stringify(s).replace(/</g, '\\u003c')}</script>`).join('\n');
   return `<!doctype html>
@@ -356,10 +362,16 @@ export function faqSchema(body) {
   return { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: items.map((x) => ({ '@type': 'Question', name: x.q, acceptedAnswer: { '@type': 'Answer', text: x.a } })) };
 }
 
+// The one-sentence identity used everywhere (schema, llms.txt, About). Keep these in step.
+export const IDENTITY = 'WorldDigital.ai is an AI marketing company for small and mid-size businesses in the US and Canada: SEO and AI search visibility (GEO and AEO), Google Ads, content and marketing automation, backed by AI tools and custom software we build in-house.';
+
+// Plain Organization (not ProfessionalService/LocalBusiness): the company has no single walk-in address.
+// The city pages carry their own ProfessionalService nodes linked back here.
 export const ORG = {
-  '@context': 'https://schema.org', '@type': ['Organization', 'ProfessionalService'], '@id': `${SITE}/#org`,
-  name: 'WorldDigital.ai', legalName: 'WorldDigital.ai Corporation LLC', url: `${SITE}/`, logo: `${SITE}/icon-512.png`, image: `${SITE}/og.png`,
-  email: 'support@worlddigital.ai', telephone: '+1-832-834-0680', priceRange: '$0–$199.99/month',
+  '@context': 'https://schema.org', '@type': 'Organization', '@id': `${SITE}/#org`,
+  name: 'WorldDigital.ai', legalName: 'WorldDigital.ai Corporation LLC', alternateName: ['WorldDigital', 'World Digital AI'],
+  url: `${SITE}/`, logo: `${SITE}/icon-512.png`, image: `${SITE}/og.png`,
+  email: 'support@worlddigital.ai', telephone: '+1-832-834-0680',
   hasOfferCatalog: { '@type': 'OfferCatalog', name: 'Plans and tools', itemListElement: [
     { '@type': 'Offer', name: 'SEO & AI Search Visibility plan', price: '199.99', priceCurrency: 'USD', url: `${SITE}/ai-seo-agency`,
       priceSpecification: { '@type': 'UnitPriceSpecification', price: '199.99', priceCurrency: 'USD', unitText: 'MONTH' } },
@@ -367,17 +379,40 @@ export const ORG = {
     { '@type': 'Offer', name: 'Keyword research (10 keywords)', price: '9.99', priceCurrency: 'USD', url: `${SITE}/services/keyword-research` },
     { '@type': 'Offer', name: 'Content pack (5 ads or posts)', price: '24.99', priceCurrency: 'USD', url: `${SITE}/services/content-marketing` },
   ] },
-  description: 'Software company making AI marketing tools (SEO and AI visibility report, keyword research, content generator) and building custom software, AI automation and EHR/EMR integrations for SMBs, SMEs and enterprises across the US and Canada, with managed SEO, Google Ads and website services as add-ons.',
+  description: IDENTITY,
   address: [{ '@type': 'PostalAddress', addressLocality: 'Houston', addressRegion: 'TX', addressCountry: 'US' },
     { '@type': 'PostalAddress', addressLocality: 'Murfreesboro', addressRegion: 'TN', addressCountry: 'US' }],
   contactPoint: { '@type': 'ContactPoint', contactType: 'customer support', email: 'support@worlddigital.ai', telephone: '+1-832-834-0680',
     areaServed: ['US', 'CA'], availableLanguage: ['English', 'Arabic'] },
-  knowsAbout: ['Software development', 'SaaS', 'Custom software development', 'AI automation', 'API integration', 'EHR and EMR integration', 'Search engine optimization', 'Local SEO', 'Generative engine optimization (GEO)', 'Answer engine optimization (AEO)',
-    'AI search visibility', 'Google Ads management', 'PPC management', 'Keyword research', 'Content marketing', 'Website design', 'Multi-location SEO'],
+  // Marketing first (what the company is), software last (what it also builds).
+  knowsAbout: ['AI marketing', 'Search engine optimization', 'AI search visibility', 'Generative engine optimization (GEO)', 'Answer engine optimization (AEO)',
+    'Local SEO', 'Multi-location SEO', 'Keyword research', 'Content marketing', 'Google Ads management', 'PPC management', 'Marketing automation',
+    'Marketing analytics', 'Website design', 'AI automation', 'Custom software development', 'API integration', 'EHR and EMR integration'],
   areaServed: [{ '@type': 'Country', name: 'United States' }, { '@type': 'Country', name: 'Canada' }],
-  founder: { '@type': 'Person', name: 'Ahmad Awwad', url: `${SITE}/about`, sameAs: ['https://www.linkedin.com/in/ahmadawwad89'] },
-  sameAs: [...SOCIAL.map(([, u]) => u), BBB],
+  // Same person as the Person node on worlddigital.us, so the two sites resolve to one founder.
+  founder: { '@type': 'Person', '@id': 'https://worlddigital.us/#person', name: 'Ahmad Awwad', url: 'https://worlddigital.us/about', sameAs: ['https://www.linkedin.com/in/ahmadawwad89'] },
+  sameAs: [...SOCIAL.map(([, u]) => u), BBB,
+    // Third-party records of the company (checked 2026-11-10: each names worlddigital.ai)
+    'https://www.crunchbase.com/organization/worlddigital-ai', 'https://www.cbinsights.com/company/worlddigitalai', 'https://www.producthunt.com/products/world-digital-ai'],
 };
+
+export const WEBSITE = { '@context': 'https://schema.org', '@type': 'WebSite', '@id': `${SITE}/#site`, name: 'WorldDigital.ai', url: `${SITE}/`, publisher: { '@id': `${SITE}/#org` } };
+
+// Page types that already describe the page itself; when one is present, no extra WebPage node is added.
+const PAGE_TYPES = ['WebPage', 'AboutPage', 'ContactPage', 'CollectionPage', 'ProfilePage', 'SearchResultsPage'];
+const typesOf = (s) => [].concat(s['@type'] || []);
+
+// One WebPage per indexable URL, tying it to the site, the company and (on service pages) its Service.
+export function webPageNode(o, url, list) {
+  if (list.some((s) => typesOf(s).some((t) => PAGE_TYPES.includes(t)))) return null;
+  const service = list.find((s) => typesOf(s).includes('Service') && s['@id']);
+  return {
+    '@context': 'https://schema.org', '@type': o.pageType || 'WebPage', '@id': `${url}#webpage`, url,
+    name: o.title, description: o.description, inLanguage: 'en-US',
+    isPartOf: { '@id': WEBSITE['@id'] }, about: { '@id': ORG['@id'] }, publisher: { '@id': ORG['@id'] },
+    ...(service ? { mainEntity: { '@id': service['@id'] } } : {}),
+  };
+}
 
 export function crumbs(items) {
   return { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: items.map(([name, path], i) => ({ '@type': 'ListItem', position: i + 1, name, item: SITE + path })) };

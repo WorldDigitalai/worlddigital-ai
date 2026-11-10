@@ -98,18 +98,24 @@ jobs:
             [ "$code" = "200" ] || echo "::error::live $p returned $code"
           done
           code=$(curl -s -o /dev/null -w "%{http_code}" "https://worlddigital.ai/meta-ads-agency"); [ "$code" = "301" ] || echo "::error::redirect returned $code"
-          curl -s https://worlddigital.ai/ | grep -q "Software that helps businesses" || echo "::error::new homepage not served"
+          curl -s https://worlddigital.ai/ | grep -q "AI marketing that helps businesses" || echo "::error::new homepage not served"
           curl -s https://worlddigital.ai/login | grep -q "customer portal" || echo "::error::/login is not showing the customer portal page"
           code=$(curl -s -o /dev/null -w "%{http_code}" "https://worlddigital.ai/no-such-page-xyz"); [ "$code" = "404" ] || echo "::error::unknown page returned $code, expected 404"
-      - name: Tell Bing and IndexNow engines about every page (sitemap URLs)
+      - name: Tell Bing and IndexNow engines about changed pages (sitemap URLs with a recent lastmod)
         if: github.event_name != 'pull_request' && steps.cf.outputs.ok == '1'
         run: |
           if [ "${{ github.event_name }}" = "schedule" ]; then
             # Nightly run only refreshes the Social Hub; resubmitting unchanged pages every night is treated as spam.
             urls='["https://worlddigital.ai/social"]'
           else
-            urls=$(curl -s https://worlddigital.ai/sitemap.xml | grep -o '<loc>https://worlddigital.ai[^<]*</loc>' | sed 's#</\?loc>##g' | grep -v '/media/' | jq -R . | jq -s .)
+            # Only pages whose lastmod is from the last 2 days: resubmitting unchanged URLs on every deploy wastes the
+            # engines' crawl budget for the site. Nothing changed -> nothing sent.
+            since=$(date -u -d '2 days ago' +%Y-%m-%d)
+            urls=$(curl -s https://worlddigital.ai/sitemap.xml | tr -d '\n' | grep -o '<url>[^/]*<loc>[^<]*</loc><lastmod>[^<]*</lastmod>' \
+              | sed -E 's#.*<loc>([^<]*)</loc><lastmod>([^<]*)</lastmod>#\2 \1#' | awk -v s="$since" '$1 >= s {print $2}' \
+              | grep '^https://worlddigital.ai' | grep -v '/media/' | jq -R . | jq -s .)
           fi
+          if [ "$(echo "$urls" | jq length)" = "0" ]; then echo "::notice title=IndexNow::no changed pages to submit"; exit 0; fi
           body=$(jq -n --argjson u "$urls" '{host:"worlddigital.ai",key:"5d1c3f0b8e9a4c7d92b6e1f04a3c8d27",keyLocation:"https://worlddigital.ai/5d1c3f0b8e9a4c7d92b6e1f04a3c8d27.txt",urlList:$u}')
           echo "Submitting $(echo "$urls" | jq length) URLs"
           code=$(curl -s -o /tmp/ix -w "%{http_code}" -X POST https://api.indexnow.org/indexnow -H "Content-Type: application/json; charset=utf-8" -d "$body")

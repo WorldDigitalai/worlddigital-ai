@@ -1,4 +1,5 @@
 // One SQLite-backed Durable Object holds the blog (posts, images), editor sign-in and form submissions.
+import { PRICE_FIX_2026_11 } from './price-fix.js';
 import { DurableObject } from 'cloudflare:workers';
 import { AUTOPILOT_DEFAULTS, callAi, cleanAutopilot, nextLocalHour, runAutopilot, savePost as saveAiPost } from './autopilot.js';
 import { sendEmail, validate } from './admin.js';
@@ -66,6 +67,18 @@ export class Store extends DurableObject {
       if (!one(this.sql.exec(`SELECT v FROM kv WHERE k = 'archived_to_draft_v2'`))) {
         this.sql.exec(`UPDATE posts SET status = 'draft', publish_at = NULL WHERE slug LIKE '%-archived' AND status != 'draft'`);
         this.sql.exec(`INSERT INTO kv (k,v) VALUES ('archived_to_draft_v2', ?)`, nowIso());
+      }
+      // 2026-11-10 audit: replace the retired $49.99 offer in published posts (price-fix.js). Only exact old text is
+      // touched; changed posts get a new updated_at (sitemap lastmod) and are pinged to IndexNow again.
+      if (!one(this.sql.exec(`SELECT v FROM kv WHERE k = 'price_fix_2026_11'`))) {
+        const t = nowIso();
+        for (const f of PRICE_FIX_2026_11) {
+          const r = one(this.sql.exec(`SELECT body FROM posts WHERE slug = ?`, f.slug));
+          if (r && String(r.body).includes(f.old)) {
+            this.sql.exec(`UPDATE posts SET body = ?, updated_at = ?, pinged_at = NULL WHERE slug = ?`, String(r.body).replace(f.old, f.new), t, f.slug);
+          }
+        }
+        this.sql.exec(`INSERT INTO kv (k,v) VALUES ('price_fix_2026_11', ?)`, t);
       }
     });
   }

@@ -570,3 +570,13 @@ def test_answer_with_not_documented_note_is_still_covered(env, monkeypatch):
         "COVERED: yes\nYes — the careers page says they offer “Flexible Remote Work.” [1]  \nNot documented: which remote jobs are open."]))
     a = c.post("/api/admin/rag/ask", headers=H, json={"q": "Do you offer remote jobs?"}).json()
     assert a["covered"] is True and a["undocumented"].startswith("which remote jobs")
+
+
+def test_no_answer_phrased_as_what_we_do_instead(env, monkeypatch):
+    c, w = env
+    c.post("/api/admin/rag/index", headers=H, json={})
+    monkeypatch.setattr(rag_mod, "openai_stream", lambda s, **kw: iter([
+        "COVERED: yes\nNo — the sources describe WorldDigital.ai as offering SEO and custom software, not gym memberships [1]."]))
+    assert c.post("/api/admin/rag/ask", headers=H, json={"q": "Do you sell gym memberships?"}).json()["covered"] is False
+    monkeypatch.setattr(rag_mod, "openai_stream", lambda s, **kw: iter(["COVERED: yes\nNo. The report is free and needs no credit card [1]."]))
+    assert c.post("/api/admin/rag/ask", headers=H, json={"q": "Do I need a credit card?"}).json()["covered"] is True

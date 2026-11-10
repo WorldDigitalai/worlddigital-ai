@@ -60,7 +60,10 @@ RERANK = os.environ.get("RAG_RERANK", "") == "1"   # rerank search results with 
 # Written answers skip the reranker by default: the model reads all top sources anyway, and it saves ~0.6 s
 RERANK_ANSWERS = os.environ.get("RAG_RERANK_ANSWERS", "") == "1"
 ANSWER_MODEL = os.environ.get("RAG_ANSWER_MODEL", "")
-ANSWER_TIER = os.environ.get("RAG_ANSWER_TIER", "")              # "priority": OpenAI serves answers first (costs more)            # empty: the site's main model (OPENAI_MODEL)
+ANSWER_TIER = os.environ.get("RAG_ANSWER_TIER", "")
+# "text": answers use the keyword index only (typo-tolerant), skipping the ~0.3 s embedding call; when it finds too
+# little, the answer falls back to the normal hybrid search. "hybrid" (default): meaning + words.
+ANSWER_RETRIEVAL = os.environ.get("RAG_ANSWER_RETRIEVAL", "hybrid")              # "priority": OpenAI serves answers first (costs more)            # empty: the site's main model (OPENAI_MODEL)
 ANSWER_SOURCES = int(os.environ.get("RAG_ANSWER_SOURCES") or 5)  # passages the model reads per answer
 ANSWER_CHARS = int(os.environ.get("RAG_ANSWER_CHARS") or 1200)   # characters per passage
 ALT_MODEL = os.environ.get("RAG_COMPARE_MODEL", "@cf/baai/bge-m3")  # side-by-side test (Rag.compare)
@@ -926,10 +929,21 @@ class Rag:
         return v
 
     @staticmethod
-    def _text_stage(query: str, flt: dict) -> dict:
+    def _text_stage(query: str, flt: dict, fuzzy: bool = False) -> dict:
+        txt = {"query": query, "path": ["text", "title"], **({"fuzzy": {"maxEdits": 1, "prefixLength": 2}} if fuzzy else {})}
         return {"$search": {"index": TEXT_INDEX, "compound": {
-            "must": [{"text": {"query": query, "path": ["text", "title"]}}],
+            "must": [{"text": txt}],
             "filter": [{"in": {"path": f, "value": v}} for f, v in flt.items()]}}}
+
+    def text_search(self, query: str, k: int, srcs: list[str]) -> list[dict]:
+        """Typo-tolerant keyword search over the knowledge base (no embedding): the fast path for written answers."""
+        t0 = time.monotonic()
+        flt = {"source": srcs}
+        proj = {"_id": 0, "url": 1, "title": 1, "section": 1, "text": 1, "source": 1, "content_type": 1, "category": 1, "published_at": 1}
+        hits = list(self.chunks.aggregate([self._text_stage(query, flt, fuzzy=True), {"$limit": k},
+                                           {"$project": {**proj, "score": {"$meta": "searchScore"}}}]))
+        self._local.timing = {"embed_ms": 0, "db_ms": _ms(t0), "rerank_ms": 0}
+        return [dict(h, method="text") for h in hits if h.get("source") in srcs]
 
     def keyword_search(self, query: str, k: int = 10, sources=None) -> list[dict]:
         """Exact-word search only (no embedding, no AI cost): the site search uses it when AI search is unavailable
@@ -1042,8 +1056,16 @@ class Rag:
                 yield {"type": "done", "sources": hit["sources"], "covered": hit["covered"], "undocumented": hit.get("undocumented", ""),
                        "cached": True, "ms": ms, "first_ms": ms}
                 return
-        hits = self.search(question, k or ANSWER_SOURCES, srcs, types=types, categories=categories, language=language, allow_internal=allow_internal,
-                           rerank_hits=RERANK_ANSWERS, fresh=fresh)
+        mode = getattr(self._local, "retrieval", None) or ANSWER_RETRIEVAL
+        hits = []
+        if mode == "text" and not (types or categories or language):
+            try:
+                hits = self.text_search(" ".join(question.split())[:300], k or ANSWER_SOURCES, srcs)
+            except Exception as e:  # noqa: BLE001  no keyword index (tests, local): use the normal search
+                log.info("text retrieval unavailable (%s)", type(e).__name__)
+        if len(hits) < 2:  # too little found by words alone: search by meaning too
+            hits = self.search(question, k or ANSWER_SOURCES, srcs, types=types, categories=categories, language=language,
+                               allow_internal=allow_internal, rerank_hits=RERANK_ANSWERS, fresh=fresh)
         search_ms = _ms(t0)
         tenant = srcs[0].startswith("tenant:")
         who = self._tenant(srcs[0].split(":", 1)[1])["name"] if tenant else "WorldDigital.ai"
@@ -1159,7 +1181,8 @@ class Rag:
                 "questions": [{**r, "at": _iso(r["at"]), "expires_at": None} for r in rows]}
 
     # answer-quality tests ------------------------------------------------------
-    def evaluate(self, model: str | None = None, tier: str | None = None, limit: int | None = None) -> dict:
+    def evaluate(self, model: str | None = None, tier: str | None = None, limit: int | None = None,
+                 retrieval: str | None = None) -> dict:
         """Golden questions. Per question: expected page retrieved (and at which rank), expected page cited,
         expected words in the answer, and for questions we have no answer to, that the assistant says so."""
         cases = json.loads(EVAL_FILE.read_text())
@@ -1170,7 +1193,7 @@ class Rag:
         pos = neg = passed = hit = with_exp = cited_ok = answered_ok = unsupported = 0
         rr_sum = 0.0
         def ask(c):
-            self._local.tier = tier
+            self._local.tier, self._local.retrieval = tier, retrieval
             t0 = time.monotonic()
             try:
                 return self.answer(c["q"], sources=c.get("sources") or ["ai"], fresh=True, model=model), _ms(t0)
@@ -1223,7 +1246,7 @@ class Rag:
         # Speed is measured separately, one question at a time (answers in parallel are slower and would mislead):
         # a fixed sample of the first SPEED_SAMPLE non-trick questions, asked fresh.
         lat, first, search_lat, stage = [], [], [], {}
-        self._local.tier = tier
+        self._local.tier, self._local.retrieval = tier, retrieval
         for c in [c for c in cases if not c.get("negative")][:SPEED_SAMPLE]:
             t0 = time.monotonic()
             try:

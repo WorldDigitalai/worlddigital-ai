@@ -558,7 +558,10 @@ async def rag_eval(request: Request):
     if tier and tier not in ("priority", "default", "flex"):
         raise ApiError("tier not allowed", 400, "Tier must be priority, default or flex.")
     limit = max(5, min(int(b.get("limit") or 0), 124)) if b.get("limit") else None
-    return json_ok(await run_in_threadpool(_rag_call, lambda: rag().evaluate(model, tier, limit)))
+    retrieval = str(b.get("retrieval") or "").strip() or None
+    if retrieval and retrieval not in ("text", "hybrid"):
+        raise ApiError("retrieval not allowed", 400, "Retrieval must be text or hybrid.")
+    return json_ok(await run_in_threadpool(_rag_call, lambda: rag().evaluate(model, tier, limit, retrieval)))
 
 
 EVAL_MODELS = ("gpt-5.4-mini", "gpt-5.4-nano", "gpt-5-mini", "gpt-5-nano", "gpt-4.1-mini", "gpt-4.1-nano", "gpt-4o-mini",

@@ -68,6 +68,7 @@ ANSWER_RETRIEVAL = os.environ.get("RAG_ANSWER_RETRIEVAL", "hybrid")
 # straight away. 0.86 was set from measurements: near rewordings score 0.88-0.93; the closest unrelated (trick) question
 # scored 0.77, so a wrong match needs a question far closer than any seen.
 SIMILAR_AT = float(os.environ.get("RAG_SIMILAR_AT") or 0.86)
+RELATED_AT = float(os.environ.get("RAG_RELATED_AT") or 0.45)   # "people also ask": answered questions this close in meaning
 ANSWER_TTL_H = 30   # ready answers live a little over a day; the nightly run prepares them again              # "priority": OpenAI serves answers first (costs more)            # empty: the site's main model (OPENAI_MODEL)
 ANSWER_SOURCES = int(os.environ.get("RAG_ANSWER_SOURCES") or 6)  # passages the model reads per answer
 ANSWER_CHARS = int(os.environ.get("RAG_ANSWER_CHARS") or 1200)   # characters per passage
@@ -414,6 +415,8 @@ class Rag:
         self.pages = db["rag_pages"]
         self.tenants = db["rag_tenants"]
         self.questions = db["rag_questions"]
+        self.corrections = db["rag_corrections"]   # answers approved by an admin for specific questions
+        self.handoffs = db["rag_handoffs"]         # "email me about this" requests from visitors
         self.meta = db["rag_meta"]
         self.syncs = db["rag_sync"]
         self.answers = db["rag_answers"]
@@ -443,6 +446,9 @@ class Rag:
         definition is out of date (new filter fields, or a different embedding size)."""
         try:
             self.questions.create_index("expires_at", expireAfterSeconds=0)
+            self.questions.create_index("qid")
+            self.handoffs.create_index("expires_at", expireAfterSeconds=0)
+            self.tenants.create_index("embed_key")
             self.chunks.create_index([("source", 1), ("url", 1)])
             self.chunks.create_index("text_hash")
             self.chunks.create_index([("source", 1), ("content_type", 1)])
@@ -742,7 +748,8 @@ class Rag:
         tid = _slugify(name)
         if self.tenants.find_one({"_id": tid}):
             tid = f"{tid}-{uuid.uuid4().hex[:4]}"
-        doc = {"_id": tid, "name": name, "website": site.rstrip("/"), "note": str(note or "")[:500], "created": now()}
+        doc = {"_id": tid, "name": name, "website": site.rstrip("/"), "note": str(note or "")[:500], "created": now(),
+               "embed_key": uuid.uuid4().hex}
         self.tenants.insert_one(doc)
         return {"id": tid, "name": name, "website": doc["website"]}
 
@@ -752,11 +759,35 @@ class Rag:
             raise ApiError("no tenant", 404, "Customer knowledge base not found.")
         return t
 
+    def tenant_embed_key(self, tid: str, rotate: bool = False) -> dict:
+        """The key in the customer's embed code (public by nature: it only allows asking questions, within limits)."""
+        t = self._tenant(tid)
+        if rotate or not t.get("embed_key"):
+            t["embed_key"] = uuid.uuid4().hex
+            self.tenants.update_one({"_id": t["_id"]}, {"$set": {"embed_key": t["embed_key"]}})
+        return {"id": t["_id"], "embed_key": t["embed_key"]}
+
+    def tenant_by_key(self, key: str, origin: str = "") -> dict:
+        """The customer for an embed key. When the customer has a website, questions must come from it
+        (or from worlddigital.ai, for the preview)."""
+        key = str(key or "")
+        t = self.tenants.find_one({"embed_key": key}) if re.fullmatch(r"[0-9a-f]{32}", key) else None
+        if not t:
+            raise ApiError("bad embed key", 404, "This Ask AI widget is not active.")
+        host = re.sub(r"^www\.", "", (re.match(r"^https?://([^/:]+)", str(origin or ""), re.I) or [None, ""])[1].lower())
+        want = re.sub(r"^www\.", "", (re.match(r"^https?://([^/:]+)", t.get("website") or "", re.I) or [None, ""])[1].lower())
+        if want and host and host != "worlddigital.ai" and host != want and not host.endswith("." + want):
+            raise ApiError("origin not allowed", 403, "This Ask AI widget is not set up for this website.")
+        return t
+
     def tenant_list(self) -> list[dict]:
         out = []
         for t in self.tenants.find({}).sort("created", -1):
             src = f"tenant:{t['_id']}"
-            out.append({"id": t["_id"], "name": t["name"], "website": t.get("website", ""),
+            if not t.get("embed_key"):
+                t["embed_key"] = self.tenant_embed_key(t["_id"])["embed_key"]
+            out.append({"id": t["_id"], "name": t["name"], "website": t.get("website", ""), "embed_key": t["embed_key"],
+                        "questions_30d": self.questions.count_documents({"source": src, "at": {"$gte": now() - timedelta(days=30)}}),
                         "pages": self.pages.count_documents({"source": src, "kind": "page"}),
                         "docs": self.pages.count_documents({"source": src, "kind": "doc"}),
                         "chunks": self.chunks.count_documents({"source": src}), "created": _iso(t.get("created"))})
@@ -1056,19 +1087,31 @@ class Rag:
         key = self._cache_key(question, srcs, filters) if public else None
         qvec = None
         check_only = getattr(self._local, "ready_check", False)  # quality test: match by meaning only, store nothing
+        related: list[str] = []
         if key:
-            hit = None if check_only else self.answers.find_one({"_id": key})
-            if not hit and not any(filters.values()):
-                # same meaning, other words: compare with the ready answers for this content (the embedding is reused
-                # by the search below if nothing matches, so a miss costs nothing extra)
+            # 1. an answer an admin approved for this question (exact wording, then same meaning)
+            fixed = None if check_only else self.corrections.find_one({"_id": self._correction_key(question, srcs)})
+            hit = None if (check_only or fixed) else self.answers.find_one({"_id": key}, {"qv": 0})
+            if not fixed and not hit and not any(filters.values()):
+                # same meaning, other words: compare with the approved and ready answers for this content (the embedding
+                # is reused by the search below if nothing matches, so a miss costs nothing extra)
                 qvec = self._query_vector(" ".join(question.split())[:500], EMBED_MODEL, fresh)
-                hit = self._similar_answer(qvec, srcs, exclude=question if check_only else None)
+                fixed = None if check_only else self._similar_correction(qvec, srcs)
+                if not fixed:
+                    hit, related = self._similar_answer(qvec, srcs, exclude=question if check_only else None, with_related=True)
+            if fixed:
+                yield {"type": "text", "text": fixed["answer"]}
+                ms = _ms(t0)
+                self._metric("public_answer_cached", ms)
+                yield {"type": "done", "sources": fixed.get("sources") or [], "covered": True, "undocumented": "", "cached": True,
+                       "corrected": True, "related": [], "ms": ms, "first_ms": ms}
+                return
             if hit:
                 yield {"type": "text", "text": hit["answer"]}
                 ms = _ms(t0)
                 self._metric("public_answer_cached", ms)
                 yield {"type": "done", "sources": hit["sources"], "covered": hit["covered"], "undocumented": hit.get("undocumented", ""),
-                       "cached": True, "matched": hit.get("q"), "ms": ms, "first_ms": ms}
+                       "cached": True, "matched": hit.get("q"), "related": related or hit.get("related") or [], "ms": ms, "first_ms": ms}
                 return
         mode = getattr(self._local, "retrieval", None) or ANSWER_RETRIEVAL
         hits = []
@@ -1150,12 +1193,12 @@ class Rag:
                 if qvec is None and not any(filters.values()):
                     qvec = self._query_vector(" ".join(question.split())[:500], EMBED_MODEL, False)
                 self.answers.replace_one({"_id": key}, {"_id": key, "q": question[:300], "answer": text, "sources": srcl,
-                                                       "covered": covered, "undocumented": undoc, "at": now(),
+                                                       "covered": covered, "undocumented": undoc, "at": now(), "related": related,
                                                        "v": self._content_version(), "src": srcs,
                                                        **({"qv": [round(x, 5) for x in qvec]} if qvec else {})}, upsert=True)
             except Exception:  # noqa: BLE001  the cache is an extra
                 pass
-        yield {"type": "done", "sources": srcl, "covered": covered, "undocumented": undoc, "cached": False,
+        yield {"type": "done", "sources": srcl, "covered": covered, "undocumented": undoc, "cached": False, "related": related,
                "ms": ms, "first_ms": first_ms, "search_ms": search_ms, "timing": dict(getattr(self._local, "timing", {})), "hits": hits}
 
     @staticmethod
@@ -1169,15 +1212,19 @@ class Rag:
             except Exception as e:  # noqa: BLE001
                 log.info("TTL index on %s.%s not changed (%s)", coll.name, field, type(e).__name__)
 
-    def _similar_answer(self, qvec: list[float], srcs: list[str], exclude: str | None = None) -> dict | None:
+    def _similar_answer(self, qvec: list[float], srcs: list[str], exclude: str | None = None, with_related: bool = False):
         """The ready answer whose question means the same (cosine >= SIMILAR_AT), for the current content only.
-        exclude: skip answers stored for this exact question (the quality test checks matching by meaning)."""
+        exclude: skip answers stored for this exact question (the quality test checks matching by meaning).
+        with_related: also returns up to 3 other answered questions on the same subject (follow-up suggestions)."""
         best, best_sim, top = None, SIMILAR_AT, (0.0, "")
         norm = lambda t: " ".join(re.findall(r"[a-z0-9$.]+", str(t).lower()))  # noqa: E731
         skip = norm(exclude) if exclude else None
+        near = []
+        # follow-up suggestions only ever show our own prepared questions, never another visitor's wording
+        curated = self._curated() if (with_related and srcs == ["ai"]) else set()
         qn = math.sqrt(sum(x * x for x in qvec)) or 1
         for d in self.answers.find({"v": self._content_version(), "src": srcs, "qv": {"$exists": True}},
-                                   {"answer": 1, "sources": 1, "covered": 1, "undocumented": 1, "q": 1, "qv": 1}).limit(2000):
+                                   {"answer": 1, "sources": 1, "covered": 1, "undocumented": 1, "q": 1, "qv": 1, "related": 1}).limit(2000):
             v = d.pop("qv")
             if skip is not None and norm(d.get("q", "")) == skip:
                 continue
@@ -1186,8 +1233,65 @@ class Rag:
                 top = (sim, d.get("q", ""))
             if sim >= best_sim:
                 best, best_sim = d, sim
+            elif RELATED_AT <= sim and d.get("covered") and d.get("q") and norm(d["q"]) in curated:
+                near.append((sim, d["q"]))
         self._local.last_similar = top
+        if not with_related:
+            return best
+        seen, related = set(), []
+        for _, q in sorted(near, reverse=True):
+            if norm(q) not in seen:
+                seen.add(norm(q)); related.append(q)
+            if len(related) == 3:
+                break
+        return best, related
+
+    _CURATED: "set[str] | None" = None
+
+    def _curated(self) -> set:
+        if Rag._CURATED is None:
+            norm = lambda t: " ".join(re.findall(r"[a-z0-9$.]+", str(t).lower()))  # noqa: E731
+            Rag._CURATED = {norm(c["q"]) for c in json.loads(EVAL_FILE.read_text())
+                            if not c.get("negative") and c.get("tag") in ("core", "page", "blog") and c["q"].endswith("?")}
+        return Rag._CURATED
+
+    # approved answers ---------------------------------------------------------
+    def _correction_key(self, question: str, srcs: list[str]) -> str:
+        norm = " ".join(re.findall(r"[a-z0-9$.]+", str(question).lower()))
+        return hashlib.sha256(json.dumps([srcs, norm]).encode()).hexdigest()
+
+    def _similar_correction(self, qvec: list[float], srcs: list[str]) -> dict | None:
+        best, best_sim = None, SIMILAR_AT
+        qn = math.sqrt(sum(x * x for x in qvec)) or 1
+        for d in self.corrections.find({"src": srcs}).limit(500):
+            v = d.get("qv") or []
+            sim = sum(a * b for a, b in zip(qvec, v)) / (qn * (math.sqrt(sum(x * x for x in v)) or 1)) if v else 0
+            if sim >= best_sim:
+                best, best_sim = d, sim
         return best
+
+    def correction_set(self, question: str, answer: str, source: str = "ai", url: str = "") -> dict:
+        """An admin-approved answer: used word for word for this question and for questions that mean the same."""
+        question, answer = " ".join(str(question or "").split())[:300], str(answer or "").strip()[:1500]
+        if len(question) < 3 or len(answer) < 3:
+            raise ApiError("empty", 400, "Enter the question and the answer to give.")
+        srcs = self._sources([source])
+        url = str(url or "").strip()
+        if url and not url.startswith("https://"):
+            raise ApiError("bad url", 400, "The source link must start with https://")
+        key = self._correction_key(question, srcs)
+        self.corrections.replace_one({"_id": key}, {"_id": key, "q": question, "answer": answer, "src": srcs, "at": now(),
+                                                    "sources": [{"n": 1, "title": "Source", "url": url}] if url else [],
+                                                    "qv": [round(x, 5) for x in self._query_vector(question, EMBED_MODEL, True)]}, upsert=True)
+        return {"id": key, "q": question}
+
+    def correction_list(self, source: str = "ai") -> list[dict]:
+        return [{"id": d["_id"], "q": d["q"], "answer": d["answer"], "at": _iso(d.get("at")),
+                 "url": (d.get("sources") or [{}])[0].get("url", "")}
+                for d in self.corrections.find({"src": self._sources([source])}, {"qv": 0}).sort("at", -1).limit(200)]
+
+    def correction_remove(self, cid: str) -> dict:
+        return {"removed": self.corrections.delete_one({"_id": str(cid or "")}).deleted_count}
 
     def _ready_check(self, cases: list[dict]) -> dict:
         """What visitors get with ready answers: prepare answers (warm), then ask the reworded, visitor and trick
@@ -1281,13 +1385,44 @@ class Rag:
         return "\n".join(out), hits
 
     # chat question log ---------------------------------------------------------
-    def log_question(self, question: str, reply: str, covered: bool, hits: list[dict], channel: str = "chat") -> None:
+    def log_question(self, question: str, reply: str, covered: bool, hits: list[dict], channel: str = "chat",
+                     source: str = "ai", cached: bool = False) -> str:
+        """Saves a visitor question (personal details removed). Returns its id, used for ratings and hand-offs."""
+        qid = uuid.uuid4().hex[:20]
         try:
-            self.questions.insert_one({"q": redact(question)[:800], "reply": redact(reply)[:1200], "covered": bool(covered),
-                                       "top_url": hits[0]["url"] if hits else None, "channel": channel, "at": now(),
+            self.questions.insert_one({"qid": qid, "q": redact(question)[:800], "reply": redact(reply)[:1200], "covered": bool(covered),
+                                       "top_url": hits[0]["url"] if hits else None, "urls": [h["url"] for h in hits][:6],
+                                       "channel": channel, "source": source, "cached": bool(cached), "at": now(),
                                        "expires_at": now() + QUESTION_TTL})
         except Exception as e:  # noqa: BLE001  logging must never break the chat
             log.warning("question log failed: %s", e)
+        return qid
+
+    def feedback(self, qid: str, vote: str) -> dict:
+        """A visitor's thumbs up or down on an answer."""
+        if vote not in ("up", "down") or not re.fullmatch(r"[0-9a-f]{20}", str(qid or "")):
+            raise ApiError("bad feedback", 400, "Could not save the rating.")
+        n = self.questions.update_one({"qid": qid}, {"$set": {"vote": 1 if vote == "up" else -1, "voted_at": now()}}).matched_count
+        return {"saved": bool(n)}
+
+    HANDOFF = re.compile(r"\b(quote|proposal|estimate|custom|demo|consult|hire|talk to|speak (to|with)|call me|contact me|"
+                         r"get in touch|someone|human|person|sales|book a|schedule)\b", re.I)
+
+    def wants_handoff(self, question: str, covered: bool) -> bool:
+        """Offer "want us to email you?": the site could not answer, or the visitor asks for a quote or a person."""
+        return (not covered) or bool(self.HANDOFF.search(question or ""))
+
+    def handoff(self, email: str, question: str, qid: str = "", source: str = "ai", name: str = "") -> dict:
+        email = str(email or "").strip().lower()[:200]
+        if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[a-z]{2,}", email):
+            raise ApiError("bad email", 400, "Please enter a valid email address.")
+        doc = {"_id": uuid.uuid4().hex[:20], "email": email, "name": " ".join(str(name or "").split())[:120],
+               "q": " ".join(str(question or "").split())[:800], "qid": str(qid or "")[:20], "source": source, "at": now(),
+               "expires_at": now() + QUESTION_TTL}
+        self.handoffs.insert_one(doc)
+        if doc["qid"]:
+            self.questions.update_one({"qid": doc["qid"]}, {"$set": {"handoff": True}})
+        return {"saved": True, "id": doc["_id"]}
 
     def questions_report(self, days: int = 30, limit: int = 100) -> dict:
         since = now() - timedelta(days=max(1, min(int(days or 30), 180)))
@@ -1295,7 +1430,48 @@ class Rag:
         total = self.questions.count_documents({"at": {"$gte": since}})
         uncovered = self.questions.count_documents({"at": {"$gte": since}, "covered": False})
         return {"days": days, "total": total, "uncovered": uncovered,
-                "questions": [{**r, "at": _iso(r["at"]), "expires_at": None} for r in rows]}
+                "questions": [{**r, "at": _iso(r["at"]), "expires_at": None, "voted_at": None} for r in rows]}
+
+    def insights(self, source: str = "ai", days: int = 30) -> dict:
+        """What visitors ask: unanswered questions, ratings, hand-off requests, weekly top questions, most-cited pages."""
+        days = max(1, min(int(days or 30), 180))
+        since = now() - timedelta(days=days)
+        base = {"at": {"$gte": since}, **({"source": source} if source != "ai" else {"source": {"$in": ["ai", None]}})}
+        norm = lambda t: " ".join(re.findall(r"[a-z0-9$.]+", str(t).lower()))  # noqa: E731
+        rows = list(self.questions.find(base, {"_id": 0, "q": 1, "reply": 1, "covered": 1, "at": 1, "vote": 1, "urls": 1,
+                                               "top_url": 1, "cached": 1, "channel": 1, "handoff": 1, "qid": 1}).sort("at", -1).limit(5000))
+        fixed = {norm(c["q"]) for c in self.corrections.find({"src": self._sources([source])}, {"q": 1})}
+        groups: dict = {}
+        for r in rows:
+            g = groups.setdefault(norm(r["q"]), {"q": r["q"], "n": 0, "last": r["at"], "uncovered": 0, "up": 0, "down": 0,
+                                                 "reply": r.get("reply", ""), "week": {}})
+            g["n"] += 1
+            g["uncovered"] += not r.get("covered")
+            g["up"] += r.get("vote") == 1
+            g["down"] += r.get("vote") == -1
+            wk = (r["at"] - timedelta(days=r["at"].weekday())).strftime("%Y-%m-%d")
+            g["week"][wk] = g["week"].get(wk, 0) + 1
+        out = lambda g, key: {"q": g["q"], "n": g["n"], "last": _iso(g["last"]), "reply": g["reply"][:300],  # noqa: E731
+                              "up": g["up"], "down": g["down"], "fixed": key in fixed}
+        unanswered = sorted((out(g, k) for k, g in groups.items() if g["uncovered"] and k not in fixed), key=lambda x: (-x["n"], x["last"]))
+        rated_down = sorted((out(g, k) for k, g in groups.items() if g["down"]), key=lambda x: -x["down"])
+        weeks: dict = {}
+        for g in groups.values():
+            for wk, n in g["week"].items():
+                weeks.setdefault(wk, []).append((n, g["q"]))
+        pages: dict = {}
+        for r in rows:
+            for u in (r.get("urls") or ([r["top_url"]] if r.get("top_url") else [])):
+                pages[u] = pages.get(u, 0) + 1
+        hand = [{"email": h["email"], "name": h.get("name", ""), "q": h.get("q", ""), "at": _iso(h["at"])}
+                for h in self.handoffs.find({"source": source, "at": {"$gte": since}}).sort("at", -1).limit(100)]
+        votes_up = sum(1 for r in rows if r.get("vote") == 1); votes_down = sum(1 for r in rows if r.get("vote") == -1)
+        return {"days": days, "source": source, "total": len(rows), "answered": sum(1 for r in rows if r.get("covered")),
+                "instant": sum(1 for r in rows if r.get("cached")), "up": votes_up, "down": votes_down,
+                "unanswered": unanswered[:50], "rated_down": rated_down[:30], "handoffs": hand,
+                "weeks": [{"week": wk, "total": sum(n for n, _ in qs), "top": [{"q": q, "n": n} for n, q in sorted(qs, reverse=True)[:8]]}
+                          for wk, qs in sorted(weeks.items(), reverse=True)[:6]],
+                "pages": [{"url": u, "n": n} for u, n in sorted(pages.items(), key=lambda x: -x[1])[:15]]}
 
     # answer-quality tests ------------------------------------------------------
     def evaluate(self, model: str | None = None, tier: str | None = None, limit: int | None = None,

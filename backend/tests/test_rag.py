@@ -654,3 +654,96 @@ def test_answer_sources_at_most_two_passages_per_page(env, monkeypatch):
     a = r.answer("How much is keyword research?")
     urls = [p["url"] for p in a["passages"]]
     assert max(urls.count(u) for u in set(urls)) <= 2 and len(set(urls)) >= 2
+
+
+def _stream(c, path, body, hdr=None):
+    r = c.post(path, headers={**H, "cf-connecting-ip": "203.0.113.50", **(hdr or {})}, json=body)
+    assert r.status_code == 200, r.text
+    return [json.loads(l) for l in r.text.splitlines() if l.strip()]
+
+
+def test_rating_handoff_and_insights(env):
+    c, w = env
+    c.post("/api/admin/rag/index", headers=H, json={})
+    done = _stream(c, "/api/rag/answer-stream", {"query": "How much is keyword research 9.99?", "channel": "search"})[-1]
+    assert done["id"] and done["handoff"] is False and "matched" not in done and "hits" not in done
+    miss = _stream(c, "/api/rag/answer-stream", {"query": "Do you sell used boats?"})[-1]
+    assert miss["covered"] is False and miss["handoff"] is True
+    assert _stream(c, "/api/rag/answer-stream", {"query": "Can I get a quote for keyword research 9.99?"})[-1]["handoff"] is True
+    # ratings
+    assert c.post("/api/rag/feedback", headers=H, json={"id": done["id"], "vote": "down"}).json()["saved"] is True
+    assert c.post("/api/rag/feedback", headers=H, json={"id": done["id"], "vote": "sideways"}).status_code == 400
+    assert c.post("/api/rag/feedback", headers=H, json={"id": "0" * 20, "vote": "up"}).json()["saved"] is False
+    # hand-off
+    assert c.post("/api/rag/handoff", headers=H, json={"email": "nope", "question": "x"}).status_code == 400
+    assert c.post("/api/rag/handoff", headers=H, json={"email": "Pat@Example.com", "question": "Do you sell used boats?", "id": miss["id"]}).json()["saved"]
+    # site tests are not logged
+    t = _stream(c, "/api/rag/answer-stream", {"query": "Do you build Epic FHIR apps?"}, {"x-wd-test": "1"})[-1]
+    assert "id" not in t
+    rep = c.post("/api/admin/rag/insights", headers=H, json={}).json()
+    assert rep["total"] == 3 and rep["down"] == 1 and rep["answered"] == 2
+    assert [u["q"] for u in rep["unanswered"]] == ["Do you sell used boats?"]
+    assert rep["rated_down"][0]["q"].startswith("How much is keyword research")
+    assert rep["handoffs"][0]["email"] == "pat@example.com" and rep["weeks"][0]["total"] == 3
+    assert rep["pages"] and rep["pages"][0]["url"].startswith("https://worlddigital.ai/")
+    assert c.post("/api/rag/feedback", json={"id": done["id"], "vote": "up"}).status_code in (401, 403)
+
+
+def test_approved_answer_is_used_word_for_word(env):
+    c, w = env
+    c.post("/api/admin/rag/index", headers=H, json={})
+    ok = c.post("/api/admin/rag/insights", headers=H, json={"action": "correct", "question": "Do you sell used boats?",
+                                                           "answer": "No. We make marketing software, not boats.", "url": "https://worlddigital.ai/about"})
+    assert ok.status_code == 200
+    calls = len(w.prompts)
+    evs = _stream(c, "/api/rag/answer-stream", {"query": "do you sell used boats"})
+    assert evs[0]["text"] == "No. We make marketing software, not boats." and evs[-1]["corrected"] and evs[-1]["covered"]
+    assert evs[-1]["sources"][0]["url"] == "https://worlddigital.ai/about" and len(w.prompts) == calls
+    # same meaning, other word order
+    assert _stream(c, "/api/rag/answer-stream", {"query": "used boats, do you sell?"})[-1].get("corrected")
+    # an answered-by-admin question leaves the unanswered list
+    assert not c.post("/api/admin/rag/insights", headers=H, json={}).json()["unanswered"]
+    lst = c.post("/api/admin/rag/insights", headers=H, json={"action": "corrections"}).json()["corrections"]
+    assert lst[0]["q"] == "Do you sell used boats?" and lst[0]["url"].endswith("/about")
+    c.post("/api/admin/rag/insights", headers=H, json={"action": "uncorrect", "id": lst[0]["id"]})
+    assert not _stream(c, "/api/rag/answer-stream", {"query": "Do you sell used boats, please?"})[-1].get("corrected")
+    assert c.post("/api/admin/rag/insights", headers=H, json={"action": "correct", "question": "x", "answer": ""}).status_code == 400
+
+
+def test_follow_up_suggestions_only_prepared_questions(env, monkeypatch, tmp_path):
+    c, w = env
+    c.post("/api/admin/rag/index", headers=H, json={})
+    f = tmp_path / "eval.json"
+    f.write_text(json.dumps([{"q": "How much does keyword research cost, 9.99?", "tag": "core"}, {"q": "Is keyword research 9.99 free to try?", "tag": "page"}]))
+    monkeypatch.setattr(rag_mod, "EVAL_FILE", f); monkeypatch.setattr(rag_mod.Rag, "_CURATED", None)
+    monkeypatch.setattr(rag_mod, "RELATED_AT", 0.2)
+    r = rag_mod.Rag(main.settings(), db())
+    r.answer("How much does keyword research cost, 9.99?", public=True)
+    r.answer("Is keyword research 9.99 free to try?", public=True)
+    r.answer("my email is secret keyword research question", public=True)   # another visitor's wording
+    done = _stream(c, "/api/rag/answer-stream", {"query": "keyword research details and price 9.99?"})[-1]
+    assert done["related"] and set(done["related"]) <= {"How much does keyword research cost, 9.99?", "Is keyword research 9.99 free to try?"}
+
+
+def test_client_embed_key_origin_and_isolation(env):
+    c, w = env
+    c.post("/api/admin/rag/index", headers=H, json={})
+    t = c.post("/api/admin/rag/tenants", headers=H, json={"action": "create", "name": "Clinic One", "website": "clinic.example"}).json()
+    c.post("/api/admin/rag/tenants", headers=H, json={"action": "add-doc", "tenant": t["id"], "title": "Hours", "text": "Clinic One opens 8 to 5 keyword research price."})
+    key = c.post("/api/admin/rag/tenants", headers=H, json={"action": "embed-key", "tenant": t["id"]}).json()["embed_key"]
+    assert len(key) == 32
+    body = {"key": key, "query": "keyword research price?", "origin": "https://www.clinic.example"}
+    done = _stream(c, "/api/rag/embed/answer-stream", body)[-1]
+    assert done["type"] == "done" and done["id"]
+    assert db()["rag_questions"].find_one({"qid": done["id"]})["source"] == f"tenant:{t['id']}"
+    assert c.post("/api/rag/embed/info", headers=H, json=body).json()["name"] == "Clinic One"
+    assert c.post("/api/rag/embed/answer-stream", headers=H, json={**body, "origin": "https://other.example"}).status_code == 403
+    assert c.post("/api/rag/embed/answer-stream", headers=H, json={**body, "key": "f" * 32}).status_code == 404
+    assert _stream(c, "/api/rag/embed/answer-stream", {**body, "origin": "https://worlddigital.ai"})  # preview
+    # hand-off goes to the customer's list, not ours
+    c.post("/api/rag/handoff", headers=H, json={"email": "a@b.co", "question": "q", "key": key, "origin": "https://clinic.example"})
+    assert c.post("/api/admin/rag/insights", headers=H, json={"source": f"tenant:{t['id']}"}).json()["handoffs"][0]["email"] == "a@b.co"
+    assert not c.post("/api/admin/rag/insights", headers=H, json={}).json()["handoffs"]
+    # rotating the key turns the old embed off
+    new = c.post("/api/admin/rag/tenants", headers=H, json={"action": "embed-key", "tenant": t["id"], "rotate": True}).json()["embed_key"]
+    assert new != key and c.post("/api/rag/embed/info", headers=H, json=body).status_code == 404

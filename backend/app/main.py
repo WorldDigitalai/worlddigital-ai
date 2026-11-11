@@ -584,6 +584,22 @@ async def rag_compare(request: Request):
     return json_ok(await run_in_threadpool(_rag_call, lambda: rag().compare()))
 
 
+@app.post("/api/admin/rag/insights", dependencies=[Depends(guard)])
+async def rag_insights(request: Request):
+    """Visitor questions report and approved answers. action: report (default) | correct | uncorrect | corrections."""
+    b = await body_of(request) if (await request.body()).strip() else {}
+    a, src = str(b.get("action") or "report"), str(b.get("source") or "ai")
+    ops = {
+        "report": lambda r: {**r.insights(src, int(b.get("days") or 30)), "corrections": r.correction_list(src)},
+        "correct": lambda r: r.correction_set(b.get("question"), b.get("answer"), src, b.get("url") or ""),
+        "uncorrect": lambda r: r.correction_remove(b.get("id")),
+        "corrections": lambda r: {"corrections": r.correction_list(src)},
+    }
+    if a not in ops:
+        raise ApiError("bad action", 400, "Unknown action.")
+    return json_ok(await run_in_threadpool(_rag_call, lambda: ops[a](rag())))
+
+
 @app.get("/api/admin/rag/questions", dependencies=[Depends(guard)])
 async def rag_questions(days: int = 30):
     return json_ok(await run_in_threadpool(_rag_call, lambda: rag().questions_report(days)))
@@ -615,6 +631,7 @@ async def rag_tenants(request: Request):
         "remove-doc": lambda r: r.tenant_remove_doc(t, str(b.get("url") or "")),
         "index-site": lambda r: r.tenant_index_site(t),
         "delete": lambda r: r.tenant_delete(t),
+        "embed-key": lambda r: r.tenant_embed_key(t, rotate=bool(b.get("rotate"))),
         "ask": lambda r: r.answer(_rag_query(b), sources=[f"tenant:{t}"]),
     }
     if a not in ops:
@@ -645,31 +662,27 @@ async def rag_site_search(request: Request):
     return json_ok(await run_in_threadpool(_rag_call, lambda: rag().site_search(q, semantic=semantic)))
 
 
-@app.post("/api/rag/answer-stream", dependencies=[Depends(guard)])
-async def rag_api_answer_stream(request: Request):
-    """Same as /api/rag/answer, written as it is generated: one JSON object per line (NDJSON):
-    {"type":"text","text":"..."} pieces, then {"type":"done","sources":[...],"covered":true,...}."""
-    s = settings()
-    b = await body_of(request)
-    q = _rag_query(b)
-    ip = client_ip(request)
-    if not store().hit("rag:" + ip, s.rag_api_daily_limit) or not store().hit("rag:all", s.rag_api_daily_total):
-        raise ApiError("rate limited", 429, "Daily question limit reached. Please try again tomorrow, or see https://worlddigital.ai/contact.")
-    filters = _rag_filters(b)
+def _answer_events(request: Request, q: str, sources: list[str], channel: str, filters: dict | None = None):
+    """NDJSON events for a streamed public answer: text pieces, then "done" with sources, the question id (for
+    ratings and hand-off), whether to offer a hand-off, and follow-up suggestions. Site tests are not logged."""
+    is_test = request.headers.get("x-wd-test") == "1"
 
     def events():
         text = ""
         try:
-            for ev in rag().answer_stream(q, 6, ["ai"], public=True, **filters):
+            r = rag()
+            for ev in r.answer_stream(q, None, sources, public=True, **(filters or {})):
                 if ev["type"] == "text":
                     text += ev["text"]
                     yield json.dumps(ev) + "\n"
                 else:
-                    ev.pop("hits", None)
-                    ev.pop("search_ms", None)
-                    ev.pop("timing", None)
+                    for k in ("hits", "search_ms", "timing", "matched"):
+                        ev.pop(k, None)
+                    if not is_test:
+                        ev["id"] = r.log_question(q, text, ev["covered"], [{"url": x["url"]} for x in ev["sources"]],
+                                                  channel=channel, source=sources[0], cached=bool(ev.get("cached")))
+                    ev["handoff"] = r.wants_handoff(q, ev["covered"])
                     yield json.dumps(ev) + "\n"
-                    rag().log_question(q, text, ev["covered"], [{"url": x["url"]} for x in ev["sources"]], channel="api")
         except ApiError as e:
             yield json.dumps({"type": "error", "error": e.public or "Could not answer right now."}) + "\n"
         except Exception:  # noqa: BLE001
@@ -678,6 +691,63 @@ async def rag_api_answer_stream(request: Request):
 
     return StreamingResponse(events(), media_type="application/x-ndjson",
                              headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"})
+
+
+@app.post("/api/rag/answer-stream", dependencies=[Depends(guard)])
+async def rag_api_answer_stream(request: Request):
+    """Same as /api/rag/answer, written as it is generated: one JSON object per line (NDJSON):
+    {"type":"text","text":"..."} pieces, then {"type":"done","sources":[...],"covered":true,"id":...,"related":[...]}."""
+    s = settings()
+    b = await body_of(request)
+    q = _rag_query(b)
+    ip = client_ip(request)
+    if not store().hit("rag:" + ip, s.rag_api_daily_limit) or not store().hit("rag:all", s.rag_api_daily_total):
+        raise ApiError("rate limited", 429, "Daily question limit reached. Please try again tomorrow, or see https://worlddigital.ai/contact.")
+    return _answer_events(request, q, ["ai"], "search" if b.get("channel") == "search" else "api", _rag_filters(b))
+
+
+# Client "Ask AI" widget (docs/rag.md): a customer's own knowledge base on the customer's own website.
+# The embed key is public by nature; it only allows asking that customer's knowledge base, within daily limits.
+@app.post("/api/rag/embed/answer-stream", dependencies=[Depends(guard)])
+async def rag_embed_answer(request: Request):
+    s = settings()
+    b = await body_of(request)
+    t = await run_in_threadpool(_rag_call, lambda: rag().tenant_by_key(b.get("key"), str(b.get("origin") or "")))
+    q = _rag_query(b)
+    ip = client_ip(request)
+    if not store().hit(f"emb:{t['_id']}:{ip}", s.rag_api_daily_limit) or not store().hit(f"emb:{t['_id']}:all", s.rag_api_daily_total):
+        raise ApiError("rate limited", 429, "Daily question limit reached. Please try again tomorrow.")
+    return _answer_events(request, q, [f"tenant:{t['_id']}"], "embed")
+
+
+@app.post("/api/rag/embed/info", dependencies=[Depends(guard)])
+async def rag_embed_info(request: Request):
+    b = await body_of(request)
+    t = await run_in_threadpool(_rag_call, lambda: rag().tenant_by_key(b.get("key"), str(b.get("origin") or "")))
+    return json_ok({"name": t["name"]})
+
+
+@app.post("/api/rag/feedback", dependencies=[Depends(guard)])
+async def rag_feedback(request: Request):
+    """Thumbs up / down on an answer ({id, vote: up|down})."""
+    b = await body_of(request)
+    if not store().hit("fb:" + client_ip(request), 200):
+        raise ApiError("rate limited", 429, "Too many ratings today.")
+    return json_ok(await run_in_threadpool(_rag_call, lambda: rag().feedback(str(b.get("id") or ""), str(b.get("vote") or ""))))
+
+
+@app.post("/api/rag/handoff", dependencies=[Depends(guard)])
+async def rag_handoff(request: Request):
+    """"Want us to email you?": saves the visitor's email with their question ({email, question, id, key?})."""
+    b = await body_of(request)
+    if not store().hit("ho:" + client_ip(request), 5):
+        raise ApiError("rate limited", 429, "Too many requests today. Please use the contact page instead.")
+
+    def save():
+        r = rag()
+        source = f"tenant:{r.tenant_by_key(b.get('key'), str(b.get('origin') or ''))['_id']}" if b.get("key") else "ai"
+        return r.handoff(b.get("email"), b.get("question"), str(b.get("id") or ""), source, b.get("name") or "")
+    return json_ok(await run_in_threadpool(_rag_call, save))
 
 
 @app.post("/api/rag/answer", dependencies=[Depends(guard)])
@@ -690,8 +760,11 @@ async def rag_api_answer(request: Request):
     if not store().hit("rag:" + ip, s.rag_api_daily_limit) or not store().hit("rag:all", s.rag_api_daily_total):
         raise ApiError("rate limited", 429, "Daily question limit reached. Please try again tomorrow, or see https://worlddigital.ai/contact.")
     out = await run_in_threadpool(_rag_call, lambda: rag().answer(q, 6, ["ai"], public=True, **_rag_filters(b)))
-    await run_in_threadpool(lambda: rag().log_question(q, out["answer"], out["covered"],
-                                                       [{"url": x["url"]} for x in out["sources"]], channel="api"))
+    out.pop("ms", None); out.pop("first_ms", None)
+    if request.headers.get("x-wd-test") != "1":
+        out["id"] = await run_in_threadpool(lambda: rag().log_question(q, out["answer"], out["covered"],
+                                                                       [{"url": x["url"]} for x in out["sources"]], channel="api",
+                                                                       cached=bool(out.get("cached"))))
     return json_ok({"query": q, **out})
 
 

@@ -54,7 +54,7 @@ export const socialBody = `${CSS}
 <h1 class="h hero-h" style="font-size:52px;line-height:1.08;margin-top:12px;max-width:860px">The WorldDigital.ai <span style="color:#0D5EC7">Social Hub.</span></h1>
 <p style="font-size:19px;line-height:1.6;color:#33445A;margin:18px 0 0;max-width:760px">Short SEO, AI search and marketing tips for SMBs, SMEs and enterprises, from our ${esc(labels.join(', ').replace(/, ([^,]*)$/, ' and $1'))} channels. Filter by platform, or see the top performing posts first.</p>
 <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:26px"><a class="btn red" href="/free-seo-report">Get my free SEO report</a><a class="btn ghost" href="/contact">Contact us</a></div>
-<p class="sf-follow" style="margin:22px 0 0;font-size:15px;line-height:2"><strong>Follow us:</strong> ${SOCIAL.map(([n, u]) => `<a href="${esc(u)}" target="_blank" rel="noopener me" style="display:inline-block;min-height:24px">${esc(n)}</a>`).join(' · ')}</p>
+<p class="sf-follow" style="margin:22px 0 0;font-size:15px;line-height:2"><strong>Follow us:</strong> ${SOCIAL.map(([n, u]) => `<a href="${esc(u)}" target="_blank" rel="noopener me" style="display:inline-block;min-height:24px;min-width:24px;text-align:center">${esc(n)}</a>`).join(' · ')}</p>
 </div></section>
 
 <section class="sec"><div class="wrap">

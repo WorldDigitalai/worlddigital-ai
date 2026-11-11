@@ -91,26 +91,79 @@ export async function ragAnswer(req, env) {
 
 // Streamed version of the answer API: the answer arrives as it is written (NDJSON lines, see backend
 // /api/rag/answer-stream), so visitors see the first words in under a second. Same limits as /api/rag/answer.
-export async function ragAnswerStream(req, env) {
-  const out = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { ...JSON_HEADERS, ...CORS, 'X-Content-Type-Options': 'nosniff' } });
-  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
-  if (req.method !== 'POST') return out({ error: 'Use POST with JSON: {"query": "your question"}' }, 405);
-  if (!env.TOOLS_API_URL) return out({ error: 'The knowledge API is being set up. Please try again later.' }, 503);
-  let b; try { b = JSON.parse((await req.text()).slice(0, 4000)); } catch { return out({ error: 'Send JSON: {"query": "your question"}' }, 400); }
-  const query = String((b && (b.query || b.q)) || '').trim();
-  if (!query) return out({ error: 'Send JSON: {"query": "your question"}' }, 400);
-  if (query.length > 500) return out({ error: 'Please keep the question under 500 characters.' }, 400);
+// Shared plumbing for the public knowledge-base endpoints: JSON in, backend call with the visitor's IP, JSON or stream out.
+const kbOut = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { ...JSON_HEADERS, ...CORS, 'X-Content-Type-Options': 'nosniff' } });
+async function kbBody(req) {
+  if (req.method === 'OPTIONS') return { res: new Response(null, { status: 204, headers: CORS }) };
+  if (req.method !== 'POST') return { res: kbOut({ error: 'Use POST with JSON.' }, 405) };
+  try { const b = JSON.parse((await req.text()).slice(0, 6000)); if (b && typeof b === 'object') return { b }; } catch {}
+  return { res: kbOut({ error: 'Send JSON.' }, 400) };
+}
+function kbCall(req, env, path, body, timeout = 20000) {
+  // our own automated site tests are marked so they are not counted as visitor questions
+  const test = /WorldDigitalSiteTest/.test(req.headers.get('User-Agent') || '');
+  return fetch(env.TOOLS_API_URL.replace(/\/$/, '') + path, {
+    method: 'POST', signal: AbortSignal.timeout(timeout),
+    headers: { 'x-internal-token': env.TOOLS_API_TOKEN || '', 'content-type': 'application/json',
+      'cf-connecting-ip': req.headers.get('CF-Connecting-IP') || '', ...(test ? { 'x-wd-test': '1' } : {}) },
+    body: JSON.stringify(body),
+  });
+}
+async function kbJson(req, env, path, body) {
+  if (!env.TOOLS_API_URL) return kbOut({ error: 'Not available right now.' }, 503);
   try {
-    const res = await fetch(env.TOOLS_API_URL.replace(/\/$/, '') + '/api/rag/answer-stream', {
-      method: 'POST', signal: AbortSignal.timeout(60000),
-      headers: { 'x-internal-token': env.TOOLS_API_TOKEN || '', 'content-type': 'application/json', 'cf-connecting-ip': req.headers.get('CF-Connecting-IP') || '' },
-      body: JSON.stringify({ query }),
-    });
-    if (!res.ok) { let d = {}; try { d = await res.json(); } catch {} return out({ error: d.error || 'Could not answer right now.' }, res.status); }
+    const res = await kbCall(req, env, path, body);
+    let d = {}; try { d = await res.json(); } catch {}
+    return kbOut(res.ok ? d : { error: d.error || 'Could not save that right now.' }, res.status);
+  } catch { return kbOut({ error: 'Busy right now. Please try again in a minute.' }, 502); }
+}
+async function kbStream(req, env, path, body) {
+  if (!env.TOOLS_API_URL) return kbOut({ error: 'The knowledge API is being set up. Please try again later.' }, 503);
+  const query = String(body.query || '').trim();
+  if (!query) return kbOut({ error: 'Send JSON: {"query": "your question"}' }, 400);
+  if (query.length > 500) return kbOut({ error: 'Please keep the question under 500 characters.' }, 400);
+  try {
+    const res = await kbCall(req, env, path, { ...body, query }, 60000);
+    if (!res.ok) { let d = {}; try { d = await res.json(); } catch {} return kbOut({ error: d.error || 'Could not answer right now.' }, res.status); }
     return new Response(res.body, { status: 200, headers: { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', ...CORS } });
-  } catch {
-    return out({ error: 'The knowledge API is busy right now. Please try again in a minute.' }, 502);
-  }
+  } catch { return kbOut({ error: 'The knowledge API is busy right now. Please try again in a minute.' }, 502); }
+}
+const str = (v, n) => String(v == null ? '' : v).slice(0, n);
+
+// Streamed version of the answer API: the answer arrives as it is written (NDJSON lines, see backend
+// /api/rag/answer-stream), so visitors see the first words in under a second. Same limits as /api/rag/answer.
+// The last line ("done") carries the question id (for ratings and hand-off), follow-up suggestions and sources.
+export async function ragAnswerStream(req, env) {
+  const { b, res } = await kbBody(req); if (res) return res;
+  return kbStream(req, env, '/api/rag/answer-stream', { query: b.query || b.q, channel: b.channel === 'search' ? 'search' : 'api' });
+}
+
+// Thumbs up / down on an answer: {id, vote: "up" | "down"}
+export async function ragFeedback(req, env) {
+  const { b, res } = await kbBody(req); if (res) return res;
+  return kbJson(req, env, '/api/rag/feedback', { id: str(b.id, 20), vote: str(b.vote, 4) });
+}
+
+// "Want us to email you?": {email, question, id}. Saved with the question; on our own site it is also a form entry
+// (Form entries in the admin) and we get the usual notification email. `notify` is given by the router.
+export async function ragHandoff(req, env, notify) {
+  const { b, res } = await kbBody(req); if (res) return res;
+  const body = { email: str(b.email, 200).trim(), question: str(b.question, 800), id: str(b.id, 20), name: str(b.name, 120) };
+  const out = await kbJson(req, env, '/api/rag/handoff', body);
+  if (out.status === 200 && notify) await notify({ email: body.email.toLowerCase(), question: body.question, name: body.name });
+  return out;
+}
+
+// Client "Ask AI" widget (/ask.js): the same three calls for a customer's own knowledge base. The embed key picks the
+// customer; the backend checks that the calling website is the customer's.
+export async function askEmbed(req, env, action) {
+  const { b, res } = await kbBody(req); if (res) return res;
+  const base = { key: str(b.key, 32), origin: str(req.headers.get('Origin') || req.headers.get('Referer') || '', 300) };
+  if (action === 'answer') return kbStream(req, env, '/api/rag/embed/answer-stream', { ...base, query: b.query || b.q });
+  if (action === 'info') return kbJson(req, env, '/api/rag/embed/info', base);
+  if (action === 'feedback') return kbJson(req, env, '/api/rag/feedback', { id: str(b.id, 20), vote: str(b.vote, 4) });
+  if (action === 'handoff') return kbJson(req, env, '/api/rag/handoff', { ...base, email: str(b.email, 200).trim(), question: str(b.question, 800), id: str(b.id, 20) });
+  return kbOut({ error: 'Not found.' }, 404);
 }
 
 // Stripe webhook: Stripe calls https://worlddigital.ai/api/stripe/webhook. The raw body and Stripe-Signature are passed

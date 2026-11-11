@@ -101,3 +101,29 @@ test('internal AI endpoint: answer generation streams, only allow-listed models'
   assert.equal(r.headers.get('content-type'), 'text/event-stream');
   assert.match(await r.text(), /"response":"Hi"/);
 });
+
+test('ask widget script is valid JS and the proxies shape requests', async () => {
+  const { ASK_WIDGET } = await import('../src/ask-widget.js');
+  new Function(ASK_WIDGET);
+  assert.match(ASK_WIDGET, /data-key/);
+  const { askEmbed, ragFeedback, ragHandoff, ragAnswerStream } = await import('../src/tools-proxy.js');
+  const realFetch = globalThis.fetch; const calls = [];
+  globalThis.fetch = async (u, o) => { calls.push([u, JSON.parse(o.body), o.headers]); return new Response(JSON.stringify({ saved: true }), { headers: { 'content-type': 'application/json' } }); };
+  try {
+    const env = { TOOLS_API_URL: 'https://api.test', TOOLS_API_TOKEN: 't' };
+    const post = (path, body, h = {}) => new Request('https://worlddigital.ai' + path, { method: 'POST', headers: { 'CF-Connecting-IP': '9.9.9.9', ...h }, body: JSON.stringify(body) });
+    await askEmbed(post('/api/ask/answer', { key: 'a'.repeat(32), query: 'hours?' }, { Origin: 'https://clinic.example' }), env, 'answer');
+    assert.equal(calls[0][0], 'https://api.test/api/rag/embed/answer-stream');
+    assert.deepEqual(calls[0][1], { key: 'a'.repeat(32), origin: 'https://clinic.example', query: 'hours?' });
+    assert.equal(calls[0][2]['cf-connecting-ip'], '9.9.9.9');
+    await ragFeedback(post('/api/rag/feedback', { id: 'abc', vote: 'up', extra: 'x' }), env);
+    assert.deepEqual(calls[1][1], { id: 'abc', vote: 'up' });
+    let lead = null;
+    const r = await ragHandoff(post('/api/rag/handoff', { email: ' A@B.co ', question: 'q?', id: '1' }), env, async (d) => { lead = d; });
+    assert.equal(r.status, 200); assert.deepEqual(lead, { email: 'a@b.co', question: 'q?', name: '' });
+    await ragAnswerStream(post('/api/rag/answer-stream', { query: 'x', channel: 'search' }, { 'User-Agent': 'x WorldDigitalSiteTest/1.0' }), env);
+    assert.equal(calls[3][1].channel, 'search'); assert.equal(calls[3][2]['x-wd-test'], '1');
+    assert.equal((await askEmbed(new Request('https://worlddigital.ai/api/ask/answer', { method: 'OPTIONS' }), env, 'answer')).status, 204);
+    assert.equal((await ragFeedback(post('/api/rag/feedback', 'nope'), env)).status, 400);
+  } finally { globalThis.fetch = realFetch; }
+});

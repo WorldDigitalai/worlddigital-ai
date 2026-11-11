@@ -1,0 +1,141 @@
+/* WorldDigital.ai "Ask AI" widget. Add to a website:
+   <script src="https://worlddigital.ai/ask.js" data-key="YOUR_KEY" async></script>
+   Optional: data-label="Ask AI"  data-color="#0D5EC7"  data-side="left"
+   Answers come only from that business's own knowledge base, with sources. No cookies, no tracking. */
+(function () {
+  'use strict';
+  var me = document.currentScript || document.querySelector('script[data-key][src*="/ask.js"]');
+  if (!me || window.__wdAsk) return;
+  window.__wdAsk = 1;
+  var KEY = me.getAttribute('data-key') || '';
+  var API = new URL(me.src, location.href).origin + '/api/ask/';
+  var LABEL = me.getAttribute('data-label') || 'Ask AI';
+  var COLOR = /^#[0-9a-fA-F]{3,8}$/.test(me.getAttribute('data-color') || '') ? me.getAttribute('data-color') : '#0D5EC7';
+  var SIDE = me.getAttribute('data-side') === 'left' ? 'left' : 'right';
+  if (!/^[0-9a-f]{32}$/.test(KEY)) return;
+
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function post(path, body) {
+    body.key = KEY;
+    return fetch(API + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  }
+
+  var host = el('div');
+  host.style.cssText = 'position:fixed;z-index:2147483000;bottom:20px;' + SIDE + ':20px';
+  var root = host.attachShadow ? host.attachShadow({ mode: 'open' }) : host;
+  var css = el('style');
+  css.textContent =
+    ':host{all:initial}*{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}' +
+    '.btn{background:' + COLOR + ';color:#fff;border:0;border-radius:999px;padding:0 20px;min-height:48px;font-size:16px;font-weight:600;cursor:pointer;box-shadow:0 6px 20px rgba(14,26,43,.25)}' +
+    '.btn:focus-visible,.x:focus-visible,input:focus-visible,.v:focus-visible,.go:focus-visible{outline:3px solid #FFB020;outline-offset:2px}' +
+    '.panel{position:absolute;bottom:60px;' + SIDE + ':0;width:min(380px,calc(100vw - 32px));max-height:min(560px,calc(100vh - 110px));display:none;flex-direction:column;background:#fff;color:#0E1A2B;border:1px solid #DCE5EF;border-radius:16px;box-shadow:0 16px 48px rgba(14,26,43,.28);overflow:hidden}' +
+    '.panel.open{display:flex}' +
+    '.head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 14px;background:' + COLOR + ';color:#fff;font-weight:600;font-size:16px}' +
+    '.x{background:transparent;border:0;color:#fff;font-size:22px;line-height:1;width:44px;height:44px;cursor:pointer;border-radius:8px}' +
+    '.log{flex:1;overflow:auto;padding:14px;font-size:15px;line-height:1.55}' +
+    '.q{font-weight:600;margin:12px 0 6px}.a{white-space:pre-line;overflow-wrap:anywhere}.muted{color:#5A6B80;font-size:13.5px}' +
+    '.src{margin:8px 0 0;padding-left:20px;font-size:14px}.src a{color:' + COLOR + ';overflow-wrap:anywhere}' +
+    '.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}' +
+    '.v{border:1px solid #DCE5EF;background:#fff;border-radius:10px;min-width:44px;min-height:44px;font-size:18px;cursor:pointer}' +
+    '.v[aria-pressed=true]{background:#EAF2FB;border-color:' + COLOR + '}' +
+    '.rel{display:block;width:100%;text-align:left;border:1px solid #DCE5EF;background:#F6F9FC;border-radius:10px;padding:10px 12px;margin-top:6px;font-size:14.5px;color:#0E1A2B;cursor:pointer;min-height:44px}' +
+    '.box{border:1px solid #DCE5EF;background:#F6F9FC;border-radius:12px;padding:10px 12px;margin-top:10px}' +
+    'form{display:flex;gap:8px;padding:10px;border-top:1px solid #DCE5EF}' +
+    'input{flex:1;min-width:0;border:1.5px solid #B9C7D8;border-radius:10px;padding:0 12px;min-height:44px;font-size:16px;color:#0E1A2B;background:#fff}' +
+    '.go{background:' + COLOR + ';color:#fff;border:0;border-radius:10px;padding:0 14px;min-height:44px;font-size:15px;font-weight:600;cursor:pointer}' +
+    '.go[disabled]{opacity:.6}.foot{padding:0 12px 10px;font-size:12px;color:#5A6B80}.foot a{color:#5A6B80}';
+  var btn = el('button', 'btn', LABEL); btn.type = 'button'; btn.setAttribute('aria-expanded', 'false');
+  var panel = el('div', 'panel'); panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', LABEL);
+  var head = el('div', 'head'); var title = el('span', '', LABEL);
+  var close = el('button', 'x', '×'); close.type = 'button'; close.setAttribute('aria-label', 'Close');
+  head.appendChild(title); head.appendChild(close);
+  var log = el('div', 'log'); log.setAttribute('aria-live', 'polite');
+  log.appendChild(el('div', 'muted', 'Ask a question. Answers come from this website’s own information, with sources.'));
+  var form = el('form'); var input = el('input'); input.type = 'text'; input.maxLength = 500; input.placeholder = 'Type your question…';
+  input.setAttribute('aria-label', 'Your question'); input.setAttribute('enterkeyhint', 'send');
+  var go = el('button', 'go', 'Ask'); go.type = 'submit';
+  form.appendChild(input); form.appendChild(go);
+  var foot = el('div', 'foot'); var pw = el('a', '', 'Powered by WorldDigital.ai');
+  pw.href = 'https://worlddigital.ai/'; pw.target = '_blank'; pw.rel = 'noopener'; foot.appendChild(pw);
+  panel.appendChild(head); panel.appendChild(log); panel.appendChild(form); panel.appendChild(foot);
+  root.appendChild(css); root.appendChild(panel); root.appendChild(btn);
+
+  function toggle(open) {
+    panel.classList.toggle('open', open); btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open) input.focus(); else btn.focus();
+  }
+  btn.addEventListener('click', function () { toggle(!panel.classList.contains('open')); });
+  close.addEventListener('click', function () { toggle(false); });
+  panel.addEventListener('keydown', function (e) { if (e.key === 'Escape') toggle(false); });
+
+  function extras(wrap, d, question) {
+    if (d.sources && d.sources.length) {
+      var ol = el('ol', 'src');
+      d.sources.forEach(function (s) {
+        if (!/^https:\/\//.test(s.url || '')) return;
+        var li = el('li'); var a = el('a', '', s.title || s.url); a.href = s.url; a.target = '_blank'; a.rel = 'noopener';
+        li.appendChild(a); ol.appendChild(li);
+      });
+      if (ol.children.length) wrap.appendChild(ol);
+    }
+    if (d.id) {
+      var row = el('div', 'row'); row.appendChild(el('span', 'muted', 'Was this helpful?'));
+      ['up', 'down'].forEach(function (v) {
+        var b = el('button', 'v', v === 'up' ? '👍' : '👎'); b.type = 'button';
+        b.setAttribute('aria-label', v === 'up' ? 'Helpful' : 'Not helpful'); b.setAttribute('aria-pressed', 'false');
+        b.addEventListener('click', function () {
+          row.querySelectorAll('.v').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+          post('feedback', { id: d.id, vote: v }).catch(function () {});
+        });
+        row.appendChild(b);
+      });
+      wrap.appendChild(row);
+    }
+    if (d.handoff) {
+      var box = el('div', 'box'); box.appendChild(el('div', '', 'Want a person to answer this by email?'));
+      var f = el('form'); f.style.cssText = 'padding:8px 0 0;border:0';
+      var em = el('input'); em.type = 'email'; em.required = true; em.placeholder = 'Your email'; em.setAttribute('aria-label', 'Your email'); em.autocomplete = 'email';
+      var sb = el('button', 'go', 'Send'); sb.type = 'submit'; f.appendChild(em); f.appendChild(sb); box.appendChild(f);
+      f.addEventListener('submit', function (e) {
+        e.preventDefault(); sb.disabled = true;
+        post('handoff', { email: em.value, question: question, id: d.id || '' }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (x) { if (x.ok) { box.textContent = 'Thanks. We will email you.'; } else { sb.disabled = false; box.appendChild(el('div', 'muted', x.j.error || 'Could not send. Please try again.')); } })
+          .catch(function () { sb.disabled = false; });
+      });
+      wrap.appendChild(box);
+    }
+    (d.related || []).slice(0, 3).forEach(function (q) {
+      var r = el('button', 'rel', q); r.type = 'button'; r.addEventListener('click', function () { ask(q); }); wrap.appendChild(r);
+    });
+  }
+
+  function ask(question) {
+    question = String(question || '').trim(); if (!question || go.disabled) return;
+    go.disabled = true; input.value = '';
+    var wrap = el('div'); wrap.appendChild(el('div', 'q', question));
+    var a = el('div', 'a', 'Thinking…'); wrap.appendChild(a); log.appendChild(wrap); log.scrollTop = log.scrollHeight;
+    var got = false;
+    function fail(m) { if (!got) a.textContent = m || 'Could not answer right now. Please try again.'; }
+    function line(t) {
+      if (!t.trim()) return; var d; try { d = JSON.parse(t); } catch (e) { return; }
+      if (d.type === 'text') { if (!got) { got = true; a.textContent = ''; } a.textContent += d.text; log.scrollTop = log.scrollHeight; }
+      else if (d.type === 'done') { a.textContent = a.textContent.trim(); extras(wrap, d, question); }
+      else if (d.type === 'error') fail(d.error);
+    }
+    post('answer', { query: question }).then(function (r) {
+      if (!r.ok || !r.body) return r.json().catch(function () { return {}; }).then(function (j) { fail(j.error); });
+      var rd = r.body.getReader(), dec = new TextDecoder(), buf = '';
+      function pump() {
+        return rd.read().then(function (x) {
+          if (x.done) { if (buf) line(buf); return; }
+          buf += dec.decode(x.value, { stream: true }); var parts = buf.split('\n'); buf = parts.pop(); parts.forEach(line); return pump();
+        });
+      }
+      return pump();
+    }).catch(function () { fail(); }).then(function () { go.disabled = false; });
+  }
+  form.addEventListener('submit', function (e) { e.preventDefault(); ask(input.value); });
+
+  function mount() { document.body.appendChild(host); }
+  if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount);
+})();

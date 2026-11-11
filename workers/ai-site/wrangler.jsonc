@@ -9,7 +9,7 @@
   "compatibility_date": "2026-10-01",
   "workers_dev": true,
   "preview_urls": false,
-  "rules": [{ "type": "Text", "globs": ["**/*.html", "**/*.md"], "fallthrough": true }],
+  "rules": [{ "type": "Text", "globs": ["**/*.html", "**/*.md", "**/*.txt"], "fallthrough": true }],
   "assets": { "directory": "./public", "binding": "ASSETS", "html_handling": "none", "not_found_handling": "none" },
   // Workers AI (knowledge base embeddings + reranking, src/ai.js). Billed per use; free daily allocation covers our volume.
   "ai": { "binding": "AI" },

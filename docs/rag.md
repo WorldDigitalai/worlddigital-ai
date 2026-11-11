@@ -287,3 +287,24 @@ assistant must say it doesn't know. Reported metrics:
 | Quality test | 23 answers per night, about 30 × 23 ≈ 700 answers a month |
 | MongoDB Atlas | M0 free tier: about 10 MB of 512 MB used, 2 of 3 search indexes. Each customer knowledge base adds roughly 4 MB. Move to a paid tier (backups) before storing paying customers' documents, or past about 350 MB |
 | Cloud Run, GitHub Actions | Within free usage at current volume |
+
+## Visitor feedback, hand-off, approved answers and the client widget
+
+- **Question log:** every public answer is logged with an id (`qid`), channel (`search`, `api`, `embed`, `chat`), source
+  (`ai` or `tenant:<id>`), cited pages and whether it was instant. Our own automated tests (User-Agent
+  `WorldDigitalSiteTest`, header `x-wd-test`) are not logged. The streamed "done" event carries `id`, `handoff`, `related`.
+- **Ratings:** `POST /api/rag/feedback {id, vote: up|down}` (search page and widget thumbs).
+- **Hand-off:** offered when the site cannot answer or the visitor asks for a quote or a person.
+  `POST /api/rag/handoff {email, question, id}` saves it (`rag_handoffs`); on our site it is also a Form entry and a
+  notification email. Limit: 5 a day per visitor.
+- **Approved answers:** an admin writes the answer to a question (`rag_corrections`). It is given word for word for that
+  question and for questions that mean the same (same 0.86 similarity rule as ready answers), before any AI call.
+- **Follow-up suggestions ("People also ask"):** up to 3 of our own prepared questions (from `rag_eval.json`) close in
+  meaning to the question. Other visitors' wording is never shown.
+- **Insights (admin, Knowledge base page):** unanswered questions, thumbs-down answers, email requests, top questions by
+  week, most-cited pages. `POST /api/admin/rag/insights`.
+- **Client "Ask AI" widget:** each customer knowledge base has an embed key. The customer pastes
+  `<script src="https://worlddigital.ai/ask.js" data-key="KEY" async></script>`. The widget (`src/ask-widget.txt`, shadow
+  DOM, no cookies) calls `/api/ask/(answer|feedback|handoff|info)`. The backend only accepts the key from the customer's
+  own website (and worlddigital.ai for `/ask-preview`), 30 questions a day per visitor and 1,000 a day per customer.
+  Replacing the key in the admin turns the old embed off.

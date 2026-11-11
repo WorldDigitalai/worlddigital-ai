@@ -8,7 +8,8 @@ import { handleAdmin, sendEmail, sha256 } from './admin.js';
 import { ROBOTS, LLMS, LLMS_FULL, UPDATED } from './crawl-text.js';
 import { SOCIAL_UPDATED } from './social.js';
 import { INDEXNOW_KEY, PROD_HOSTS, isAppPath } from './routing.js';
-import { toolsProxy, ragAnswer, ragAnswerStream, stripeWebhook } from './tools-proxy.js';
+import { toolsProxy, ragAnswer, ragAnswerStream, ragFeedback, ragHandoff, askEmbed, stripeWebhook } from './tools-proxy.js';
+import { ASK_WIDGET } from './ask-widget.js';
 import { withTool } from './tools-widget.js';
 import { humanOk } from './human.js';
 import { internalAi } from './ai.js';
@@ -199,6 +200,18 @@ async function handle(req, env, ctx) {
   // Public knowledge API (answers from our own pages, with sources): docs/rag.md
   if (lower === '/api/rag/answer') return ragAnswer(req, env);
   if (lower === '/api/rag/answer-stream') return ragAnswerStream(req, env);
+  if (lower === '/api/rag/feedback') return ragFeedback(req, env);
+  if (lower === '/api/rag/handoff') return ragHandoff(req, env, async (d) => {
+    // also a form entry + the usual notification email, so a question hand-off is handled like any other lead
+    const ipHash = await sha256(`${req.headers.get('CF-Connecting-IP') || ''}|wd`);
+    if (!(await store(env).addLead('question', { email: d.email, question: d.question }, ipHash.slice(0, 32)))) return;
+    ctx.waitUntil(sendEmail(env, env.NOTIFY_EMAIL || 'support@worlddigital.ai', 'Question from the site search: please email back',
+      `<div style="font-family:Arial,sans-serif;font-size:15px"><p>A visitor asked the AI a question and wants an email reply.</p><p><b>Email:</b> ${esc(d.email)}<br><b>Question:</b> ${esc(d.question)}</p><p><a href="${SITE}/blog-admin/leads">See all entries</a></p></div>`, d.email));
+  });
+  // Client "Ask AI" widget: script + its API (keyed per customer, see src/ask-widget.js)
+  if (lower === '/ask.js') return new Response(ASK_WIDGET, { headers: { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'public, max-age=3600', 'Access-Control-Allow-Origin': '*', 'Cross-Origin-Resource-Policy': 'cross-origin', 'X-Content-Type-Options': 'nosniff' } });
+  const ask = /^\/api\/ask\/(answer|info|feedback|handoff)$/.exec(lower);
+  if (ask) return askEmbed(req, env, ask[1]);
   if (lower === '/api/stripe/webhook') return stripeWebhook(req, env);
   // Workers AI for the knowledge base (embeddings, reranking): backend only, token-checked (src/ai.js)
   if (lower === '/api/internal/ai') return internalAi(req, env);
@@ -214,6 +227,14 @@ async function handle(req, env, ctx) {
 
   if (req.method === 'GET' || req.method === 'HEAD') {
     if (path === '/search') return searchPage(req, env, url, ctx, prod);
+    if (path === '/ask-preview') {  // preview of a customer's "Ask AI" widget (linked from the admin)
+      const key = /^[0-9a-f]{32}$/.test(url.searchParams.get('key') || '') ? url.searchParams.get('key') : '';
+      const body = `<section class="sec"><div class="wrap" style="max-width:760px"><h1 class="h" style="font-size:34px">Ask AI widget preview</h1>
+<p style="font-size:17px;line-height:1.65;color:#33445A">${key ? 'This is how the widget looks on a website. Use the “Ask AI” button in the corner of this page: it answers from that customer’s knowledge base only.' : 'This preview link is missing its key. Open it from the knowledge base admin.'}</p></div></section>
+${key ? `<script src="/ask.js" data-key="${key}" async></script>` : ''}`;
+      return new Response(page({ path: '/ask-preview', title: 'Ask AI widget preview | WorldDigital.ai', description: 'Preview of the Ask AI website widget.', noindex: true, body, cta: false, tools: false, prod }),
+        { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } });
+    }
     if (PAGES[path]) {
       // Paid tools show only once the Python API is configured (TOOLS_API_URL).
       const o = PAGES[path].tool && env.TOOLS_API_URL ? { ...PAGES[path], body: withTool(PAGES[path].body, PAGES[path].tool) } : PAGES[path];

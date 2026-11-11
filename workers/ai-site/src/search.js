@@ -26,6 +26,14 @@ const CSS = `<style>
 .sr-ai p{margin:8px 0 0;line-height:1.6;overflow-wrap:anywhere}
 .sr-ai ol{margin:8px 0 0;padding-left:22px}.sr-ai li{margin:4px 0;overflow-wrap:anywhere}
 .sr-ai .btn{min-height:44px}
+.sr-rate{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px;color:#5A6B80;font-size:14.5px}
+.sr-v{border:1px solid #DCE5EF;background:#fff;border-radius:10px;min-width:44px;min-height:44px;font-size:18px;cursor:pointer}
+.sr-v[aria-pressed=true]{background:#EAF2FB;border-color:#0D5EC7}
+.sr-hand{margin-top:12px;padding:12px 14px;border:1px solid #DCE5EF;border-radius:12px;background:#fff}
+.sr-hand form{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.sr-hand input{flex:1 1 200px;min-width:0;font:inherit;padding:10px 12px;border:1.5px solid #B9C7D8;border-radius:10px;min-height:44px}
+.sr-rel{margin-top:14px}.sr-rel a{display:block;border:1px solid #DCE5EF;background:#fff;border-radius:10px;padding:10px 12px;margin-top:6px;text-decoration:none;color:#0E1A2B;min-height:24px}
+.sr-rel a:hover{border-color:#0D5EC7;color:#0D5EC7}
 .sr-tags{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0}
 .sr-tags a{border:1px solid #DCE5EF;border-radius:999px;padding:8px 14px;text-decoration:none;color:#0E1A2B;font-size:14.5px;min-height:24px}
 .sr-tags a:hover{border-color:#0D5EC7;color:#0D5EC7}
@@ -109,15 +117,22 @@ var p=el('p','');p.style.whiteSpace='pre-line';var got=false;
 function fail(m){b.disabled=false;b.textContent='Get an AI answer';if(!got){o.textContent='';o.appendChild(el('p','',m||'Could not get an answer right now. Please try again.'))}}
 function sources(d){if(!d.sources||!d.sources.length)return;var ol=el('ol');d.sources.forEach(function(s){var li=el('li'),a=el('a','',s.title||s.url);
 if(/^https:\\/\\/worlddigital\\.ai(\\/|$)/.test(s.url)){a.href=s.url.replace('https://worlddigital.ai','')||'/'}li.appendChild(a);ol.appendChild(li)});o.appendChild(el('p','','Sources:'));o.appendChild(ol)}
+function send(u,body){return fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})}
+function extras(d){var Q=${JSON.stringify(q).replace(/</g, '\\u003c')};
+if(d.id){var row=el('div','sr-rate');row.appendChild(el('span','','Was this helpful?'));['up','down'].forEach(function(v){var x=el('button','sr-v',v==='up'?'\\ud83d\\udc4d':'\\ud83d\\udc4e');x.type='button';x.setAttribute('aria-label',v==='up'?'Helpful':'Not helpful');x.setAttribute('aria-pressed','false');
+x.addEventListener('click',function(){row.querySelectorAll('.sr-v').forEach(function(y){y.setAttribute('aria-pressed',y===x?'true':'false')});send('/api/rag/feedback',{id:d.id,vote:v}).catch(function(){})});row.appendChild(x)});o.appendChild(row)}
+if(d.handoff){var box=el('div','sr-hand');box.appendChild(el('strong','','Want us to email you about this?'));var f=el('form'),em=el('input'),sb=el('button','btn red','Email me');em.type='email';em.required=true;em.placeholder='Your email';em.setAttribute('aria-label','Your email');em.autocomplete='email';sb.type='submit';f.appendChild(em);f.appendChild(sb);box.appendChild(f);var note=el('p','','');box.appendChild(note);
+f.addEventListener('submit',function(e){e.preventDefault();sb.disabled=true;send('/api/rag/handoff',{email:em.value,question:Q,id:d.id||''}).then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})}).then(function(x){if(x.ok){f.remove();note.textContent='Thanks. We reply within one business day.'}else{sb.disabled=false;note.textContent=x.j.error||'Could not send. Please try again.'}}).catch(function(){sb.disabled=false;note.textContent='Could not send. Please try again.'})});o.appendChild(box)}
+if(d.related&&d.related.length){var rel=el('div','sr-rel');rel.appendChild(el('strong','','People also ask'));d.related.slice(0,3).forEach(function(t){var a=el('a','',t);a.href='/search?q='+encodeURIComponent(t)+'&ai=1';rel.appendChild(a)});o.appendChild(rel)}}
 function line(t){if(!t.trim())return;var d;try{d=JSON.parse(t)}catch(e){return}
 if(d.type==='text'){if(!got){got=true;b.remove();o.appendChild(p)}p.textContent+=d.text}
-else if(d.type==='done'){p.textContent=p.textContent.trim();sources(d)}else if(d.type==='error'){fail(d.error)}}
-fetch('/api/rag/answer-stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query:${JSON.stringify(q).replace(/</g, '\\u003c')}})})
+else if(d.type==='done'){p.textContent=p.textContent.trim();sources(d);extras(d)}else if(d.type==='error'){fail(d.error)}}
+fetch('/api/rag/answer-stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({channel:'search',query:${JSON.stringify(q).replace(/</g, '\\u003c')}})})
 .then(function(r){if(!r.ok||!r.body||!/ndjson/.test(r.headers.get('content-type')||'')){return r.json().catch(function(){return{}}).then(function(d){fail(d.error)})}
 var rd=r.body.getReader(),dec=new TextDecoder(),buf='';
 function pump(){return rd.read().then(function(x){if(x.done){if(buf)line(buf);return}buf+=dec.decode(x.value,{stream:true});var parts=buf.split('\\n');buf=parts.pop();parts.forEach(line);return pump()})}
 return pump()})
-.catch(function(){fail()})})})();</script>` : ''}`;
+.catch(function(){fail()})});if(/[?&]ai=1/.test(location.search))b.click()})();</script>` : ''}`;
   const html = page({ path: '/search', title: q ? `${q} – Search | WorldDigital.ai` : 'Search | WorldDigital.ai', description: 'Search WorldDigital.ai products, services and guides.',
     noindex: true, body: CSS + body, cta: false, tools: false, prod });
   return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } });

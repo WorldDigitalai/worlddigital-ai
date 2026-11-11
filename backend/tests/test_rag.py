@@ -640,3 +640,17 @@ def test_ready_check_matches_by_meaning_only(env):
     b = r.answer("Do you sell used boats?", public=True)          # no match: answered fresh, not stored
     r._local.ready_check = False
     assert a["cached"] and not b["cached"] and db()["rag_answers"].count_documents({}) == n
+
+
+def test_answer_sources_at_most_two_passages_per_page(env, monkeypatch):
+    c, w = env
+    c.post("/api/admin/rag/index", headers=H, json={})
+    r = rag_mod.Rag(main.settings(), db())
+    real = r.search
+    def many(q, k, *a, **kw):
+        hits = real(q, k, *a, **kw)
+        return [dict(hits[0], text=f"part {i}") for i in range(5)] + hits[1:]
+    monkeypatch.setattr(r, "search", many)
+    a = r.answer("How much is keyword research?")
+    urls = [p["url"] for p in a["passages"]]
+    assert max(urls.count(u) for u in set(urls)) <= 2 and len(set(urls)) >= 2

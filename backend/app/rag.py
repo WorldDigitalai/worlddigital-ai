@@ -69,7 +69,7 @@ ANSWER_RETRIEVAL = os.environ.get("RAG_ANSWER_RETRIEVAL", "hybrid")
 # scored 0.77, so a wrong match needs a question far closer than any seen.
 SIMILAR_AT = float(os.environ.get("RAG_SIMILAR_AT") or 0.86)
 ANSWER_TTL_H = 30   # ready answers live a little over a day; the nightly run prepares them again              # "priority": OpenAI serves answers first (costs more)            # empty: the site's main model (OPENAI_MODEL)
-ANSWER_SOURCES = int(os.environ.get("RAG_ANSWER_SOURCES") or 5)  # passages the model reads per answer
+ANSWER_SOURCES = int(os.environ.get("RAG_ANSWER_SOURCES") or 6)  # passages the model reads per answer
 ANSWER_CHARS = int(os.environ.get("RAG_ANSWER_CHARS") or 1200)   # characters per passage
 ALT_MODEL = os.environ.get("RAG_COMPARE_MODEL", "@cf/baai/bge-m3")  # side-by-side test (Rag.compare)
 
@@ -1076,8 +1076,16 @@ class Rag:
             except Exception as e:  # noqa: BLE001  no keyword index (tests, local): use the normal search
                 log.info("text retrieval unavailable (%s)", type(e).__name__)
         if len(hits) < 2:  # too little found by words alone: search by meaning too
-            hits = self.search(question, k or ANSWER_SOURCES, srcs, types=types, categories=categories, language=language,
+            want = k or ANSWER_SOURCES
+            wide = self.search(question, min(want * 2, 12), srcs, types=types, categories=categories, language=language,
                                allow_internal=allow_internal, rerank_hits=RERANK_ANSWERS, fresh=fresh)
+            # at most 2 passages per page, so one long page cannot crowd out the page that has the answer
+            hits, per_url = [], {}
+            for h in wide:
+                if per_url.get(h["url"], 0) < 2:
+                    per_url[h["url"]] = per_url.get(h["url"], 0) + 1
+                    hits.append(h)
+            hits = hits[:want]
         search_ms = _ms(t0)
         tenant = srcs[0].startswith("tenant:")
         who = self._tenant(srcs[0].split(":", 1)[1])["name"] if tenant else "WorldDigital.ai"

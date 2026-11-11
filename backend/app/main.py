@@ -39,7 +39,7 @@ from starlette.background import BackgroundTask
 from starlette.concurrency import run_in_threadpool
 from pymongo import MongoClient
 
-from . import blog_ai, blog_video, chat, engine, services
+from . import blog_ai, blog_video, chat, competitor, engine, services
 from .rag import Rag
 from .config import Settings
 from .exports import FORMATS, build_file
@@ -844,6 +844,25 @@ async def chat_reply(request: Request):
     res = json_ok({"reply": text})
     res.background = BackgroundTask(after)
     return res
+
+
+@app.post("/api/admin/competitors", dependencies=[Depends(guard)])
+async def competitor_analysis(request: Request):
+    """Competitor SEO analysis (competitor.py). Admin only for now: token-guarded and not on the public proxy.
+    Each new site costs up to 3 DataForSEO lookups, so runs are capped per day."""
+    s, body = settings(), await body_of(request)
+    _, domain = parse_site_url(body.get("domain"))
+    rivals = [parse_site_url(c)[1] for c in (body.get("competitors") or [])[:competitor.MAX_COMPETITORS + 1] if str(c or "").strip()]
+    if not store().hit("competitors:all", s.competitor_daily_limit):
+        raise ApiError("rate limited", 429, "Today's limit for competitor analyses has been reached. Try again tomorrow.")
+    t0 = time.perf_counter()
+    try:
+        out = await run_in_threadpool(lambda: competitor.analyze(s, domain=domain, competitors=rivals))
+    except Exception:
+        _record_path("tool_competitors", round((time.perf_counter() - t0) * 1000), ok=False)
+        raise
+    _record_path("tool_competitors", round((time.perf_counter() - t0) * 1000))
+    return json_ok(out)
 
 
 @app.post("/api/admin/engine/benchmark", dependencies=[Depends(guard)])

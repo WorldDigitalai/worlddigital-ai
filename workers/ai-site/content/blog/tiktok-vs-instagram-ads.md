@@ -55,4 +55,4 @@ The most effective approach for most growing businesses is to run both platforms
 - **TikTok:** Awareness and reach campaigns targeting 18–30 year olds with video content at lower CPMs
 - **Instagram:** Retargeting, conversion, and shopping campaigns targeting 25–45 year olds with multiple ad formats
 
-WorldDigital.ai manages both platforms from a single dashboard at $49.99/month each — with separate campaign strategies, audiences, and creative tailored to each platform's unique requirements. You don't have to choose; you can scale into both as your budget allows.
+You don't have to choose: run separate campaign strategies, audiences and creative for each platform, and scale into both as your budget allows. If you want ad copy for either, the WorldDigital.ai [content generator](/services/content-marketing) writes TikTok and Instagram ads and posts within each platform's character limits.

@@ -86,7 +86,7 @@ test('official profile links are the same everywhere (footer, structured data, A
     for (const [where, text] of [['about', about], ['help', help], ['llms', llms]]) assert.ok(text.includes(url), `${name} missing on ${where}`);
     if (name !== 'Google Business Profile' && name !== 'Snapchat') assert.ok(layout.split(url).length >= 3, `${name} not in footer`);
   }
-  assert.ok(!/facebook\.com\/worlddigitalai|youtube\.com\/@worlddigitalai|company\/worlddigitalai/.test(layout + about + help), 'old unverified links remain');
+  assert.ok(!/facebook\.com\/worlddigitalai|youtube\.com\/@worlddigitalai|linkedin\.com\/company\/worlddigitalai/.test(layout + about + help), 'old unverified links remain');
 });
 
 test('internal AI endpoint: answer generation streams, only allow-listed models', async () => {

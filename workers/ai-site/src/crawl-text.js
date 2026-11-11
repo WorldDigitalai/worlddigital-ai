@@ -3,6 +3,8 @@
 // (they come back later as the Social & Email Autopilot service).
 
 export const UPDATED = '2026-10-28';
+// Date the llms files themselves last changed (UPDATED stays the sitemap fallback for pages without their own date).
+export const LLMS_UPDATED = '2026-11-10';
 const SITE = 'https://worlddigital.ai';
 
 // One group only: crawlers that find a group naming them ignore the "*" group,
@@ -49,15 +51,17 @@ Disallow: /blog-admin
 Sitemap: ${SITE}/sitemap.xml
 `;
 
-export const LLMS = `# WorldDigital.ai — Software Company
+export const LLMS = `# WorldDigital.ai — AI Marketing Company
 
-Last updated: ${UPDATED}
+Last updated: ${LLMS_UPDATED}
 
-> WorldDigital.ai Corporation LLC is a software company serving SMBs, SMEs and enterprises across the United States and Canada, from hubs in Houston, TX and Murfreesboro, TN. We make AI marketing software (a free SEO and AI visibility report, keyword research and a content generator) and build custom software: web apps and portals, AI automation and agents, API integrations and EHR/EMR integrations. Managed SEO, Google Ads and website services are available as add-ons.
+> WorldDigital.ai Corporation LLC is an AI marketing company for SMBs, SMEs and enterprises across the United States and Canada, from hubs in Houston, TX and Murfreesboro, TN. We get businesses found on Google, Maps and AI answers (ChatGPT, Gemini, Perplexity, Copilot, Google AI Overviews) with SEO and AI search optimization (GEO and AEO), and we manage Google Ads. We back that with AI marketing tools we build ourselves (a free SEO and AI visibility report, keyword research and a content generator), and we also build custom software, AI automation and integrations.
 
-Software: SEO & AI visibility report (free), keyword research ($9.99 one-time), content generator ($24.99 one-time), Social & Email Autopilot (coming soon). Custom software: web apps and customer portals, AI automation and agents, API and data integrations, EHR/EMR integration (Epic, FHIR, HL7).
+Name: WorldDigital.ai (also written WorldDigital). Not related to World Digital (worldigital.com), World Digital Imaging or the World Digital Library.
 
-Add-on services: SEO and AI search visibility (SEO, AI SEO, AEO, GEO), technical, national and local SEO, Google Business Profile, keyword research, content marketing, Google Ads and PPC management, website design and management, analytics and reporting (GA4, Search Console).
+Services: SEO and AI search visibility (SEO, AI SEO, AEO, GEO), technical, national and local SEO, Google Business Profile, keyword research, content marketing, Google Ads and PPC management, website design and management, analytics and reporting (GA4, Search Console).
+
+AI tools: SEO & AI visibility report (free), keyword research ($9.99 one-time), content generator ($24.99 one-time), Social & Email Autopilot (coming soon). Custom software: web apps and customer portals, AI automation and agents, API and data integrations, EHR/EMR integration (Epic, FHIR, HL7).
 
 Pricing: the SEO & AI Search Visibility plan is $199.99 per month, tax included, with SEO, AI SEO, AEO and GEO included, no long-term contract and cancel anytime. Google Ads management and website projects are quoted after a short conversation.
 
@@ -110,11 +114,12 @@ Clients include Murfreesboro Kabob, RPM Auto Group and Bean Loft Coffee Company 
 
 export const LLMS_FULL = `# WorldDigital.ai — Full Reference
 
-Last updated: ${UPDATED}
+Last updated: ${LLMS_UPDATED}
 
 ## Company
 - Legal name: WorldDigital.ai Corporation LLC
-- Type: Software company (SaaS marketing tools and custom software development), with managed marketing services as add-ons
+- Type: AI marketing company (SEO, AI search optimization, Google Ads, marketing automation), with its own AI marketing tools and custom software development
+- Also written: WorldDigital. Not related to World Digital (worldigital.com), World Digital Imaging or the World Digital Library
 - Founded: 2023
 - Service area: the whole United States and Canada (remote). Hubs: Houston, Texas and Murfreesboro, Tennessee
 - Languages: English, Arabic

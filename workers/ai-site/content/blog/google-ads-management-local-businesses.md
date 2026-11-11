@@ -70,4 +70,4 @@ Traditional Google Ads management involves a human analyst reviewing campaigns w
 
 AI-powered management changes this equation. Machine learning systems can monitor campaigns daily, make bid adjustments in real time, generate new ad copy variants automatically, and flag anomalies that need human attention — at a fraction of the cost.
 
-For local businesses, this means access to the same level of campaign optimization that was previously only available to large businesses with dedicated PPC teams and agency relationships. WorldDigital.ai's AI manages your Google Ads campaigns continuously for $49.99/month — including keyword research, ad creation, negative keyword management, and monthly reporting.
+For local businesses, this means access to the same level of campaign optimization that was previously only available to large businesses with dedicated PPC teams and agency relationships. WorldDigital.ai's [Google Ads management](/google-ads-agency) works this way, covering keyword research, ad creation, negative keyword management and monthly reporting. It is quoted after a short call, based on your campaigns and locations.

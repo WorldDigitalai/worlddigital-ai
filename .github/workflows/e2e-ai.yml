@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       only:
-        description: "Optional comma-separated checks: search, chat, tools, contact, blog, pages"
+        description: "Optional comma-separated checks: search, extras, chat, tools, contact, blog, pages"
         default: ""
 permissions:
   contents: read

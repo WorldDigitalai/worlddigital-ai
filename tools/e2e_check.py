@@ -4,6 +4,7 @@
 
 Checks (each one independent; a failure in one does not stop the others):
   search    /search returns results that link to our pages; "Get an AI answer" answers with sources
+  extras    under an AI answer: email hand-off offer and follow-up questions; client widget script, preview and API
   chat      the AI Ahmad assistant opens, answers a question, and shows no error
   tools     /tools lists the tools; the keyword and content tool forms load (nothing is run: previews need a human check)
   contact   the contact form loads; submitting it empty is refused by the browser and sends nothing
@@ -52,6 +53,26 @@ def check_search(browser, base):
     assert not errors, f"JavaScript error: {errors[0]}"
     p.context.close()
     return f"{len(hrefs)} results (top: {hrefs[0]}); AI answer with sources, first words {first:.1f}s, complete {full:.1f}s"
+
+
+def check_answer_extras(browser, base):
+    """Hand-off offer and follow-up questions under an AI answer; the client widget script, its preview page and API."""
+    errors = []
+    p = new_page(browser, errors)
+    p.goto(f"{base}/search?q=Can+I+get+a+quote+for+custom+software%3F&ai=1", wait_until="domcontentloaded", timeout=45000)
+    p.wait_for_selector("#sr-out .sr-hand input[type=email]", timeout=60000)   # ?ai=1 asks straight away; "quote" offers an email reply
+    related = p.locator("#sr-out .sr-rel a").count()
+    r = p.request.get(f"{base}/ask.js")
+    assert r.status == 200 and "javascript" in r.headers.get("content-type", "") and "data-key" in r.text(), "ask.js not served"
+    bad = p.request.post(f"{base}/api/ask/info", data={"key": "0" * 32})
+    assert bad.status == 404, f"unknown widget key answered {bad.status}"
+    fb = p.request.post(f"{base}/api/rag/feedback", data={"id": "nope", "vote": "up"})
+    assert fb.status == 400, f"bad rating answered {fb.status}"
+    pv = p.goto(f"{base}/ask-preview", wait_until="domcontentloaded", timeout=45000)
+    assert pv.status == 200 and "missing its key" in p.content(), "widget preview page"
+    assert not errors, f"JavaScript error: {errors[0]}"
+    p.context.close()
+    return f"email hand-off offered; {related} follow-up questions; widget script, preview and API respond"
 
 
 def check_chat(browser, base):
@@ -136,7 +157,7 @@ def check_pages(browser, base):
     return "5 pages OK"
 
 
-CHECKS = [("search", check_search), ("chat", check_chat), ("tools", check_tools),
+CHECKS = [("search", check_search), ("extras", check_answer_extras), ("chat", check_chat), ("tools", check_tools),
           ("contact", check_contact), ("blog", check_blog), ("pages", check_pages)]
 
 

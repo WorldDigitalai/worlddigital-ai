@@ -777,7 +777,8 @@ async def chat_reply(request: Request):
         raise ApiError("rate limited", 429, "You've reached today's chat limit. Please use the contact page and we'll reply within one business day.")
     facts, hits = await run_in_threadpool(_rag_facts, messages[-1]["content"], 4, 700)
     text, covered = await run_in_threadpool(chat.reply, s, messages, facts)
-    await run_in_threadpool(lambda: rag().log_question(messages[-1]["content"], text, covered, hits))
+    if "WorldDigitalSiteTest" not in request.headers.get("user-agent", ""):   # our own site tests are not visitor questions
+        await run_in_threadpool(lambda: rag().log_question(messages[-1]["content"], text, covered, hits))
     return json_ok({"reply": text})
 
 

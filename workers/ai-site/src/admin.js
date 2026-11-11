@@ -293,8 +293,8 @@ ${removed ? `<details style="margin-top:8px"><summary>Pages removed in the last 
     stat('Made-up answers', pc(em.unsupported_answer_rate), 'to questions the site does not cover'), stat('First words shown', ms(em.first_words_ms), `slowest 5%: ${ms(em.first_words_p95_ms)}`), stat('Full answer written', ms(em.avg_ms), `slowest 5%: ${ms(em.p95_ms)}`)]) : '<p class="muted">Not run yet.</p>'}
 <p style="margin-top:12px"><button type="button" id="evalb">Run quality test</button> <span id="emsg" class="muted"></span></p><div id="evout"></div></div>
 <div class="card" style="margin-top:14px"><h2 class="h" style="font-size:20px">Use (last 30 days)</h2>${grid([
-    stat('Searches', n(us.searches), `avg ${ms(us.avg_search_ms)}`), stat('Answers (admin and tests)', n(us.answers), `avg ${ms(us.avg_answer_ms)}`), stat('Visitor answers', n(us.public_answers), `${n(us.cached_answers)} instant from memory`),
-    stat('Public API answers', n(us.public_answers)), stat('Chat questions', n(qs.total), `${n(qs.uncovered)} not covered`)])}
+    stat('Searches', n(us.searches), `avg ${ms(us.avg_search_ms)}`), stat('Answers (admin and tests)', n(us.answers), `avg ${ms(us.avg_answer_ms)}`), stat('Public answers written', n(us.public_answers), 'search, API and quality tests'),
+    stat('Instant answers', n(us.cached_answers), 'served from memory'), stat('Chat questions', n(qs.total), `${n(qs.uncovered)} not covered`)])}
 ${aiTable}
 <p class="muted" style="font-size:13px;margin-top:10px">Search indexes: ${idx} · Model: ${esc(cf.embedding_model || '')} (${n(cf.embedding_dims)} dimensions) · Chunks: about ${n(cf.chunk_tokens)} tokens, ${n(cf.overlap_tokens)} overlap</p></div>
 <h2 class="h" style="font-size:22px;margin-top:28px">Ask the knowledge base</h2>

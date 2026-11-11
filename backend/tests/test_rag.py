@@ -200,6 +200,8 @@ def test_chat_is_grounded_logged_and_survives_empty_index(env):
     rep = c.get("/api/admin/rag/questions", headers=H).json()
     assert rep["total"] == 2 and rep["uncovered"] == 1 and rep["questions"][0]["q"] == "How much is keyword research?"
     assert "ip" not in json.dumps(rep["questions"]).lower().replace("ship", "")
+    c.post("/api/tools/chat", headers={**H, "user-agent": "x WorldDigitalSiteTest/1.0"}, json=q)   # our own site test: not logged
+    assert c.get("/api/admin/rag/questions", headers=H).json()["total"] == 2
 
 
 def test_customer_knowledge_base_is_isolated(env):

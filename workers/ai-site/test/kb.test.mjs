@@ -23,7 +23,7 @@ test('knowledge base page shows monitoring, history, quality metrics and escapes
     [{ url: 'doc:onboarding-1', title: 'Onboarding <b>', chunks: 4, updated: '2026-11-01T00:00:00Z' }]).text();
   const body = html.split('</style>')[1];
   for (const s of ['Found in sitemap', '>52<', 'Blog posts', '>18<', 'Failed syncs', 'ReadTimeout', '/blog/old', '22/23', 'Made-up answers', '0%',
-    'Public API answers', '>7<', 'nightly', 'one page', '/blog/new', 'meaning: ready', 'text-embedding-3-small', 'Private company knowledge', 'data-i-del="doc:onboarding-1"', 'public API'])
+    'Public answers written', 'Instant answers', '>7<', 'nightly', 'one page', '/blog/new', 'meaning: ready', 'text-embedding-3-small', 'Private company knowledge', 'data-i-del="doc:onboarding-1"', 'public API'])
     assert.ok(body.includes(s), `missing ${s}`);
   assert.ok(!body.includes('<script>x</script>') && body.includes('&lt;script&gt;') && body.includes('Onboarding &lt;b&gt;'));
   assert.match(body, /data-t-del="t1"/);

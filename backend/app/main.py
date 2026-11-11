@@ -30,10 +30,12 @@ import logging
 import re
 import time
 import uuid
+from datetime import timedelta
 from functools import lru_cache
 
 from fastapi import BackgroundTasks, Depends, FastAPI, Request
 from fastapi.responses import JSONResponse, Response, StreamingResponse
+from starlette.background import BackgroundTask
 from starlette.concurrency import run_in_threadpool
 from pymongo import MongoClient
 
@@ -70,13 +72,72 @@ def store() -> Store:
     return _store
 
 
-def _record_ai_usage(*, feature: str, model: str, tokens_in: int, tokens_out: int, fallback: bool, units: int) -> None:
-    """Daily AI usage counters (rag_meta "ai:YYYY-MM-DD"): calls and tokens per feature, calls per model, fallbacks."""
+def _record_ai_usage(*, feature: str, model: str, tokens_in: int, tokens_out: int, fallback: bool, units: int,
+                     ms: int | None = None, first_ms: int | None = None, error: bool = False, cached: int = 0,
+                     cost_micro: int | None = None) -> None:
+    """Daily AI usage counters (rag_meta "ai:YYYY-MM-DD"): calls and tokens per feature, calls per model, fallbacks.
+    Meter (per feature): total time, time to first words of streamed answers, cached input tokens, errors and
+    list-price cost in millionths of a dollar ("unpriced" counts calls whose model has no known price)."""
     k = lambda v: str(v or "unknown").replace(".", "_").replace("$", "_")[:60]  # noqa: E731  (no dots in field names)
     day = now().strftime("%Y-%m-%d")
-    inc = {f"features.{k(feature)}.calls": 1, f"features.{k(feature)}.in": tokens_in, f"features.{k(feature)}.out": tokens_out,
-           f"features.{k(feature)}.units": units, f"models.{k(model)}": 1, "fallbacks": 1 if fallback else 0}
+    f = f"features.{k(feature)}"
+    inc = {f"{f}.calls": 1, f"{f}.in": tokens_in, f"{f}.out": tokens_out,
+           f"{f}.units": units, f"models.{k(model)}": 1, "fallbacks": 1 if fallback else 0}
+    if ms is not None:
+        inc.update({f"{f}.ms": ms, f"{f}.timed": 1})
+    if first_ms is not None:
+        inc.update({f"{f}.first_ms": first_ms, f"{f}.streams": 1})
+    if cached:
+        inc[f"{f}.cached"] = cached
+    if error:
+        inc[f"{f}.errors"] = 1
+    elif cost_micro is not None:
+        inc[f"{f}.cost_micro"] = cost_micro
+    elif tokens_in or tokens_out:
+        inc[f"{f}.unpriced"] = 1
     store().db["rag_meta"].update_one({"_id": f"ai:{day}"}, {"$inc": inc, "$setOnInsert": {"day": day}}, upsert=True)
+
+
+def _record_path(kind: str, ms: int, ok: bool = True) -> None:
+    """How long a whole request path took (the chat widget, a tool job), next to the AI counters. Never raises."""
+    try:
+        day = now().strftime("%Y-%m-%d")
+        inc = {f"paths.{kind}.n": 1, f"paths.{kind}.ms": ms, **({} if ok else {f"paths.{kind}.errors": 1})}
+        store().db["rag_meta"].update_one({"_id": f"ai:{day}"}, {"$inc": inc, "$setOnInsert": {"day": day}}, upsert=True)
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def meter_summary(days: int = 7) -> dict:
+    """The meter over the last `days`: per feature calls, average time, first words, cached share, errors, cost."""
+    since = (now() - timedelta(days=days)).strftime("%Y-%m-%d")
+    feats: dict[str, dict] = {}
+    paths: dict[str, dict] = {}
+    models: dict[str, int] = {}
+    fallbacks = 0
+    for d in store().db["rag_meta"].find({"_id": {"$regex": "^ai:"}, "day": {"$gte": since}}):
+        fallbacks += d.get("fallbacks") or 0
+        for m, n in (d.get("models") or {}).items():
+            models[m] = models.get(m, 0) + n
+        for group, src in ((feats, d.get("features") or {}), (paths, d.get("paths") or {})):
+            for name, v in src.items():
+                agg = group.setdefault(name, {})
+                for key, n in v.items():
+                    agg[key] = agg.get(key, 0) + (n or 0)
+    out = {}
+    for name, v in sorted(feats.items()):
+        calls = v.get("calls") or 0
+        out[name] = {
+            "calls": calls, "errors": v.get("errors", 0), "tokens_in": v.get("in", 0), "tokens_out": v.get("out", 0),
+            "avg_ms": round(v["ms"] / v["timed"]) if v.get("timed") else None,
+            "avg_first_ms": round(v["first_ms"] / v["streams"]) if v.get("streams") else None,
+            "tokens_per_second": round(v.get("out", 0) / (v["ms"] / 1000), 1) if v.get("ms") and v.get("out") else None,
+            "cached_share": round(v.get("cached", 0) / v["in"], 3) if v.get("in") else None,
+            "cost_usd": round(v.get("cost_micro", 0) / 1e6, 4), "unpriced_calls": v.get("unpriced", 0),
+        }
+    return {"days": days, "features": out, "models": models, "fallbacks": fallbacks,
+            "paths": {n: {"n": v.get("n", 0), "errors": v.get("errors", 0),
+                          "avg_ms": round(v["ms"] / v["n"]) if v.get("n") else None} for n, v in sorted(paths.items())}}
 
 
 services.set_usage_sink(_record_ai_usage)
@@ -179,7 +240,13 @@ def _preview(request: Request, body: dict, kind: str):
         raise ApiError("rate limited", 429, f"You've reached today's limit of {s.preview_daily_limit} free previews. "
                                             "Come back tomorrow, or unlock a report you've already previewed.")
 
-    result = generate_keywords(s, **inp) if kind == "keywords" else generate_content(s, **inp)
+    t0 = time.perf_counter()
+    try:
+        result = generate_keywords(s, **inp) if kind == "keywords" else generate_content(s, **inp)
+    except Exception:
+        _record_path(f"tool_{kind}", round((time.perf_counter() - t0) * 1000), ok=False)
+        raise
+    _record_path(f"tool_{kind}", round((time.perf_counter() - t0) * 1000))
     job = {"_id": str(uuid.uuid4()), "type": kind, "input": inp, "items": result["items"], "meta": result["meta"],
            "created": now(), "paid": False}
     if used:
@@ -702,10 +769,28 @@ async def chat_reply(request: Request):
     messages = chat.clean_messages(body.get("messages"))
     if not store().hit("chat:" + client_ip(request), s.chat_daily_limit):
         raise ApiError("rate limited", 429, "You've reached today's chat limit. Please use the contact page and we'll reply within one business day.")
-    facts, hits = await run_in_threadpool(_rag_facts, messages[-1]["content"], 4, 700)
-    text, covered = await run_in_threadpool(chat.reply, s, messages, facts)
-    await run_in_threadpool(lambda: rag().log_question(messages[-1]["content"], text, covered, hits))
-    return json_ok({"reply": text})
+    t0 = time.perf_counter()
+    try:
+        facts, hits = await run_in_threadpool(_rag_facts, messages[-1]["content"], 4, 700)
+        text, covered = await run_in_threadpool(chat.reply, s, messages, facts)
+    except Exception:
+        _record_path("chat", round((time.perf_counter() - t0) * 1000), ok=False)
+        raise
+    ms = round((time.perf_counter() - t0) * 1000)
+
+    def after():  # the visitor already has the reply: logging no longer adds to their wait
+        _record_path("chat", ms)
+        rag().log_question(messages[-1]["content"], text, covered, hits)
+
+    res = json_ok({"reply": text})
+    res.background = BackgroundTask(after)
+    return res
+
+
+@app.get("/api/admin/meter", dependencies=[Depends(guard)])
+def admin_meter(days: int = 7):
+    """AI meter: speed, cost, cache use and errors per feature. Token-guarded; never on the public proxy."""
+    return json_ok(meter_summary(max(1, min(days, 90))))
 
 
 @app.get("/api/admin/backup", dependencies=[Depends(guard)])

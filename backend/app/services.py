@@ -5,10 +5,12 @@ import base64
 import ipaddress
 import json
 import re
+import time
 from urllib.parse import urlencode, urlparse
 
 import httpx
 
+from . import providers
 from .config import Settings
 
 
@@ -45,15 +47,30 @@ def set_usage_sink(fn) -> None:
     _usage_sink = fn
 
 
-def record_usage(feature: str, model: str, usage: dict | None = None, *, fallback: bool = False, units: int = 0) -> None:
+def record_usage(feature: str, model: str, usage: dict | None = None, *, fallback: bool = False, units: int = 0,
+                 ms: int | None = None, first_ms: int | None = None, error: bool = False) -> None:
+    """Counts one AI call. The meter fields are optional: ms = whole call, first_ms = time to the first words of a
+    streamed answer, error = the call failed. Cached input tokens and list-price cost are worked out here."""
     if not _usage_sink:
         return
     try:
         u = usage or {}
-        _usage_sink(feature=feature, model=model, tokens_in=int(u.get("prompt_tokens") or u.get("input_tokens") or 0),
-                    tokens_out=int(u.get("completion_tokens") or u.get("output_tokens") or 0), fallback=fallback, units=units)
+        tin = int(u.get("prompt_tokens") or u.get("input_tokens") or 0)
+        tout = int(u.get("completion_tokens") or u.get("output_tokens") or 0)
+        cached = int(((u.get("prompt_tokens_details") or u.get("input_tokens_details") or {}).get("cached_tokens")) or 0)
+        base = dict(feature=feature, model=model, tokens_in=tin, tokens_out=tout, fallback=fallback, units=units)
+        meter = dict(ms=ms, first_ms=first_ms, error=error, cached=cached,
+                     cost_micro=None if error else providers.cost_micro(model, tin, tout, cached))
+        try:
+            _usage_sink(**base, **meter)
+        except TypeError:  # a sink that only takes the original fields
+            _usage_sink(**base)
     except Exception:  # noqa: BLE001  usage tracking must never break a request
         pass
+
+
+def _ms(t0: float) -> int:
+    return round((time.perf_counter() - t0) * 1000)
 
 
 def _caller() -> str:
@@ -69,6 +86,92 @@ http = httpx.Client(timeout=60, limits=httpx.Limits(max_connections=40, max_keep
 _effort_refused: set[tuple[str, str]] = set()   # (model, effort) pairs OpenAI rejected: not sent again
 
 
+# ── Other providers that speak the OpenAI chat protocol (Groq, Cerebras): see providers.py ──────────────────────
+
+def _compat_post(target, body: dict, timeout: float, *, stream: bool):
+    """One request, asked again once without a field the provider rejects (reasoning_effort, stream_options)."""
+    headers = {"Authorization": f"Bearer {target.key}"}
+    t = httpx.Timeout(timeout, connect=5)
+    for _ in range(3):
+        if stream:
+            r = http.send(http.build_request("POST", f"{target.base}/chat/completions", headers=headers, json=body, timeout=t), stream=True)
+            if r.status_code < 400:
+                return r
+            r.read()
+            r.close()
+        else:
+            r = http.post(f"{target.base}/chat/completions", headers=headers, json=body, timeout=t)
+            if r.status_code < 400:
+                return r
+        dropped = next((k for k in ("reasoning_effort", "stream_options") if r.status_code == 400 and k in body and k in r.text), None)
+        if not dropped:
+            raise ApiError(f"{target.provider} {r.status_code}: {r.text[:300]}", 502)
+        if dropped == "reasoning_effort":
+            _effort_refused.add((target.label, body["reasoning_effort"]))
+        body.pop(dropped)
+    raise ApiError(f"{target.provider} kept rejecting the request", 502)
+
+
+def _compat_body(target, system: str, user: str, max_tokens: int, temperature: float) -> dict:
+    effort = providers.effort_for(target.model)
+    body = {"model": target.model, "temperature": temperature,
+            "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
+            "max_completion_tokens": max_tokens * 4 if effort and effort != "none" else max_tokens}  # room for reasoning
+    if effort and (target.label, effort) not in _effort_refused:
+        body["reasoning_effort"] = effort
+    return body
+
+
+def _compat_stream(target, *, system: str, user: str, max_tokens: int, temperature: float, timeout: float, feature: str):
+    t0, first, usage = time.perf_counter(), None, None
+    body = {**_compat_body(target, system, user, max_tokens, temperature), "stream": True, "stream_options": {"include_usage": True}}
+    try:
+        r = _compat_post(target, body, timeout, stream=True)
+        try:
+            for line in r.iter_lines():
+                if not line.startswith("data: "):
+                    continue
+                data = line[6:].strip()
+                if data == "[DONE]":
+                    break
+                try:
+                    ev = json.loads(data)
+                except ValueError:
+                    continue
+                if ev.get("error"):  # these providers can report an error in the middle of a stream
+                    raise ApiError(f"{target.provider} stream error: {str(ev['error'])[:200]}", 502)
+                usage = ev.get("usage") or (ev.get("x_groq") or {}).get("usage") or usage
+                for ch in ev.get("choices") or []:
+                    piece = (ch.get("delta") or {}).get("content")
+                    if piece:
+                        first = first if first is not None else _ms(t0)
+                        yield piece
+        finally:
+            r.close()
+    except (ApiError, httpx.HTTPError):
+        record_usage(feature, target.label, usage, ms=_ms(t0), first_ms=first, error=True)
+        raise
+    if first is None:
+        record_usage(feature, target.label, usage, ms=_ms(t0), error=True)
+        raise ApiError(f"{target.provider} wrote nothing", 502)
+    record_usage(feature, target.label, usage, ms=_ms(t0), first_ms=first)
+
+
+def _compat_json(target, *, system: str, user: str, max_tokens: int, temperature: float, timeout: float, feature: str) -> dict:
+    t0 = time.perf_counter()
+    body = {**_compat_body(target, system, user, max_tokens, temperature), "response_format": {"type": "json_object"}}
+    try:
+        data = _json(_compat_post(target, body, timeout, stream=False), target.provider)
+        out = json.loads(((data.get("choices") or [{}])[0].get("message") or {}).get("content") or "")
+        if not isinstance(out, dict):
+            raise ValueError("not an object")
+    except (ApiError, httpx.HTTPError, ValueError) as e:
+        record_usage(feature, target.label, None, ms=_ms(t0), error=True)
+        raise e if isinstance(e, ApiError) else ApiError(f"{target.provider}: {type(e).__name__}: {e}", 502) from e
+    record_usage(feature, target.label, data.get("usage"), ms=_ms(t0))
+    return out
+
+
 def openai_stream(s: Settings, *, system: str, user: str, max_tokens: int = 500, temperature: float = 0.2,
                   timeout: float = 60, effort: str | None = "none", feature: str | None = None, model: str | None = None,
                   tier: str | None = None):
@@ -78,8 +181,28 @@ def openai_stream(s: Settings, *, system: str, user: str, max_tokens: int = 500,
     feature = feature or _caller()
     if not s.openai_api_key:
         raise ApiError("OPENAI_API_KEY missing", 503, "The generator is being set up. Please try again later.")
+    target, rerouted = providers.pick(s, feature, model), False
+    if not target and providers.split(model)[0] != "openai":
+        raise ApiError(f"no API key for {model}", 503, "The generator is being set up. Please try again later.")
+    if target:
+        wrote = False
+        try:
+            for piece in _compat_stream(target, system=system, user=user, max_tokens=max_tokens, temperature=temperature,
+                                        timeout=timeout, feature=feature):
+                wrote = True
+                yield piece
+            return
+        except (ApiError, httpx.HTTPError) as e:
+            # A provider named in the model (a trial) never falls back: the trial must show its own result.
+            # A routed feature falls back to OpenAI, but only if the visitor has not been shown anything yet.
+            if wrote or model:
+                raise
+            print(f"{target.label} failed for {feature}, using OpenAI: {e}", flush=True)
+            rerouted = True
+    asked = model
     model = model or (_working_model or [s.openai_model])[0]
     reasoning = model.startswith(("gpt-5", "o1", "o3", "o4"))
+    t0, first = time.perf_counter(), None
     body = {"model": model, "stream": True, "stream_options": {"include_usage": True}, **({"service_tier": tier} if tier else {}),
             "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
     if reasoning:
@@ -99,6 +222,7 @@ def openai_stream(s: Settings, *, system: str, user: str, max_tokens: int = 500,
                     continue
             if r.status_code >= 400:
                 r.read()
+                record_usage(feature, model, None, ms=_ms(t0), error=True)
                 _json(r, "OpenAI")  # raises with the error
             usage = None
             for line in r.iter_lines():
@@ -115,8 +239,11 @@ def openai_stream(s: Settings, *, system: str, user: str, max_tokens: int = 500,
                 for ch in ev.get("choices") or []:
                     piece = (ch.get("delta") or {}).get("content")
                     if piece:
+                        first = first if first is not None else _ms(t0)
                         yield piece
-            record_usage(feature, model, usage, fallback=model != s.openai_model)
+            # a model the caller did not ask for is a fallback: counted, so a pricier model never runs unnoticed
+            record_usage(feature, model, usage, fallback=rerouted or (not asked and model != s.openai_model),
+                         ms=_ms(t0), first_ms=first)
             return
     raise ApiError("OpenAI stream failed", 502)
 
@@ -126,9 +253,18 @@ def openai_json(s: Settings, *, system: str, user: str, max_tokens: int = 2500, 
     feature = feature or _caller()
     if not s.openai_api_key:
         raise ApiError("OPENAI_API_KEY missing", 503, "The generator is being set up. Please try again later.")
+    target, rerouted = providers.pick(s, feature), False
+    if target:
+        try:
+            return _compat_json(target, system=system, user=user, max_tokens=max_tokens, temperature=temperature,
+                                timeout=timeout, feature=feature)
+        except ApiError as e:
+            print(f"{target.label} failed for {feature}, using OpenAI: {e}", flush=True)
+            rerouted = True
     candidates = _working_model or [s.openai_model] + [m for m in _MODELS if m != s.openai_model]
     last = None
     for model in candidates:
+        t0 = time.perf_counter()
         reasoning = model.startswith(("gpt-5", "o1", "o3", "o4"))
         body = {"model": model, "response_format": {"type": "json_object"},
                 "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
@@ -148,12 +284,14 @@ def openai_json(s: Settings, *, system: str, user: str, max_tokens: int = 2500, 
             last = res
             print(f"openai model {model} refused: {res.status_code} {res.text[:200]}", flush=True)
             continue  # this project can't use this model; try the next
+        if res.status_code >= 400:
+            record_usage(feature, model, None, ms=_ms(t0), error=True)
         data = _json(res, "OpenAI")
         if not _working_model:
             _working_model.append(model)
             print(f"openai model in use: {model}")
         # a model other than the configured one is a fallback: counted, so a pricier model never runs unnoticed
-        record_usage(feature, model, data.get("usage"), fallback=model != s.openai_model)
+        record_usage(feature, model, data.get("usage"), fallback=rerouted or model != s.openai_model, ms=_ms(t0))
         content = ((data.get("choices") or [{}])[0].get("message") or {}).get("content") or "{}"
         try:
             return json.loads(content)

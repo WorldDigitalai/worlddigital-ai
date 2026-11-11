@@ -3,6 +3,7 @@
 Secrets (Cloud Run > worlddigital-ai-api > Variables & Secrets, or GitHub Actions secrets):
   MONGODB_URI, OPENAI_API_KEY, DATAFORSEO_LOGIN, DATAFORSEO_PASSWORD,
   STRIPE_SECRET_KEY, RESEND_API_KEY, TURNSTILE_SECRET (optional), INTERNAL_TOKEN
+  GROQ_API_KEY, CEREBRAS_API_KEY (both optional: extra AI providers, used only where AI_ROUTES or a model name says so)
 """
 from __future__ import annotations
 
@@ -26,6 +27,13 @@ class Settings:
     openai_api_key: str = field(default_factory=lambda: _env("OPENAI_API_KEY"))
     openai_model: str = field(default_factory=lambda: _env("OPENAI_MODEL", "gpt-5.4-mini"))
     openai_base: str = field(default_factory=lambda: _env("OPENAI_BASE", "https://api.openai.com"))
+
+    # Extra AI providers (providers.py). Unset = not used. AI_ROUTES is JSON: {"feature": "provider:model"}.
+    groq_api_key: str = field(default_factory=lambda: _env("GROQ_API_KEY"))
+    groq_base: str = field(default_factory=lambda: _env("GROQ_BASE", "https://api.groq.com/openai/v1"))
+    cerebras_api_key: str = field(default_factory=lambda: _env("CEREBRAS_API_KEY"))
+    cerebras_base: str = field(default_factory=lambda: _env("CEREBRAS_BASE", "https://api.cerebras.ai/v1"))
+    ai_routes: str = field(default_factory=lambda: os.environ.get("AI_ROUTES", "").strip())
 
     dataforseo_login: str = field(default_factory=lambda: _env("DATAFORSEO_LOGIN"))
     dataforseo_password: str = field(default_factory=lambda: _env("DATAFORSEO_PASSWORD"))

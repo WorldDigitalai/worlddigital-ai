@@ -7,6 +7,7 @@ from __future__ import annotations
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+from . import engine
 from .config import Settings
 from .services import ApiError, keywords_for_keywords, keywords_for_site, openai_json, read_site
 
@@ -90,32 +91,47 @@ def site_context(site: dict | None, url: str) -> str:
 
 # ── Keyword research ────────────────────────────────────────────────────────
 
-def generate_keywords(s: Settings, *, url: str, domain: str, country: str) -> dict:
-    loc = COUNTRIES.get(country, COUNTRIES["us"])
-    site = read_site(url, fetch_base=s.test_site_base)
-    ctx = site_context(site, url)
+# The tool as a plan (engine.py). Reading the site and asking DataForSEO for the site's keywords do not depend on
+# each other, so they run at the same time; seeds need both, and the final pick needs everything.
 
+def _kw_site(ctx: dict):
+    i = ctx["input"]
+    return read_site(i["url"], fetch_base=i["s"].test_site_base)
+
+
+def _kw_site_keywords(ctx: dict) -> list[dict]:
+    i = ctx["input"]
+    return keywords_for_site(i["s"], i["domain"], i["loc"]["code"])
+
+
+def _merge(*lists) -> dict[str, dict]:
     seen: dict[str, dict] = {}
-
-    def add_all(rows):
-        for k in rows:
+    for rows in lists:
+        for k in rows or []:
             if k["keyword"] and k["keyword"] not in seen:
                 seen[k["keyword"]] = k
+    return seen
 
-    try:
-        add_all(keywords_for_site(s, domain, loc["code"]))
-    except ApiError as e:
-        print("keywords_for_site failed:", e)
 
-    if sum(1 for k in seen.values() if (k["volume"] or 0) > 0) < 25:
-        seeds = openai_json(s, system="You are an SEO strategist. Reply with JSON only.", max_tokens=500, user=(
-            f"{ctx}\n\nList 15 short seed search phrases (2-4 words) that a potential customer in {loc['label']} would type "
-            "into Google to find this business's products or services. Use generic service terms, not the brand name. "
-            'JSON: {"seeds": ["..."]}'))
-        lst = [str(x).lower().strip() for x in seeds.get("seeds") or [] if str(x).strip()]
-        if lst:
-            add_all(keywords_for_keywords(s, lst, loc["code"]))
+def _kw_seeds(ctx: dict) -> list[dict]:
+    """Extra keywords from AI-written seed phrases, only when the site itself gave too few."""
+    i, s, loc = ctx["input"], ctx["input"]["s"], ctx["input"]["loc"]
+    if sum(1 for k in _merge(ctx["site_keywords"]).values() if (k["volume"] or 0) > 0) >= 25:
+        return []
+    seeds = openai_json(s, system="You are an SEO strategist. Reply with JSON only.", max_tokens=500,
+                        feature="products.generate_keywords", user=(
+        f"{site_context(ctx['site'], i['url'])}\n\nList 15 short seed search phrases (2-4 words) that a potential customer in {loc['label']} would type "
+        "into Google to find this business's products or services. Use generic service terms, not the brand name. "
+        'JSON: {"seeds": ["..."]}'))
+    lst = [str(x).lower().strip() for x in seeds.get("seeds") or [] if str(x).strip()]
+    return keywords_for_keywords(s, lst, loc["code"]) if lst else []
 
+
+def _kw_pick(ctx: dict) -> dict:
+    i, s, loc, site, domain = ctx["input"], ctx["input"]["s"], ctx["input"]["loc"], ctx["site"], ctx["input"]["domain"]
+    url = i["url"]
+    ctx_text = site_context(site, url)
+    seen = _merge(ctx["site_keywords"], ctx["seeds"])
     candidates = sorted((k for k in seen.values() if (k["volume"] or 0) > 0 and len(k["keyword"]) <= 80),
                         key=lambda k: -k["volume"])[:150]
     if len(candidates) < 10:
@@ -125,10 +141,10 @@ def generate_keywords(s: Settings, *, url: str, domain: str, country: str) -> di
 
     table = "\n".join(f"{i} | {k['keyword']} | {k['volume']} | {k['cpc'] if k['cpc'] is not None else '-'} | "
                       f"{k['competition'] or '-'}" for i, k in enumerate(candidates))
-    pick = openai_json(s, max_tokens=1500, temperature=0.2,
+    pick = openai_json(s, max_tokens=1500, temperature=0.2, feature="products.generate_keywords",
                        system="You are a senior SEO strategist for SMBs, SMEs and enterprises. You only choose keywords "
                               "from the provided list. Reply with JSON only.",
-                       user=(f"{ctx}\n\nMarket: {loc['label']}\n\nCandidate keywords (index | keyword | monthly searches | "
+                       user=(f"{ctx_text}\n\nMarket: {loc['label']}\n\nCandidate keywords (index | keyword | monthly searches | "
                              f"CPC USD | competition):\n{table}\n\nChoose the 10 keywords that would bring this business the "
                              "most valuable customers: relevant to what it actually sells, with buying intent, realistic to "
                              "rank or bid on, and a mix of volumes. Skip competitor brand names and anything unrelated. Rank "
@@ -160,6 +176,22 @@ def generate_keywords(s: Settings, *, url: str, domain: str, country: str) -> di
 
     return {"items": items, "meta": {"country": loc["label"], "country_text": loc["in_text"],
                                      "site_title": (site or {}).get("title") or domain}}
+
+
+KEYWORD_PLAN = engine.Plan("keywords", [
+    engine.Task("site", _kw_site),
+    # a failed lookup is not fatal (seeds cover it) and is never cached; a good one is reused for a day
+    engine.Task("site_keywords", _kw_site_keywords, optional=True, default=[], cache_ttl=86400,
+                cache_key=lambda c: [c["input"]["domain"], c["input"]["loc"]["code"]]),
+    engine.Task("seeds", _kw_seeds, needs=("site", "site_keywords")),
+    engine.Task("pick", _kw_pick, needs=("site", "site_keywords", "seeds")),
+])
+
+
+def generate_keywords(s: Settings, *, url: str, domain: str, country: str, workers: int = 2, policy: str = "if_needed") -> dict:
+    loc = COUNTRIES.get(country, COUNTRIES["us"])
+    run = engine.execute(KEYWORD_PLAN, {"s": s, "url": url, "domain": domain, "loc": loc}, workers=workers, policy=policy)
+    return run.results["pick"]
 
 
 # ── Content pack ────────────────────────────────────────────────────────────

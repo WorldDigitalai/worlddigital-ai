@@ -30,7 +30,7 @@ import logging
 import re
 import time
 import uuid
-from datetime import timedelta
+from datetime import timedelta, timezone
 from functools import lru_cache
 
 from fastapi import BackgroundTasks, Depends, FastAPI, Request
@@ -39,7 +39,7 @@ from starlette.background import BackgroundTask
 from starlette.concurrency import run_in_threadpool
 from pymongo import MongoClient
 
-from . import blog_ai, blog_video, chat, services
+from . import blog_ai, blog_video, chat, engine, services
 from .rag import Rag
 from .config import Settings
 from .exports import FORMATS, build_file
@@ -141,6 +141,65 @@ def meter_summary(days: int = 7) -> dict:
 
 
 services.set_usage_sink(_record_ai_usage)
+
+
+class _EngineCache:
+    """Execution cache for engine tasks, in MongoDB (engine_cache). Values are stored as JSON text; MongoDB removes
+    expired entries by itself, and an entry past its time is never returned even before that happens."""
+
+    def get(self, key: str):
+        d = store().db["engine_cache"].find_one({"_id": key})
+        if not d:
+            return False, None
+        exp = d["expires_at"]
+        if (exp if exp.tzinfo else exp.replace(tzinfo=timezone.utc)) <= now():
+            return False, None
+        return True, json.loads(d["v"])
+
+    def set(self, key: str, value, ttl: int) -> None:
+        store().db["engine_cache"].replace_one(
+            {"_id": key}, {"_id": key, "v": json.dumps(value), "expires_at": now() + timedelta(seconds=ttl)}, upsert=True)
+
+
+_engine_indexed: list[bool] = []
+
+
+def _record_engine_run(rec: dict) -> None:
+    """One document per engine run (engine_runs, kept 90 days): timings and outcomes per task, no customer data."""
+    db = store().db
+    if not _engine_indexed:
+        db["engine_runs"].create_index("expires_at", expireAfterSeconds=0)
+        db["engine_cache"].create_index("expires_at", expireAfterSeconds=0)
+        _engine_indexed.append(True)
+    db["engine_runs"].insert_one({**rec, "_id": rec["run"], "at": now(), "expires_at": now() + timedelta(days=90)})
+
+
+engine.set_cache(_EngineCache())
+engine.set_sink(_record_engine_run)
+
+
+def engine_summary(days: int = 7) -> dict:
+    """Per plan: runs, failures, average time, average time the tasks would take one after another, and how often
+    each task was answered from the cache."""
+    out: dict[str, dict] = {}
+    for r in store().db["engine_runs"].find({"at": {"$gte": now() - timedelta(days=days)}}):
+        p = out.setdefault(r["plan"], {"runs": 0, "failed": 0, "ms": 0, "task_ms": 0, "tasks": {}})
+        p["runs"] += 1
+        p["failed"] += 0 if r.get("ok") else 1
+        p["ms"] += r.get("ms") or 0
+        p["task_ms"] += r.get("task_ms") or 0
+        for t in r.get("tasks") or []:
+            a = p["tasks"].setdefault(t["task"], {"n": 0, "ms": 0, "cached": 0, "defaulted": 0, "failed": 0})
+            a["n"] += 1
+            a["ms"] += t.get("ms") or 0
+            for k in ("cached", "defaulted", "failed"):
+                a[k] += 1 if t.get("status") == k else 0
+    for p in out.values():
+        n = p["runs"]
+        p["avg_ms"], p["avg_task_ms"] = round(p.pop("ms") / n), round(p.pop("task_ms") / n)
+        for a in p["tasks"].values():
+            a["avg_ms"] = round(a.pop("ms") / a["n"])
+    return out
 
 
 def set_store(st: Store | None) -> None:
@@ -787,10 +846,31 @@ async def chat_reply(request: Request):
     return res
 
 
+@app.post("/api/admin/engine/benchmark", dependencies=[Depends(guard)])
+async def engine_benchmark(request: Request):
+    """Runs the keyword plan on one of our own sites twice with the cache off: one task at a time, then in parallel.
+    Real calls to DataForSEO and the AI provider (two lookups and up to four AI calls in total), so own sites only."""
+    s, body = settings(), await body_of(request)
+    url, domain = parse_site_url(body.get("url") or "worlddigital.ai")
+    if domain not in s.test_domains:
+        raise ApiError("not our site", 400, "The benchmark only runs on our own websites.")
+
+    def once(workers: int) -> dict:
+        from .products import COUNTRIES as C, KEYWORD_PLAN
+        run = engine.execute(KEYWORD_PLAN, {"s": s, "url": url, "domain": domain, "loc": C["us"]}, workers=workers, policy="never")
+        return {"workers": workers, "ms": run.ms, "tasks": {t["task"]: t["ms"] for t in run.tasks}}
+
+    seq = await run_in_threadpool(once, 1)
+    par = await run_in_threadpool(once, 2)
+    return json_ok({"plan": "keywords", "domain": domain, "sequential": seq, "parallel": par, "saved_ms": seq["ms"] - par["ms"],
+                    "note": "One pair of runs. Network timing varies; repeat before quoting a number."})
+
+
 @app.get("/api/admin/meter", dependencies=[Depends(guard)])
 def admin_meter(days: int = 7):
     """AI meter: speed, cost, cache use and errors per feature. Token-guarded; never on the public proxy."""
-    return json_ok(meter_summary(max(1, min(days, 90))))
+    days = max(1, min(days, 90))
+    return json_ok({**meter_summary(days), "engine": engine_summary(days)})
 
 
 @app.get("/api/admin/backup", dependencies=[Depends(guard)])

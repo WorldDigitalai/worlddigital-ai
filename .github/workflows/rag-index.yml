@@ -81,6 +81,19 @@ jobs:
             core.setSecret(d.access_token);
             core.exportVariable('CLAUDE_TOKEN', d.access_token);
             core.notice(`Claude token valid for ${d.expires_in} s`);
+      - name: Check the Claude key and model answer (claude-* trial only)
+        if: startsWith(inputs.answer_model, 'claude-')
+        env:
+          CLAUDE_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          MODEL: ${{ inputs.answer_model }}
+        run: |
+          K="${CLAUDE_KEY:-${CLAUDE_TOKEN:-}}"
+          [ -n "$K" ] || { echo "::error::No Claude key: add the ANTHROPIC_API_KEY repository secret"; exit 1; }
+          K=$(printf %s "$K" | tr -d '[:space:]')
+          code=$(curl -s -o c.json -w "%{http_code}" https://api.anthropic.com/v1/messages -H "x-api-key: $K" -H "anthropic-version: 2023-06-01" \
+            -H "content-type: application/json" -d "{\"model\":\"$MODEL\",\"max_tokens\":8,\"messages\":[{\"role\":\"user\",\"content\":\"Say ok\"}]}" --max-time 60)
+          [ "$code" = "200" ] && { echo "::notice title=Claude::key and model OK"; exit 0; }
+          echo "::error title=Claude refused the request::HTTP $code $(jq -r '.error.type + ": " + .error.message' c.json | head -c 300)"; exit 1
       - name: Answer-quality test
         env:
           CLAUDE_KEY: ${{ startsWith(inputs.answer_model, 'claude-') && secrets.ANTHROPIC_API_KEY || '' }}

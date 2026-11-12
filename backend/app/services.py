@@ -5,6 +5,7 @@ import base64
 import ipaddress
 import json
 import re
+import time
 from urllib.parse import urlencode, urlparse
 
 import httpx
@@ -144,25 +145,39 @@ def fast_stream(s: Settings, *, system: str, user: str, model: str, max_tokens: 
     if oss and provider == "groq":
         body["include_reasoning"] = False
     usage = {}
-    with http.stream("POST", base + "/chat/completions", headers={"Authorization": f"Bearer {key}"}, json=body, timeout=timeout) as r:
-        if r.status_code >= 400:
-            r.read()
-            raise ApiError(f"{provider} {r.status_code}: {r.text[:200]}", 502, "The answer model is busy. Please try again.")
-        for line in r.iter_lines():
-            if not line.startswith("data:") or line[5:].strip() == "[DONE]":
+    for attempt in range(4):
+        with http.stream("POST", base + "/chat/completions", headers={"Authorization": f"Bearer {key}"}, json=body, timeout=timeout) as r:
+            if r.status_code == 429 and attempt < 3:   # over the per-minute allowance: wait as told (a few seconds) and try again
+                r.read()
+                try:
+                    wait = float(r.headers.get("retry-after") or 2)
+                except ValueError:
+                    wait = 2.0
+                time.sleep(min(max(wait, 0.5), 12))
                 continue
-            try:
-                ev = json.loads(line[5:].strip())
-            except ValueError:
-                continue
-            u = ev.get("usage") or (ev.get("x_groq") or {}).get("usage")
-            if u:
-                usage = {"prompt_tokens": u.get("prompt_tokens", 0), "completion_tokens": u.get("completion_tokens", 0)}
-            for ch in ev.get("choices") or []:
-                piece = (ch.get("delta") or {}).get("content")
-                if piece:
-                    yield piece
+            if r.status_code >= 400:
+                r.read()
+                raise ApiError(f"{provider} {r.status_code}: {r.text[:200]}", 502, "The answer model is busy. Please try again.")
+            yield from _fast_lines(r, usage)
+        break
     record_usage(feature, model, usage)
+
+
+def _fast_lines(r, usage: dict):
+    for line in r.iter_lines():
+        if not line.startswith("data:") or line[5:].strip() == "[DONE]":
+            continue
+        try:
+            ev = json.loads(line[5:].strip())
+        except ValueError:
+            continue
+        u = ev.get("usage") or (ev.get("x_groq") or {}).get("usage")
+        if u:
+            usage.update(prompt_tokens=u.get("prompt_tokens", 0), completion_tokens=u.get("completion_tokens", 0))
+        for ch in ev.get("choices") or []:
+            piece = (ch.get("delta") or {}).get("content")
+            if piece:
+                yield piece
 
 
 def claude_stream(s: Settings, *, system: str, user: str, model: str, max_tokens: int = 500, key: str | None = None,

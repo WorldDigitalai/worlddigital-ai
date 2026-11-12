@@ -1737,11 +1737,13 @@ class Rag:
                 return e, _ms(t0)
 
         # a handful of questions at a time keeps the whole test under a minute even with 100+ questions
-        with concurrent.futures.ThreadPoolExecutor(max_workers=EVAL_WORKERS) as pool:
+        trial_fast = bool(model) and model.split(":")[0] in services.FAST_PROVIDERS   # free tiers allow few requests a minute
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2 if trial_fast else EVAL_WORKERS) as pool:
             answers = list(pool.map(ask, cases))
         for c, (a, ms) in zip(cases, answers):
             if isinstance(a, ApiError):
-                results.append({"q": c["q"], "ok": False, "tag": c.get("tag", ""), "why": a.public}); continue
+                why = f"{a.public} [{str(a)[:160]}]" if model else a.public   # a trial shows the provider's own error
+                results.append({"q": c["q"], "ok": False, "tag": c.get("tag", ""), "why": why}); continue
             lat.append(ms)
             if a.get("first_ms") is not None:
                 first.append(a["first_ms"])

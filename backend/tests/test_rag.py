@@ -891,7 +891,7 @@ def test_fast_stream_shapes_requests_and_reads_only_the_answer(monkeypatch):
             yield 'data: {"choices":[{"delta":{"reasoning":"thinking..."}}]}'
             yield 'data: {"choices":[{"delta":{"content":"COVERED: yes\\nHi"}}]}'
             yield 'data: {"choices":[{"delta":{"content":" there"}}],"usage":{"prompt_tokens":9,"completion_tokens":4}}'
-            yield 'data: [DONE]'
+            yield "data: [DONE]"
 
     monkeypatch.setattr(services.http, "stream", lambda m, u, headers, json, timeout: seen.update(u=u, h=headers, b=json) or R())
     monkeypatch.setattr(services, "record_usage", lambda f, m, u, **k: seen.update(usage=u))

@@ -68,6 +68,9 @@ PREFIX_DIMS, PREFILTER_OVER, PREFILTER_KEEP = 256, 150, 40
 _ready_cache: dict = {}
 _ready_lock = threading.Lock()
 _ready_load_lock = threading.Lock()
+_inflight: dict = {}                       # public questions being written right now on this server
+_inflight_lock = threading.Lock()
+INFLIGHT_WAIT_S = 6
 ANSWER_TIER = os.environ.get("RAG_ANSWER_TIER", "")
 # "text": answers use the keyword index only (typo-tolerant), skipping the ~0.3 s embedding call; when it finds too
 # little, the answer falls back to the normal hybrid search. "hybrid" (default): meaning + words.
@@ -1086,8 +1089,33 @@ class Rag:
         raw = json.dumps([self._content_version(), srcs, norm, filters], sort_keys=True)
         return hashlib.sha256(raw.encode()).hexdigest()
 
-    def answer_stream(self, question: str, k: int | None = None, sources=None, *, types=None, categories=None, language=None,
-                      allow_internal: bool = False, public: bool = False, fresh: bool = False, model: str | None = None):
+    def answer_stream(self, question: str, k: int | None = None, sources=None, **kw):
+        """The answer as it is written (see _answer_stream). A public question that is already being written on this
+        server (for example prepared while the visitor's search page was loading) is not written twice: the second
+        request waits for the first to finish and then gets its stored answer at once."""
+        if not kw.get("public") or kw.get("fresh") or kw.get("model") or getattr(self._local, "ready_check", False):
+            yield from self._answer_stream(question, k, sources, **kw)
+            return
+        srcs = self._sources(sources, kw.get("allow_internal", False))
+        key = self._cache_key(question, srcs, {f: kw.get(f) for f in ("types", "categories", "language")})
+        with _inflight_lock:
+            ev = _inflight.get(key)
+            mine = ev is None
+            if mine:
+                ev = _inflight[key] = threading.Event()
+        if not mine:
+            ev.wait(INFLIGHT_WAIT_S)
+            yield from self._answer_stream(question, k, sources, **kw)
+            return
+        try:
+            yield from self._answer_stream(question, k, sources, **kw)
+        finally:
+            ev.set()
+            with _inflight_lock:
+                _inflight.pop(key, None)
+
+    def _answer_stream(self, question: str, k: int | None = None, sources=None, *, types=None, categories=None, language=None,
+                       allow_internal: bool = False, public: bool = False, fresh: bool = False, model: str | None = None):
         """Yields {"type": "text", "text": ...} pieces as the answer is written, then one {"type": "done", ...} with
         sources, covered, undocumented and timings (ms: total, first_ms: until the first words)."""
         t0 = time.monotonic()

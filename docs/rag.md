@@ -326,3 +326,11 @@ question vectors and a quick first pass on the first 256 dimensions. Set `RAG_PR
 Every answered visitor question from the last 30 days (search, chat and API) is prepared the same way. The admin page
 `/blog-admin/kb/answers` lists every ready answer with where its question came from; "Edit" saves an approved answer for it,
 "Remove" deletes it and stops it being prepared again (`rag_meta` document `ready_blocked`).
+
+## Answer prepared while the search page loads
+
+When a visitor opens `/search?q=…`, the Worker asks the backend in the background (`/api/rag/answer-prepare`) to write the AI
+answer for that search and store it as a ready answer, so "Get an AI answer" shows it at once. Not done for bots, our site
+tests, very short queries, or `?ai=1` (which asks straight away). It is not logged as a visitor question and has its own daily
+limits (`RAG_PREPARE_DAILY_LIMIT` per visitor, default 40; `RAG_PREPARE_DAILY_TOTAL`, default 800; 0 turns it off). A question
+that is already being written on a server is not written twice: the second request waits for the first (up to 6 s).

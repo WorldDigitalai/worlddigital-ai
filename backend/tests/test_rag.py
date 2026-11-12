@@ -3,6 +3,7 @@ Sites, customer sites, OpenAI and Atlas are mocked."""
 import hashlib
 import json
 import math
+import time
 
 import httpx
 import mongomock
@@ -843,3 +844,35 @@ def test_ready_answer_matching_with_many_stored_questions(env, monkeypatch):
     best = r._similar_answer(target, ["ai"])
     assert best and best["answer"] == "yes"
     assert r._similar_answer([rnd.uniform(-1, 1) for _ in range(rag_mod.DIMS)], ["ai"]) is None
+
+
+def test_answer_is_prepared_ahead_and_not_written_twice(env, monkeypatch):
+    import threading
+    c, w = env
+    c.post("/api/admin/rag/index", headers=H, json={})
+    r = c.post("/api/rag/answer-prepare", headers=H, json={"query": "How much is keyword research 9.99 ahead?"}).json()
+    assert r == {"prepared": True, "cached": False}
+    assert c.get("/api/admin/rag/questions", headers=H).json()["total"] == 0          # preparing is not a visitor question
+    a = c.post("/api/rag/answer", headers=H, json={"query": "How much is keyword research 9.99 ahead?"}).json()
+    assert a["cached"] is True
+    assert c.post("/api/rag/answer-prepare", headers={**H, "x-wd-test": "1"}, json={"query": "another 9.99 question here"}).json() == {"prepared": False}
+    assert c.post("/api/rag/answer-prepare", headers=H, json={"query": "hey"}).json() == {"prepared": False}
+    # the same question asked while it is being written waits for the first one instead of writing it again
+    from app import main
+    rg = main.rag()
+    n, gate = [0], threading.Event()
+    real = rag_mod.Rag._answer_stream
+
+    def slow(self, question, *a, **kw):
+        if "twice" in question:
+            hit = self.answers.find_one({"_id": self._cache_key(question, ["ai"], {"types": None, "categories": None, "language": None})})
+            if not hit:
+                n[0] += 1
+                gate.wait(5)
+        yield from real(self, question, *a, **kw)
+    monkeypatch.setattr(rag_mod.Rag, "_answer_stream", slow)
+    out = []
+    ts = [threading.Thread(target=lambda: out.append(rg.answer("keyword research 9.99 twice?", public=True))) for _ in range(2)]
+    ts[0].start(); time.sleep(0.3); ts[1].start(); time.sleep(0.3); gate.set()
+    [t.join(20) for t in ts]
+    assert n[0] == 1 and len(out) == 2 and sorted(x["cached"] for x in out) == [False, True]

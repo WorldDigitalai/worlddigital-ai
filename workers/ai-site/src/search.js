@@ -5,6 +5,7 @@
 // Search pages are noindex: they are for visitors, not for search engines.
 import { page, esc, SITE } from './layout.js';
 import { PAGES } from './pages.js';
+import { ragPrepare } from './tools-proxy.js';
 
 const TTL = 3600;
 const norm = (q) => String(q || '').replace(/\s+/g, ' ').trim().slice(0, 200);
@@ -92,6 +93,11 @@ async function results(q, req, env, ctx) {
 export async function searchPage(req, env, url, ctx, prod) {
   const q = norm(url.searchParams.get('q'));
   const d = q ? await results(q, req, env, ctx) : { results: [] };
+  // the AI answer for this search is written while the visitor reads the results (not when ?ai=1 asks straight away)
+  if (q && d.results.length && d.method !== 'local' && !url.searchParams.has('ai')) {
+    const p = ragPrepare(req, env, q);
+    if (p) ctx.waitUntil(p);
+  }
   const list = d.results.map((r) => {
     const path = r.url.replace(SITE, '') || '/';
     return `<li><a class="sr-t" href="${esc(path)}">${highlight(r.title || path, q)}</a><div class="sr-u">worlddigital.ai${esc(path === '/' ? '' : path)}</div><p>${highlight(r.snippet || '', q)}</p></li>`;

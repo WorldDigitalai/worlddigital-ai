@@ -713,6 +713,22 @@ async def rag_api_answer_stream(request: Request):
     return _answer_events(request, q, ["ai"], "search" if b.get("channel") == "search" else "api", _rag_filters(b))
 
 
+@app.post("/api/rag/answer-prepare", dependencies=[Depends(guard)])
+async def rag_api_answer_prepare(request: Request):
+    """Called by the site while a visitor's search results page loads: writes the AI answer for that search ahead of
+    time and stores it as a ready answer, so "Get an AI answer" shows it at once. Nothing is logged as a visitor
+    question (that happens when the visitor actually asks) and the visitor's own daily question limit is untouched;
+    this has its own daily limits. Returns {"prepared": bool}."""
+    s = settings()
+    q = _rag_query(await body_of(request))
+    if len(q) < 6 or request.headers.get("x-wd-test") == "1" or s.rag_prepare_daily_limit <= 0:
+        return json_ok({"prepared": False})
+    if not store().hit("ragprep:" + client_ip(request), s.rag_prepare_daily_limit) or not store().hit("ragprep:all", s.rag_prepare_daily_total):
+        return json_ok({"prepared": False, "limit": True})
+    a = await run_in_threadpool(_rag_call, lambda: rag().answer(q, public=True))
+    return json_ok({"prepared": True, "cached": bool(a.get("cached"))})
+
+
 # Client "Ask AI" widget (docs/rag.md): a customer's own knowledge base on the customer's own website.
 # The embed key is public by nature; it only allows asking that customer's knowledge base, within daily limits.
 @app.post("/api/rag/embed/answer-stream", dependencies=[Depends(guard)])

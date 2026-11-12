@@ -127,3 +127,22 @@ test('ask widget script is valid JS and the proxies shape requests', async () =>
     assert.equal((await ragFeedback(post('/api/rag/feedback', 'nope'), env)).status, 400);
   } finally { globalThis.fetch = realFetch; }
 });
+
+test('search page has the AI answer prepared ahead for real visitors only', async () => {
+  const realFetch = globalThis.fetch; const calls = [];
+  globalThis.fetch = async (u, o) => { calls.push([u, JSON.parse(o.body)]);
+    return new Response(JSON.stringify({ method: 'hybrid', prepared: true, results: [{ url: 'https://worlddigital.ai/tools', title: 'Tools', snippet: 's' }] }), { headers: { 'content-type': 'application/json' } }); };
+  try {
+    const env = { TOOLS_API_URL: 'https://api.test', TOOLS_API_TOKEN: 't' };
+    const waits = []; const c = { waitUntil: (p) => { waits.push(p); } };
+    const go = async (q, ua) => { calls.length = 0; const url = new URL('https://worlddigital.ai/search?' + q);
+      await searchPage(new Request(url, { headers: ua ? { 'User-Agent': ua } : {} }), env, url, c, true); await Promise.all(waits); return calls.map((x) => x[0].replace('https://api.test', '')); };
+    const chrome = 'Mozilla/5.0 Chrome/130 Safari/537.36';
+    assert.ok((await go('q=prepare+ahead+one', chrome)).includes('/api/rag/answer-prepare'));
+    assert.deepEqual(calls.find((x) => x[0].endsWith('answer-prepare'))[1], { query: 'prepare ahead one' });
+    assert.ok(!(await go('q=prepare+ahead+two', 'Googlebot/2.1')).includes('/api/rag/answer-prepare'));
+    assert.ok(!(await go('q=prepare+ahead+three', chrome + ' WorldDigitalSiteTest/1.0')).includes('/api/rag/answer-prepare'));
+    assert.ok(!(await go('q=prepare+ahead+four&ai=1', chrome)).includes('/api/rag/answer-prepare'));
+    assert.ok(!(await go('q=seo', chrome)).includes('/api/rag/answer-prepare'));
+  } finally { globalThis.fetch = realFetch; }
+});

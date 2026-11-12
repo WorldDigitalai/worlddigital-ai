@@ -138,6 +138,14 @@ export async function ragAnswerStream(req, env) {
   return kbStream(req, env, '/api/rag/answer-stream', { query: b.query || b.q, channel: b.channel === 'search' ? 'search' : 'api' });
 }
 
+// While a visitor's search page loads, have the AI answer for that search written ahead (stored as a ready answer), so
+// "Get an AI answer" shows it at once. Runs in the background (ctx.waitUntil); never for bots or our own site tests.
+export function ragPrepare(req, env, query) {
+  const ua = req.headers.get('User-Agent') || '';
+  if (!env.TOOLS_API_URL || query.length < 6 || query.length > 200 || !ua || /bot|crawl|spider|slurp|preview|monitor|headless|lighthouse|WorldDigitalSiteTest/i.test(ua)) return null;
+  return kbCall(req, env, '/api/rag/answer-prepare', { query }, 30000).then((r) => r.body && r.body.cancel()).catch(() => {});
+}
+
 // Thumbs up / down on an answer: {id, vote: "up" | "down"}
 export async function ragFeedback(req, env) {
   const { b, res } = await kbBody(req); if (res) return res;

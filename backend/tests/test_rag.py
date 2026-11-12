@@ -876,3 +876,32 @@ def test_answer_is_prepared_ahead_and_not_written_twice(env, monkeypatch):
     ts[0].start(); time.sleep(0.3); ts[1].start(); time.sleep(0.3); gate.set()
     [t.join(20) for t in ts]
     assert n[0] == 1 and len(out) == 2 and sorted(x["cached"] for x in out) == [False, True]
+
+
+def test_fast_stream_shapes_requests_and_reads_only_the_answer(monkeypatch):
+    from app import services
+    from app.config import Settings
+    seen = {}
+
+    class R:
+        status_code = 200
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def iter_lines(self):
+            yield 'data: {"choices":[{"delta":{"reasoning":"thinking..."}}]}'
+            yield 'data: {"choices":[{"delta":{"content":"COVERED: yes\\nHi"}}]}'
+            yield 'data: {"choices":[{"delta":{"content":" there"}}],"usage":{"prompt_tokens":9,"completion_tokens":4}}'
+            yield 'data: [DONE]'
+
+    monkeypatch.setattr(services.http, "stream", lambda m, u, headers, json, timeout: seen.update(u=u, h=headers, b=json) or R())
+    monkeypatch.setattr(services, "record_usage", lambda f, m, u, **k: seen.update(usage=u))
+    s = Settings()
+    out = "".join(services.fast_stream(s, system="s", user="q", model="groq:openai/gpt-oss-120b", key="k1", max_tokens=450, feature="t"))
+    assert out == "COVERED: yes\nHi there" and seen["u"] == "https://api.groq.com/openai/v1/chat/completions"
+    assert seen["b"]["model"] == "openai/gpt-oss-120b" and seen["b"]["reasoning_effort"] == "low" and seen["b"]["include_reasoning"] is False
+    assert seen["b"]["max_completion_tokens"] == 950 and seen["h"] == {"Authorization": "Bearer k1"} and seen["usage"]["completion_tokens"] == 4
+    "".join(services.fast_stream(s, system="s", user="q", model="cerebras:qwen-3.8-27b", key="k2", max_tokens=450, feature="t"))
+    assert seen["u"].startswith("https://api.cerebras.ai/v1/") and seen["b"]["reasoning_effort"] == "none" and "include_reasoning" not in seen["b"]
+    for bad in ("other:model", "groq:"):
+        with pytest.raises(services.ApiError):
+            "".join(services.fast_stream(s, system="s", user="q", model=bad, key="k", feature="t"))

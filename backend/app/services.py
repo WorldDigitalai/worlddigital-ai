@@ -121,6 +121,50 @@ def openai_stream(s: Settings, *, system: str, user: str, max_tokens: int = 500,
     raise ApiError("OpenAI stream failed", 502)
 
 
+FAST_PROVIDERS = {"groq": ("https://api.groq.com/openai/v1", "groq_api_key"), "cerebras": ("https://api.cerebras.ai/v1", "cerebras_api_key")}
+
+
+def fast_stream(s: Settings, *, system: str, user: str, model: str, max_tokens: int = 500, key: str | None = None,
+                timeout: float = 60, feature: str | None = None):
+    """Yields answer text from a fast-inference provider with an OpenAI-style API. `model` is "groq:<model id>" or
+    "cerebras:<model id>". Reasoning is kept as low as the model allows and never shown: gpt-oss models cannot switch
+    it off (effort "low", with room for it in the token limit); qwen models run with reasoning off."""
+    feature = feature or _caller()
+    provider, _, mid = model.partition(":")
+    if provider not in FAST_PROVIDERS or not mid:
+        raise ApiError(f"unknown fast model {model}", 400, "That model is not available.")
+    base, attr = FAST_PROVIDERS[provider]
+    key = (key or getattr(s, attr, "") or "").strip()
+    if not key:
+        raise ApiError(f"{provider} key missing", 503, "That model is not set up yet.")
+    oss = "gpt-oss" in mid
+    body = {"model": mid, "stream": True, "temperature": 0.2, "max_completion_tokens": max_tokens + (500 if oss else 0),
+            "reasoning_effort": "low" if oss else "none",
+            "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
+    if oss and provider == "groq":
+        body["include_reasoning"] = False
+    usage = {}
+    with http.stream("POST", base + "/chat/completions", headers={"Authorization": f"Bearer {key}"}, json=body, timeout=timeout) as r:
+        if r.status_code >= 400:
+            r.read()
+            raise ApiError(f"{provider} {r.status_code}: {r.text[:200]}", 502, "The answer model is busy. Please try again.")
+        for line in r.iter_lines():
+            if not line.startswith("data:") or line[5:].strip() == "[DONE]":
+                continue
+            try:
+                ev = json.loads(line[5:].strip())
+            except ValueError:
+                continue
+            u = ev.get("usage") or (ev.get("x_groq") or {}).get("usage")
+            if u:
+                usage = {"prompt_tokens": u.get("prompt_tokens", 0), "completion_tokens": u.get("completion_tokens", 0)}
+            for ch in ev.get("choices") or []:
+                piece = (ch.get("delta") or {}).get("content")
+                if piece:
+                    yield piece
+    record_usage(feature, model, usage)
+
+
 def claude_stream(s: Settings, *, system: str, user: str, model: str, max_tokens: int = 500, key: str | None = None,
                   timeout: float = 60, feature: str | None = None):
     """Yields answer text from a Claude model (Anthropic Messages API, streamed). `key` is an API key from Claude Console

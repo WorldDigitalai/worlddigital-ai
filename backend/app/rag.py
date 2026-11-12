@@ -1181,6 +1181,9 @@ class Rag:
         tier = getattr(self._local, "tier", None) or ANSWER_TIER or None
         if use and use.startswith("@cf/"):
             writer = workers_stream(self.s, system=system, user=user, model=use, max_tokens=self.ANSWER_TOKENS)
+        elif use and use.split(":")[0] in services.FAST_PROVIDERS:
+            writer = services.fast_stream(self.s, system=system, user=user, model=use, max_tokens=self.ANSWER_TOKENS,
+                                          feature="rag.answer", key=getattr(self._local, "claude_key", None))
         elif use and use.startswith("claude-"):
             def writer_claude():
                 wrote = False

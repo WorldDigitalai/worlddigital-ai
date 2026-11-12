@@ -98,8 +98,10 @@ jobs:
       - name: Answer-quality test
         env:
           CLAUDE_KEY: ${{ startsWith(inputs.answer_model, 'claude-') && secrets.ANTHROPIC_API_KEY || '' }}
+          FAST_KEY: ${{ startsWith(inputs.answer_model, 'groq:') && secrets.GROQ_API_KEY || startsWith(inputs.answer_model, 'cerebras:') && secrets.CEREBRAS_API_KEY || '' }}
         run: |
           CT="${CLAUDE_TOKEN:-}"; [ -n "$CLAUDE_KEY" ] && CT="$(printf %s "$CLAUDE_KEY" | tr -d '[:space:]')|$CLAUDE_WORKSPACE"
+          [ -n "$FAST_KEY" ] && CT="$(printf %s "$FAST_KEY" | tr -d '[:space:]')"
           # prepare ready answers first (own request: it can take a couple of minutes after content changes)
           if [ -z "${{ inputs.answer_model }}${{ inputs.answer_tier }}${{ inputs.eval_limit }}${{ inputs.answer_retrieval }}" ]; then
             # 1. the AI model writes likely visitor questions for new or changed pages; 2. a ready answer is prepared for each

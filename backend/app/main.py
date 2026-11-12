@@ -565,7 +565,7 @@ async def rag_eval(request: Request):
                                                                                          request.headers.get("x-claude-token") or None)))
 
 
-EVAL_MODELS = ("claude-haiku-5-5", "gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-5.4-nano", "gpt-5-mini", "gpt-5-nano", "gpt-4.1-mini", "gpt-4.1-nano", "gpt-4o-mini",
+EVAL_MODELS = ("groq:openai/gpt-oss-120b", "groq:qwen/qwen3.8-27b", "cerebras:gpt-oss-120b", "cerebras:qwen-3.8-27b", "claude-haiku-5-5", "gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-5.4-nano", "gpt-5-mini", "gpt-5-nano", "gpt-4.1-mini", "gpt-4.1-nano", "gpt-4o-mini",
                "@cf/google/gemma-4-26b-a4b-it", "@cf/meta/llama-4-scout-17b-16e-instruct", "@cf/meta/llama-3.3-70b-instruct-fp8-fast")
 
 

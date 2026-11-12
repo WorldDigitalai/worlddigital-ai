@@ -1222,7 +1222,7 @@ class Rag:
                 self.answers.replace_one({"_id": key}, {"_id": key, "q": question[:300], "answer": text, "sources": srcl,
                                                        "covered": covered, "undocumented": undoc, "at": now(), "related": related,
                                                        "v": self._content_version(), "src": srcs,
-                                                       **({"qv": [round(x, 5) for x in qvec]} if qvec else {})}, upsert=True)
+                                                       **({"qv": array("f", qvec).tobytes()} if qvec else {})}, upsert=True)   # compact: 6 KB, not ~20 KB as a list
                 if qvec:   # this instance sees its own new answer at once (others within READY_CACHE_S)
                     row = self._ready_row({"_id": key, "q": question[:300], "answer": text, "sources": srcl, "covered": covered,
                                            "undocumented": undoc, "related": related}, qvec)
@@ -1291,7 +1291,10 @@ class Rag:
 
     @staticmethod
     def _ready_row(d: dict, qv) -> dict:
-        v = array("f", qv)
+        if isinstance(qv, (bytes, bytearray)):   # stored compactly (32-bit floats); older answers hold a plain list
+            v = array("f"); v.frombytes(bytes(qv))
+        else:
+            v = array("f", qv)
         p = v[:PREFIX_DIMS]
         return {"d": d, "v": v, "n": math.sqrt(sum(map(operator.mul, v, v))) or 1, "p": p,
                 "pn": math.sqrt(sum(map(operator.mul, p, p))) or 1, "nq": Rag._nq(d.get("q", ""))}
@@ -1306,16 +1309,26 @@ class Rag:
             _ready_cache[key] = {"t": time.monotonic(), "rows": rows}
         return rows
 
-    def _ready_refresh(self, key, have: int) -> None:
-        """In the background: re-read the ready answers only if another server instance added or removed some."""
+    def _ready_refresh(self, key) -> None:
+        """In the background: pick up ready answers that another server instance added or removed. Only their ids are
+        read, then just the new ones in full, so a refresh moves a few kilobytes, not every stored vector."""
         try:
-            n = self.answers.count_documents({"v": key[0], "src": list(key[1]), "qv": {"$exists": True}})
-            if n == have:
-                with _ready_lock:
-                    if key in _ready_cache:
-                        _ready_cache[key].update(t=time.monotonic(), loading=False)
-                return
-            self._ready_load(key)
+            flt = {"v": key[0], "src": list(key[1]), "qv": {"$exists": True}}
+            ids = {d["_id"] for d in self.answers.find(flt, {"_id": 1}).limit(READY_MAX)}
+            with _ready_lock:
+                have = {r["d"].get("_id") for r in (_ready_cache.get(key) or {"rows": []})["rows"]}
+            new = []
+            missing = list(ids - have)
+            for i in range(0, len(missing), 200):
+                for d in self.answers.find({"_id": {"$in": missing[i:i + 200]}},
+                                           {"answer": 1, "sources": 1, "covered": 1, "undocumented": 1, "q": 1, "qv": 1, "related": 1}):
+                    new.append(self._ready_row(d, d.pop("qv")))
+            with _ready_lock:
+                c = _ready_cache.get(key)
+                if c:
+                    got = {r["d"].get("_id") for r in new}
+                    c["rows"] = [r for r in c["rows"] if r["d"].get("_id") in ids and r["d"].get("_id") not in got] + new
+                    c.update(t=time.monotonic(), loading=False)
         except Exception:  # noqa: BLE001
             with _ready_lock:
                 if key in _ready_cache:
@@ -1331,7 +1344,7 @@ class Rag:
             if c:
                 if time.monotonic() - c["t"] >= READY_CACHE_S and not c.get("loading"):
                     c["loading"] = True
-                    threading.Thread(target=self._ready_refresh, args=(key, len(c["rows"])), daemon=True).start()
+                    threading.Thread(target=self._ready_refresh, args=(key,), daemon=True).start()
                 return c["rows"]
         with _ready_load_lock:   # first use for this content: one thread loads, the others wait for it
             with _ready_lock:
@@ -1524,6 +1537,11 @@ class Rag:
         blocked = self._ready_blocked()
         qs = list(dict.fromkeys(q.strip() for q in qs + (extra or []) if q and q.strip() and self._nq(q) not in blocked))
         done = errors = cached = left = 0
+        try:  # older ready answers hold their vector as a long list: rewrite them once in the compact form
+            for d in self.answers.find({"qv": {"$type": "array"}}, {"qv": 1}).limit(2000):
+                self.answers.update_one({"_id": d["_id"]}, {"$set": {"qv": array("f", d["qv"]).tobytes()}})
+        except Exception:  # noqa: BLE001
+            pass
         try:  # answers for the current content stay valid: keep them instead of writing them again every day
             self.answers.update_many({"v": self._content_version()}, {"$set": {"at": now()}})
         except Exception:  # noqa: BLE001

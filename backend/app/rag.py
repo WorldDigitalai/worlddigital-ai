@@ -1469,7 +1469,7 @@ class Rag:
         return {"pages": len(pages), "written_pages": pages_done, "written": written, "questions": total,
                 "left": len(todo) - pages_done - errors, "errors": errors, "ms": _ms(t0)}
 
-    def warm(self, extra: list[str] | None = None, workers: int = 8, budget_s: int = 230) -> dict:
+    def warm(self, extra: list[str] | None = None, workers: int = 8, budget_s: int = 150) -> dict:
         """Prepares ready answers: every quality-test question (except trick ones), recent visitor questions and the
         questions written per page (prepare_questions). Run after each content sync (nightly), so common questions are
         answered instantly. Stops starting new ones after budget_s ("left" > 0: call again)."""

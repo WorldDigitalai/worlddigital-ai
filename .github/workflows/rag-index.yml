@@ -108,10 +108,11 @@ jobs:
               [ "$qc" = "200" ] && [ "$(jq -r '.left // 0' pq.json)" != "0" ] || break
             done
             echo "::notice title=Questions written per page::HTTP $qc $(head -c 300 pq.json)"
-            for i in 1 2 3 4 5 6 7 8; do
-              wc=$(curl -s -o warm.json -w "%{http_code}" -X POST "$API/api/admin/rag/warm" -H "x-internal-token: $TOKEN" --max-time 290)
-              echo "ready answers, round $i: HTTP $wc $(head -c 300 warm.json)"
-              [ "$wc" = "200" ] && [ "$(jq -r '.left // 0' warm.json)" != "0" ] || break
+            for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
+              wc=$(curl -s -o warm.json -w "%{http_code}" -X POST "$API/api/admin/rag/warm" -H "x-internal-token: $TOKEN" --max-time 290 || true)
+              echo "ready answers, round $i: HTTP $wc $(head -c 300 warm.json 2>/dev/null)"
+              [ "$wc" = "200" ] || { sleep 20; continue; }   # a slow round: what it prepared is kept, the next round carries on
+              [ "$(jq -r '.left // 0' warm.json)" != "0" ] || break
             done
             echo "::notice title=Ready answers prepared::HTTP $wc $(head -c 300 warm.json)"
           fi

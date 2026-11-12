@@ -25,6 +25,7 @@ class Settings:
 
     openai_api_key: str = field(default_factory=lambda: _env("OPENAI_API_KEY"))
     anthropic_api_key: str = field(default_factory=lambda: _env("ANTHROPIC_API_KEY"))  # optional: Claude answer models
+    anthropic_workspace_id: str = field(default_factory=lambda: _env("ANTHROPIC_WORKSPACE_ID"))
     openai_model: str = field(default_factory=lambda: _env("OPENAI_MODEL", "gpt-5.4-mini"))
     openai_base: str = field(default_factory=lambda: _env("OPENAI_BASE", "https://api.openai.com"))
 

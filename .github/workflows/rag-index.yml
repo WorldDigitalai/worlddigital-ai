@@ -37,6 +37,7 @@ jobs:
     env:
       TOKEN: ${{ secrets.TOOLS_API_TOKEN }}
       API: https://worlddigital-ai-api-250920469327.us-central1.run.app
+      CLAUDE_WORKSPACE: wrkspc_01UoCYkSs47KkmB2JSvzmN3m   # Claude Console workspace (an ID, not a secret)
       HAS_CLAUDE_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}   # optional secret: lets the quality test try claude-* answer models
     steps:
       - name: Sync the site (incremental, in batches)
@@ -90,7 +91,7 @@ jobs:
           K="${CLAUDE_KEY:-${CLAUDE_TOKEN:-}}"
           [ -n "$K" ] || { echo "::error::No Claude key: add the ANTHROPIC_API_KEY repository secret"; exit 1; }
           K=$(printf %s "$K" | tr -d '[:space:]')
-          code=$(curl -s -o c.json -w "%{http_code}" https://api.anthropic.com/v1/messages -H "x-api-key: $K" -H "anthropic-version: 2023-06-01" \
+          code=$(curl -s -o c.json -w "%{http_code}" https://api.anthropic.com/v1/messages -H "x-api-key: $K" -H "anthropic-workspace-id: $CLAUDE_WORKSPACE" -H "anthropic-version: 2023-06-01" \
             -H "content-type: application/json" -d "{\"model\":\"$MODEL\",\"max_tokens\":8,\"messages\":[{\"role\":\"user\",\"content\":\"Say ok\"}]}" --max-time 60)
           [ "$code" = "200" ] && { echo "::notice title=Claude::key and model OK"; exit 0; }
           echo "::error title=Claude refused the request::HTTP $code $(jq -r '.error.type + ": " + .error.message' c.json | head -c 300)"; exit 1
@@ -98,12 +99,13 @@ jobs:
         env:
           CLAUDE_KEY: ${{ startsWith(inputs.answer_model, 'claude-') && secrets.ANTHROPIC_API_KEY || '' }}
         run: |
+          CT="${CLAUDE_TOKEN:-}"; [ -n "$CLAUDE_KEY" ] && CT="$(printf %s "$CLAUDE_KEY" | tr -d '[:space:]')|$CLAUDE_WORKSPACE"
           # prepare ready answers first (own request: it can take a couple of minutes after content changes)
           if [ -z "${{ inputs.answer_model }}${{ inputs.answer_tier }}${{ inputs.eval_limit }}${{ inputs.answer_retrieval }}" ]; then
             wc=$(curl -s -o warm.json -w "%{http_code}" -X POST "$API/api/admin/rag/warm" -H "x-internal-token: $TOKEN" --max-time 290)
             echo "::notice title=Ready answers prepared::HTTP $wc $(head -c 300 warm.json)"
           fi
-          code=$(curl -s -o ev.json -w "%{http_code}" -X POST "$API/api/admin/rag/eval" -H "x-internal-token: $TOKEN" -H "x-claude-token: ${CLAUDE_KEY:-${CLAUDE_TOKEN:-}}" -H "content-type: application/json" -d "{\"model\": \"${{ inputs.answer_model }}\", \"tier\": \"${{ inputs.answer_tier }}\", \"limit\": \"${{ inputs.eval_limit }}\", \"retrieval\": \"${{ inputs.answer_retrieval }}\"}" --max-time 290)
+          code=$(curl -s -o ev.json -w "%{http_code}" -X POST "$API/api/admin/rag/eval" -H "x-internal-token: $TOKEN" -H "x-claude-token: $CT" -H "content-type: application/json" -d "{\"model\": \"${{ inputs.answer_model }}\", \"tier\": \"${{ inputs.answer_tier }}\", \"limit\": \"${{ inputs.eval_limit }}\", \"retrieval\": \"${{ inputs.answer_retrieval }}\"}" --max-time 290)
           [ "$code" = "200" ] || { echo "::error::eval returned $code: $(head -c 300 ev.json)"; exit 1; }
           python3 - <<'PY'
           import json

@@ -129,7 +129,11 @@ def claude_stream(s: Settings, *, system: str, user: str, model: str, max_tokens
     key = (key or s.anthropic_api_key or "").strip()
     if not key:
         raise ApiError("ANTHROPIC_API_KEY missing", 503, "The Claude model is not set up yet.")
+    key, _, workspace = key.partition("|")   # "key|wrkspc_..." for keys that are not tied to one workspace
+    workspace = workspace or s.anthropic_workspace_id
     auth = {"Authorization": f"Bearer {key}"} if key.startswith("sk-ant-oat") else {"x-api-key": key}
+    if workspace:
+        auth["anthropic-workspace-id"] = workspace
     body = {"model": model, "max_tokens": max_tokens, "stream": True, "system": system, "messages": [{"role": "user", "content": user}]}
     usage = {}
     with http.stream("POST", "https://api.anthropic.com/v1/messages", headers={**auth, "anthropic-version": "2023-06-01"},

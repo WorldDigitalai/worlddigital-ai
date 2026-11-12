@@ -570,8 +570,12 @@ EVAL_MODELS = ("claude-haiku-5-5", "gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-5.
 
 
 @app.post("/api/admin/rag/warm", dependencies=[Depends(guard)])
-async def rag_warm():
-    """Prepares ready answers (quality-test questions and recent visitor questions) for instant replies."""
+async def rag_warm(request: Request):
+    """Prepares ready answers (quality-test questions, recent visitor questions and the questions written per page) for
+    instant replies. {"action": "questions"} has the AI model write the per-page questions for new or changed pages."""
+    b = await body_of(request) if (await request.body()).strip() else {}
+    if b.get("action") == "questions":
+        return json_ok(await run_in_threadpool(_rag_call, lambda: rag().prepare_questions()))
     return json_ok(await run_in_threadpool(_rag_call, lambda: rag().warm()))
 
 

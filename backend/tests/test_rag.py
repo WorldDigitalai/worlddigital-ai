@@ -794,3 +794,45 @@ def test_live_claude_answers_fall_back_to_openai(env, monkeypatch):
         yield ""
     monkeypatch.setattr(rag_mod.services, "claude_stream", down)
     assert "From OpenAI" in c.post("/api/admin/rag/ask", headers=H, json={"q": "Epic FHIR integrations two"}).json()["answer"]
+
+
+def test_questions_are_written_per_page_and_prepared_as_ready_answers(env, monkeypatch):
+    c, w = env
+    c.post("/api/admin/rag/index", headers=H, json={})
+    calls = []
+
+    def fake_json(s, **kw):
+        calls.append(kw["user"])
+        return {"questions": ["How much is keyword research 9.99?", "What does keyword research 9.99 include?", "x", 5]}
+    monkeypatch.setattr(rag_mod, "openai_json", fake_json)
+    r = c.post("/api/admin/rag/warm", headers=H, json={"action": "questions"}).json()
+    assert r["written_pages"] >= 1 and r["questions"] >= 2 and r["questions"] % 2 == 0 and r["left"] == 0
+    n = len(calls)
+    again = c.post("/api/admin/rag/warm", headers=H, json={"action": "questions"}).json()
+    assert again["written_pages"] == 0 and len(calls) == n   # unchanged pages are not rewritten
+    wr = c.post("/api/admin/rag/warm", headers=H).json()
+    assert wr["errors"] == 0 and wr["left"] == 0 and wr["prepared"] >= 2
+    a = c.post("/api/rag/answer", headers=H, json={"query": "What does keyword research 9.99 include?"}).json()
+    assert a["cached"] is True
+    assert c.post("/api/admin/rag/warm", headers=H).json()["prepared"] == 0
+
+
+def test_ready_answer_matching_with_many_stored_questions(env, monkeypatch):
+    import random
+    c, w = env
+    c.post("/api/admin/rag/index", headers=H, json={})
+    r = rag_mod.rag() if hasattr(rag_mod, "rag") else None
+    from app import main
+    r = main.rag()
+    rnd = random.Random(1)
+    ver = r._content_version()
+    target = [rnd.uniform(-1, 1) for _ in range(rag_mod.DIMS)]
+    docs = [{"_id": f"k{i}", "q": f"filler {i}", "answer": "no", "sources": [], "covered": True, "v": ver, "src": ["ai"],
+             "at": rag_mod.now(), "qv": [rnd.uniform(-1, 1) for _ in range(rag_mod.DIMS)]} for i in range(rag_mod.PREFILTER_OVER + 30)]
+    docs.append({"_id": "hit", "q": "the one", "answer": "yes", "sources": [], "covered": True, "v": ver, "src": ["ai"],
+                 "at": rag_mod.now(), "qv": [x + rnd.uniform(-0.05, 0.05) for x in target]})
+    r.answers.insert_many(docs)
+    rag_mod._ready_cache.clear()
+    best = r._similar_answer(target, ["ai"])
+    assert best and best["answer"] == "yes"
+    assert r._similar_answer([rnd.uniform(-1, 1) for _ in range(rag_mod.DIMS)], ["ai"]) is None

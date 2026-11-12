@@ -315,3 +315,11 @@ The quality test can run with a Claude model writing the answers (search and ran
 with `answer_model: claude-haiku-5-5`. The workflow uses the `ANTHROPIC_API_KEY` GitHub secret if the owner has added one; otherwise it tries a short-lived token through the GitHub → Anthropic identity link
 and passes it to the test only. A trial does not change the site or replace the score shown in the admin.
 Live answers (site search and the public answer API) are written by `claude-haiku-5-5` (`RAG_ANSWER_MODEL`, set in deploy-backend.yml with the `ANTHROPIC_API_KEY` secret); thinking is off. If Claude fails before writing anything, the answer is written by the OpenAI model instead. Chat and blog tools use OpenAI.
+
+## Questions written per page (more instant answers)
+
+After each sync, the AI model reads every published page and writes the questions a visitor would ask that the page answers
+(`RAG_PREPARED_PER_PAGE`, default 8; stored in `rag_prepared`, rewritten only when a page changes). The warm step then prepares
+a ready answer for each one, so a visitor who asks the same thing in similar words gets the answer at once. Ready answers for
+unchanged content are kept (not rewritten daily). With hundreds of ready answers, matching uses an in-memory copy of the
+question vectors and a quick first pass on the first 256 dimensions. Set `RAG_PREPARED_PER_PAGE=0` to turn this off.

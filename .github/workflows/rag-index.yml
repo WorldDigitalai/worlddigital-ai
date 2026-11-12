@@ -102,7 +102,17 @@ jobs:
           CT="${CLAUDE_TOKEN:-}"; [ -n "$CLAUDE_KEY" ] && CT="$(printf %s "$CLAUDE_KEY" | tr -d '[:space:]')|$CLAUDE_WORKSPACE"
           # prepare ready answers first (own request: it can take a couple of minutes after content changes)
           if [ -z "${{ inputs.answer_model }}${{ inputs.answer_tier }}${{ inputs.eval_limit }}${{ inputs.answer_retrieval }}" ]; then
-            wc=$(curl -s -o warm.json -w "%{http_code}" -X POST "$API/api/admin/rag/warm" -H "x-internal-token: $TOKEN" --max-time 290)
+            # 1. the AI model writes likely visitor questions for new or changed pages; 2. a ready answer is prepared for each
+            for i in 1 2 3 4; do
+              qc=$(curl -s -o pq.json -w "%{http_code}" -X POST "$API/api/admin/rag/warm" -H "x-internal-token: $TOKEN" -H "content-type: application/json" -d '{"action":"questions"}' --max-time 290)
+              [ "$qc" = "200" ] && [ "$(jq -r '.left // 0' pq.json)" != "0" ] || break
+            done
+            echo "::notice title=Questions written per page::HTTP $qc $(head -c 300 pq.json)"
+            for i in 1 2 3 4 5 6 7 8; do
+              wc=$(curl -s -o warm.json -w "%{http_code}" -X POST "$API/api/admin/rag/warm" -H "x-internal-token: $TOKEN" --max-time 290)
+              echo "ready answers, round $i: HTTP $wc $(head -c 300 warm.json)"
+              [ "$wc" = "200" ] && [ "$(jq -r '.left // 0' warm.json)" != "0" ] || break
+            done
             echo "::notice title=Ready answers prepared::HTTP $wc $(head -c 300 warm.json)"
           fi
           code=$(curl -s -o ev.json -w "%{http_code}" -X POST "$API/api/admin/rag/eval" -H "x-internal-token: $TOKEN" -H "x-claude-token: $CT" -H "content-type: application/json" -d "{\"model\": \"${{ inputs.answer_model }}\", \"tier\": \"${{ inputs.answer_tier }}\", \"limit\": \"${{ inputs.eval_limit }}\", \"retrieval\": \"${{ inputs.answer_retrieval }}\"}" --max-time 290)

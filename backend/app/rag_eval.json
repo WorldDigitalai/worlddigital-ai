@@ -364,7 +364,7 @@
  {
   "q": "How many ad variations does the content generator write?",
   "expect": [
-   "5"
+   "5|five"
   ],
   "urls": [
    "content-marketing",
@@ -561,7 +561,7 @@
  {
   "q": "Do you set up Local Service Ads?",
   "expect": [
-   "local service"
+   "local service|lsa"
   ],
   "urls": [
    "google-ads-agency",

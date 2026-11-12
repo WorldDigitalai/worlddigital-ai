@@ -772,7 +772,7 @@ def test_claude_stream_parses_text_usage_and_auth(monkeypatch):
     s = Settings()
     out = "".join(services.claude_stream(s, system="s", user="q", model="claude-haiku-5-5", key="sk-ant-oat01-x", feature="t"))
     assert out == "COVERED: yes\nHi there" and seen["h"]["Authorization"] == "Bearer sk-ant-oat01-x" and "x-api-key" not in seen["h"]
-    assert seen["b"]["system"] == "s" and seen["b"]["stream"] is True and seen["usage"] == {"prompt_tokens": 12, "completion_tokens": 5}
+    assert seen["b"]["system"] == "s" and seen["b"]["stream"] is True and seen["b"]["thinking"] == {"type": "disabled"} and seen["usage"] == {"prompt_tokens": 12, "completion_tokens": 5}
     "".join(services.claude_stream(s, system="s", user="q", model="claude-haiku-5-5", key="sk-ant-api03-x", feature="t"))
     assert seen["h"]["x-api-key"] == "sk-ant-api03-x" and "anthropic-workspace-id" not in seen["h"]
     "".join(services.claude_stream(s, system="s", user="q", model="claude-haiku-5-5", key="sk-ant-api03-x|wrkspc_1", feature="t"))

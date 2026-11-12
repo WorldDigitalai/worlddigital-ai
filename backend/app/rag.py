@@ -67,6 +67,7 @@ READY_CACHE_S, READY_MAX = 45, 4000        # in-memory copy of the ready answers
 PREFIX_DIMS, PREFILTER_OVER, PREFILTER_KEEP = 256, 150, 40
 _ready_cache: dict = {}
 _ready_lock = threading.Lock()
+_ready_load_lock = threading.Lock()
 ANSWER_TIER = os.environ.get("RAG_ANSWER_TIER", "")
 # "text": answers use the keyword index only (typo-tolerant), skipping the ~0.3 s embedding call; when it finds too
 # little, the answer falls back to the normal hybrid search. "hybrid" (default): meaning + words.
@@ -1222,8 +1223,13 @@ class Rag:
                                                        "covered": covered, "undocumented": undoc, "at": now(), "related": related,
                                                        "v": self._content_version(), "src": srcs,
                                                        **({"qv": [round(x, 5) for x in qvec]} if qvec else {})}, upsert=True)
-                with _ready_lock:
-                    _ready_cache.clear()   # this instance sees its own new answer at once (others within READY_CACHE_S)
+                if qvec:   # this instance sees its own new answer at once (others within READY_CACHE_S)
+                    row = self._ready_row({"_id": key, "q": question[:300], "answer": text, "sources": srcl, "covered": covered,
+                                           "undocumented": undoc, "related": related}, qvec)
+                    with _ready_lock:
+                        c = _ready_cache.get((self._content_version(), tuple(srcs)))
+                        if c:
+                            c["rows"] = [r for r in c["rows"] if r["d"].get("_id") != key] + [row]
             except Exception:  # noqa: BLE001  the cache is an extra
                 pass
         yield {"type": "done", "sources": srcl, "covered": covered, "undocumented": undoc, "cached": False, "related": related,
@@ -1283,27 +1289,54 @@ class Rag:
 
     _CURATED: "set[str] | None" = None
 
-    def _ready_rows(self, srcs: list[str]) -> list[dict]:
-        """Ready answers for the current content with their question vectors, kept in memory (reloaded when the content
-        changes, when answers were added, or after READY_CACHE_S), so matching a new question does not re-read them all."""
-        ver = self._content_version()
-        key = (ver, tuple(srcs))
-        with _ready_lock:
-            c = _ready_cache.get(key)
-            if c and time.monotonic() - c["t"] < READY_CACHE_S:
-                return c["rows"]
-        norm = lambda t: " ".join(re.findall(r"[a-z0-9$.]+", str(t).lower()))  # noqa: E731
+    @staticmethod
+    def _ready_row(d: dict, qv) -> dict:
+        v = array("f", qv)
+        p = v[:PREFIX_DIMS]
+        return {"d": d, "v": v, "n": math.sqrt(sum(map(operator.mul, v, v))) or 1, "p": p,
+                "pn": math.sqrt(sum(map(operator.mul, p, p))) or 1, "nq": Rag._nq(d.get("q", ""))}
+
+    def _ready_load(self, key) -> list[dict]:
         rows = []
-        for d in self.answers.find({"v": ver, "src": srcs, "qv": {"$exists": True}},
+        for d in self.answers.find({"v": key[0], "src": list(key[1]), "qv": {"$exists": True}},
                                    {"answer": 1, "sources": 1, "covered": 1, "undocumented": 1, "q": 1, "qv": 1, "related": 1}).limit(READY_MAX):
-            v = array("f", d.pop("qv"))
-            p = v[:PREFIX_DIMS]
-            rows.append({"d": d, "v": v, "n": math.sqrt(sum(map(operator.mul, v, v))) or 1, "p": p,
-                         "pn": math.sqrt(sum(map(operator.mul, p, p))) or 1, "nq": norm(d.get("q", ""))})
+            rows.append(self._ready_row(d, d.pop("qv")))
         with _ready_lock:
             _ready_cache.clear()   # one content version at a time
             _ready_cache[key] = {"t": time.monotonic(), "rows": rows}
         return rows
+
+    def _ready_refresh(self, key, have: int) -> None:
+        """In the background: re-read the ready answers only if another server instance added or removed some."""
+        try:
+            n = self.answers.count_documents({"v": key[0], "src": list(key[1]), "qv": {"$exists": True}})
+            if n == have:
+                with _ready_lock:
+                    if key in _ready_cache:
+                        _ready_cache[key].update(t=time.monotonic(), loading=False)
+                return
+            self._ready_load(key)
+        except Exception:  # noqa: BLE001
+            with _ready_lock:
+                if key in _ready_cache:
+                    _ready_cache[key]["loading"] = False
+
+    def _ready_rows(self, srcs: list[str]) -> list[dict]:
+        """Ready answers for the current content with their question vectors, kept in memory so matching a new question
+        does not re-read them all. Loaded once per content version; answers this instance stores are added in place;
+        every READY_CACHE_S a background check picks up answers stored by other instances (visitors never wait for it)."""
+        key = (self._content_version(), tuple(srcs))
+        with _ready_lock:
+            c = _ready_cache.get(key)
+            if c:
+                if time.monotonic() - c["t"] >= READY_CACHE_S and not c.get("loading"):
+                    c["loading"] = True
+                    threading.Thread(target=self._ready_refresh, args=(key, len(c["rows"])), daemon=True).start()
+                return c["rows"]
+        with _ready_load_lock:   # first use for this content: one thread loads, the others wait for it
+            with _ready_lock:
+                c = _ready_cache.get(key)
+            return c["rows"] if c else self._ready_load(key)
 
     def _curated(self) -> set:
         if Rag._CURATED is None:
@@ -1512,8 +1545,6 @@ class Rag:
                         cached += bool(r); done += 1
                 except Exception:  # noqa: BLE001
                     errors += 1
-        with _ready_lock:
-            _ready_cache.clear()
         return {"questions": len(qs), "prepared": done - cached, "already_ready": cached, "left": left, "errors": errors, "ms": _ms(t0)}
 
     def answer(self, question: str, k: int | None = None, sources=None, *, types=None, categories=None, language=None,

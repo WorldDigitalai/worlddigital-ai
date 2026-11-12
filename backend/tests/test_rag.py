@@ -749,3 +749,31 @@ def test_client_embed_key_origin_and_isolation(env):
     # rotating the key turns the old embed off
     new = c.post("/api/admin/rag/tenants", headers=H, json={"action": "embed-key", "tenant": t["id"], "rotate": True}).json()["embed_key"]
     assert new != key and c.post("/api/rag/embed/info", headers=H, json=body).status_code == 404
+
+
+def test_claude_stream_parses_text_usage_and_auth(monkeypatch):
+    from app import services
+    from app.config import Settings
+    seen = {}
+
+    class R:
+        status_code = 200
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def iter_lines(self):
+            yield 'event: message_start'
+            yield 'data: {"type":"message_start","message":{"usage":{"input_tokens":12}}}'
+            yield 'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"COVERED: yes\\nHi"}}'
+            yield 'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":" there"}}'
+            yield 'data: {"type":"message_delta","usage":{"output_tokens":5}}'
+
+    monkeypatch.setattr(services.http, "stream", lambda m, u, headers, json, timeout: seen.update(u=u, h=headers, b=json) or R())
+    monkeypatch.setattr(services, "record_usage", lambda f, m, u, **k: seen.update(usage=u))
+    s = Settings()
+    out = "".join(services.claude_stream(s, system="s", user="q", model="claude-haiku-5-5", key="sk-ant-oat01-x", feature="t"))
+    assert out == "COVERED: yes\nHi there" and seen["h"]["Authorization"] == "Bearer sk-ant-oat01-x" and "x-api-key" not in seen["h"]
+    assert seen["b"]["system"] == "s" and seen["b"]["stream"] is True and seen["usage"] == {"prompt_tokens": 12, "completion_tokens": 5}
+    "".join(services.claude_stream(s, system="s", user="q", model="claude-haiku-5-5", key="sk-ant-api03-x", feature="t"))
+    assert seen["h"]["x-api-key"] == "sk-ant-api03-x"
+    with pytest.raises(services.ApiError):
+        "".join(services.claude_stream(Settings(anthropic_api_key=""), system="s", user="q", model="claude-haiku-5-5", feature="t"))

@@ -29,6 +29,7 @@ on:
         default: ""
 permissions:
   contents: read
+  id-token: write   # only used to get a short-lived Claude token when answer_model is a claude-* model
 jobs:
   index:
     runs-on: ubuntu-latest
@@ -63,6 +64,22 @@ jobs:
           if d.get("status") != "ok":
               raise SystemExit("::error::sync finished with problems")
           PY
+      - name: Short-lived Claude token (only for claude-* trial models)
+        if: startsWith(inputs.answer_model, 'claude-')
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const jwt = await core.getIDToken('https://api.anthropic.com');
+            core.setSecret(jwt);
+            const r = await fetch('https://api.anthropic.com/v1/oauth/token', { method: 'POST', headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: jwt,
+                federation_rule_id: 'fdrl_01M3GsbKu49QZiuszajN9T8E', organization_id: '66480734-85b8-440a-8494-37e01b48a1e5',
+                service_account_id: 'svac_01XTHBHgm6fdjqx1fG6zpSJm', workspace_id: 'wrkspc_01UoCYkSs47KkmB2JSvzmN3m' }) });
+            const d = await r.json();
+            if (!r.ok || !d.access_token) { core.setFailed(`Claude token exchange failed: HTTP ${r.status} ${JSON.stringify(d.error || d.type || '')}`); return; }
+            core.setSecret(d.access_token);
+            core.exportVariable('CLAUDE_TOKEN', d.access_token);
+            core.notice(`Claude token valid for ${d.expires_in} s`);
       - name: Answer-quality test
         run: |
           # prepare ready answers first (own request: it can take a couple of minutes after content changes)
@@ -70,7 +87,7 @@ jobs:
             wc=$(curl -s -o warm.json -w "%{http_code}" -X POST "$API/api/admin/rag/warm" -H "x-internal-token: $TOKEN" --max-time 290)
             echo "::notice title=Ready answers prepared::HTTP $wc $(head -c 300 warm.json)"
           fi
-          code=$(curl -s -o ev.json -w "%{http_code}" -X POST "$API/api/admin/rag/eval" -H "x-internal-token: $TOKEN" -H "content-type: application/json" -d "{\"model\": \"${{ inputs.answer_model }}\", \"tier\": \"${{ inputs.answer_tier }}\", \"limit\": \"${{ inputs.eval_limit }}\", \"retrieval\": \"${{ inputs.answer_retrieval }}\"}" --max-time 290)
+          code=$(curl -s -o ev.json -w "%{http_code}" -X POST "$API/api/admin/rag/eval" -H "x-internal-token: $TOKEN" -H "x-claude-token: ${CLAUDE_TOKEN:-}" -H "content-type: application/json" -d "{\"model\": \"${{ inputs.answer_model }}\", \"tier\": \"${{ inputs.answer_tier }}\", \"limit\": \"${{ inputs.eval_limit }}\", \"retrieval\": \"${{ inputs.answer_retrieval }}\"}" --max-time 290)
           [ "$code" = "200" ] || { echo "::error::eval returned $code: $(head -c 300 ev.json)"; exit 1; }
           python3 - <<'PY'
           import json

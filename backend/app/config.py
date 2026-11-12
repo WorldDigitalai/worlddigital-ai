@@ -24,6 +24,7 @@ class Settings:
     mongodb_db: str = field(default_factory=lambda: _env("MONGODB_DB", "worlddigital_ai"))
 
     openai_api_key: str = field(default_factory=lambda: _env("OPENAI_API_KEY"))
+    anthropic_api_key: str = field(default_factory=lambda: _env("ANTHROPIC_API_KEY"))  # optional: Claude answer models
     openai_model: str = field(default_factory=lambda: _env("OPENAI_MODEL", "gpt-5.4-mini"))
     openai_base: str = field(default_factory=lambda: _env("OPENAI_BASE", "https://api.openai.com"))
 

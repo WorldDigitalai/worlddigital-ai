@@ -1142,6 +1142,8 @@ class Rag:
         head, text, first_ms, covered = "", "", None, None
         use = model or ANSWER_MODEL or None
         writer = (workers_stream(self.s, system=system, user=user, model=use, max_tokens=self.ANSWER_TOKENS) if use and use.startswith("@cf/")
+                  else services.claude_stream(self.s, system=system, user=user, model=use, max_tokens=self.ANSWER_TOKENS, feature="rag.answer",
+                                              key=getattr(self._local, "claude_key", None)) if use and use.startswith("claude-")
                   else openai_stream(self.s, system=system, user=user, max_tokens=self.ANSWER_TOKENS, feature="rag.answer",
                                      model=use, tier=getattr(self._local, "tier", None) or ANSWER_TIER or None))
         for piece in writer:
@@ -1475,7 +1477,7 @@ class Rag:
 
     # answer-quality tests ------------------------------------------------------
     def evaluate(self, model: str | None = None, tier: str | None = None, limit: int | None = None,
-                 retrieval: str | None = None) -> dict:
+                 retrieval: str | None = None, claude_key: str | None = None) -> dict:
         """Golden questions. Per question: expected page retrieved (and at which rank), expected page cited,
         expected words in the answer, and for questions we have no answer to, that the assistant says so."""
         cases = json.loads(EVAL_FILE.read_text())
@@ -1486,7 +1488,7 @@ class Rag:
         pos = neg = passed = hit = with_exp = cited_ok = answered_ok = unsupported = 0
         rr_sum = 0.0
         def ask(c):
-            self._local.tier, self._local.retrieval = tier, retrieval
+            self._local.tier, self._local.retrieval, self._local.claude_key = tier, retrieval, claude_key
             t0 = time.monotonic()
             try:
                 return self.answer(c["q"], sources=c.get("sources") or ["ai"], fresh=True, model=model), _ms(t0)
@@ -1539,7 +1541,7 @@ class Rag:
         # Speed is measured separately, one question at a time (answers in parallel are slower and would mislead):
         # a fixed sample of the first SPEED_SAMPLE non-trick questions, asked fresh.
         lat, first, search_lat, stage = [], [], [], {}
-        self._local.tier, self._local.retrieval = tier, retrieval
+        self._local.tier, self._local.retrieval, self._local.claude_key = tier, retrieval, claude_key
         for c in [c for c in cases if not c.get("negative")][:SPEED_SAMPLE]:
             t0 = time.monotonic()
             try:
@@ -1573,7 +1575,8 @@ class Rag:
                   "results": results, "at": now()}
         if not limit and not model and not tier and not retrieval:
             report["ready"] = self._ready_check(cases)
-        self.meta.replace_one({"_id": "eval"}, {"_id": "eval", **report}, upsert=True)
+        if not model:  # a trial of another answer model does not replace the live site's score in the admin
+            self.meta.replace_one({"_id": "eval"}, {"_id": "eval", **report}, upsert=True)
         return {**report, "at": _iso(report["at"])}
 
     # side-by-side embedding test ------------------------------------------------

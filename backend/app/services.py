@@ -121,6 +121,41 @@ def openai_stream(s: Settings, *, system: str, user: str, max_tokens: int = 500,
     raise ApiError("OpenAI stream failed", 502)
 
 
+def claude_stream(s: Settings, *, system: str, user: str, model: str, max_tokens: int = 500, key: str | None = None,
+                  timeout: float = 60, feature: str | None = None):
+    """Yields answer text from a Claude model (Anthropic Messages API, streamed). `key` is an API key from Claude Console
+    (ANTHROPIC_API_KEY) or a short-lived access token (sk-ant-oat...), which is sent as a bearer token."""
+    feature = feature or _caller()
+    key = (key or s.anthropic_api_key or "").strip()
+    if not key:
+        raise ApiError("ANTHROPIC_API_KEY missing", 503, "The Claude model is not set up yet.")
+    auth = {"Authorization": f"Bearer {key}"} if key.startswith("sk-ant-oat") else {"x-api-key": key}
+    body = {"model": model, "max_tokens": max_tokens, "stream": True, "system": system, "messages": [{"role": "user", "content": user}]}
+    usage = {}
+    with http.stream("POST", "https://api.anthropic.com/v1/messages", headers={**auth, "anthropic-version": "2023-06-01"},
+                     json=body, timeout=timeout) as r:
+        if r.status_code >= 400:
+            r.read()
+            raise ApiError(f"claude {r.status_code}: {r.text[:200]}", 502, "The answer model is busy. Please try again.")
+        for line in r.iter_lines():
+            if not line.startswith("data:"):
+                continue
+            try:
+                ev = json.loads(line[5:].strip())
+            except ValueError:
+                continue
+            t = ev.get("type")
+            if t == "message_start":
+                usage["prompt_tokens"] = ((ev.get("message") or {}).get("usage") or {}).get("input_tokens", 0)
+            elif t == "message_delta":
+                usage["completion_tokens"] = (ev.get("usage") or {}).get("output_tokens", 0)
+            elif t == "content_block_delta" and (ev.get("delta") or {}).get("type") == "text_delta":
+                yield ev["delta"].get("text") or ""
+            elif t == "error":
+                raise ApiError(f"claude stream: {str(ev.get('error'))[:200]}", 502, "The answer model is busy. Please try again.")
+    record_usage(feature, model, usage)
+
+
 def openai_json(s: Settings, *, system: str, user: str, max_tokens: int = 2500, temperature: float = 0.4,
                 timeout: float = 90, effort: str | None = None, feature: str | None = None) -> dict:
     feature = feature or _caller()

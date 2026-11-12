@@ -308,3 +308,10 @@ assistant must say it doesn't know. Reported metrics:
   DOM, no cookies) calls `/api/ask/(answer|feedback|handoff|info)`. The backend only accepts the key from the customer's
   own website (and worlddigital.ai for `/ask-preview`), 30 questions a day per visitor and 1,000 a day per customer.
   Replacing the key in the admin turns the old embed off.
+
+## Trying a Claude answer model
+
+The quality test can run with a Claude model writing the answers (search and ranking are unchanged): run "Knowledge base (RAG) index"
+with `answer_model: claude-haiku-5-5`. The workflow gets a short-lived Claude token through the GitHub → Anthropic identity link
+(no stored key) and passes it to the test only. A trial does not change the site or replace the score shown in the admin.
+To use Claude on the live site, the backend would need `ANTHROPIC_API_KEY` (a GitHub secret added by the owner) and `RAG_ANSWER_MODEL`.

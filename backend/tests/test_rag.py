@@ -779,3 +779,18 @@ def test_claude_stream_parses_text_usage_and_auth(monkeypatch):
     assert seen["h"]["x-api-key"] == "sk-ant-api03-x" and seen["h"]["anthropic-workspace-id"] == "wrkspc_1"
     with pytest.raises(services.ApiError):
         "".join(services.claude_stream(Settings(anthropic_api_key=""), system="s", user="q", model="claude-haiku-5-5", feature="t"))
+
+
+def test_live_claude_answers_fall_back_to_openai(env, monkeypatch):
+    c, w = env
+    c.post("/api/admin/rag/index", headers=H, json={})
+    monkeypatch.setattr(rag_mod, "ANSWER_MODEL", "claude-haiku-5-5")
+    monkeypatch.setattr(rag_mod.services, "claude_stream", lambda s, **kw: iter(["COVERED: yes\nFrom Claude [1]."]))
+    monkeypatch.setattr(rag_mod, "openai_stream", lambda s, **kw: iter(["COVERED: yes\nFrom OpenAI [1]."]))
+    assert "From Claude" in c.post("/api/admin/rag/ask", headers=H, json={"q": "Epic FHIR integrations one"}).json()["answer"]
+
+    def down(s, **kw):
+        raise rag_mod.ApiError("claude 529", 502, "busy")
+        yield ""
+    monkeypatch.setattr(rag_mod.services, "claude_stream", down)
+    assert "From OpenAI" in c.post("/api/admin/rag/ask", headers=H, json={"q": "Epic FHIR integrations two"}).json()["answer"]

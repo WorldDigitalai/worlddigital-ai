@@ -1141,11 +1141,27 @@ class Rag:
         system, user = self._answer_prompt(question, hits, who)
         head, text, first_ms, covered = "", "", None, None
         use = model or ANSWER_MODEL or None
-        writer = (workers_stream(self.s, system=system, user=user, model=use, max_tokens=self.ANSWER_TOKENS) if use and use.startswith("@cf/")
-                  else services.claude_stream(self.s, system=system, user=user, model=use, max_tokens=self.ANSWER_TOKENS, feature="rag.answer",
-                                              key=getattr(self._local, "claude_key", None)) if use and use.startswith("claude-")
-                  else openai_stream(self.s, system=system, user=user, max_tokens=self.ANSWER_TOKENS, feature="rag.answer",
-                                     model=use, tier=getattr(self._local, "tier", None) or ANSWER_TIER or None))
+        tier = getattr(self._local, "tier", None) or ANSWER_TIER or None
+        if use and use.startswith("@cf/"):
+            writer = workers_stream(self.s, system=system, user=user, model=use, max_tokens=self.ANSWER_TOKENS)
+        elif use and use.startswith("claude-"):
+            def writer_claude():
+                wrote = False
+                try:
+                    for p in services.claude_stream(self.s, system=system, user=user, model=use, max_tokens=self.ANSWER_TOKENS,
+                                                    feature="rag.answer", key=getattr(self._local, "claude_key", None)):
+                        wrote = True
+                        yield p
+                    return
+                except (ApiError, httpx.HTTPError) as e:
+                    if wrote or model:  # mid-answer, or a trial of this exact model: do not hide the failure
+                        raise
+                    log.warning("claude answer failed, using the OpenAI model instead: %s", str(e)[:200])
+                    self._metric("answer_fallback", 0)
+                yield from openai_stream(self.s, system=system, user=user, max_tokens=self.ANSWER_TOKENS, feature="rag.answer", tier=tier)
+            writer = writer_claude()
+        else:
+            writer = openai_stream(self.s, system=system, user=user, max_tokens=self.ANSWER_TOKENS, feature="rag.answer", model=use, tier=tier)
         for piece in writer:
             if covered is None:  # hold back the status line, then stream the answer
                 head += piece

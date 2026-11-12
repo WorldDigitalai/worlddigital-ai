@@ -314,4 +314,4 @@ assistant must say it doesn't know. Reported metrics:
 The quality test can run with a Claude model writing the answers (search and ranking are unchanged): run "Knowledge base (RAG) index"
 with `answer_model: claude-haiku-5-5`. The workflow uses the `ANTHROPIC_API_KEY` GitHub secret if the owner has added one; otherwise it tries a short-lived token through the GitHub → Anthropic identity link
 and passes it to the test only. A trial does not change the site or replace the score shown in the admin.
-To use Claude on the live site, the backend would need `ANTHROPIC_API_KEY` (a GitHub secret added by the owner) and `RAG_ANSWER_MODEL`.
+Live answers (site search and the public answer API) are written by `claude-haiku-5-5` (`RAG_ANSWER_MODEL`, set in deploy-backend.yml with the `ANTHROPIC_API_KEY` secret); thinking is off. If Claude fails before writing anything, the answer is written by the OpenAI model instead. Chat and blog tools use OpenAI.

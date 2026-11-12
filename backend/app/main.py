@@ -591,7 +591,7 @@ async def rag_compare(request: Request):
 
 @app.post("/api/admin/rag/insights", dependencies=[Depends(guard)])
 async def rag_insights(request: Request):
-    """Visitor questions report and approved answers. action: report (default) | correct | uncorrect | corrections."""
+    """Visitor questions report and approved answers. action: report (default) | correct | uncorrect | corrections | ready | ready-remove."""
     b = await body_of(request) if (await request.body()).strip() else {}
     a, src = str(b.get("action") or "report"), str(b.get("source") or "ai")
     ops = {
@@ -599,6 +599,8 @@ async def rag_insights(request: Request):
         "correct": lambda r: r.correction_set(b.get("question"), b.get("answer"), src, b.get("url") or ""),
         "uncorrect": lambda r: r.correction_remove(b.get("id")),
         "corrections": lambda r: {"corrections": r.correction_list(src)},
+        "ready": lambda r: r.ready_list(),
+        "ready-remove": lambda r: r.ready_remove(b.get("id")),
     }
     if a not in ops:
         raise ApiError("bad action", 400, "Unknown action.")

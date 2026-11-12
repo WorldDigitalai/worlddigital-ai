@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { kbPage } from '../src/admin.js';
+import { kbPage, readyPage } from '../src/admin.js';
 import { htmlToMarkdown } from '../src/markdown.js';
 
 const ed = { email: 'a@b.co', csrf: 'x' };
@@ -104,4 +104,18 @@ test('Stripe webhook route passes the raw body and signature through', async () 
     assert.equal(r.status, 200);
     assert.deepEqual(seen, [{ u: 'https://api.invalid/api/stripe/webhook', sig: 't=1,v1=x', body: '{"a": 1}' }]);
   } finally { globalThis.fetch = orig; }
+});
+
+test('ready answers page lists, escapes and offers edit and remove', async () => {
+  const html = await readyPage('n', ed, { per_page: 15, total: 2, by_origin: { page: 1, visitor: 1, test: 0 }, answers: [
+    { id: 'a1', q: 'How much is <b>keyword</b> research?', answer: 'From $9.99 [1].', covered: true, url: 'https://worlddigital.ai/services/keyword-research', origin: 'page', page: 'https://worlddigital.ai/tools', approved: true },
+    { id: 'a2', q: 'do u do "seo"', answer: 'Yes.', covered: true, url: '', origin: 'visitor', page: '', approved: false }] }).text();
+  const body = html.split('</style>')[1];
+  for (const s of ['Ready answers', 'Written from a page: /tools', 'Asked by a visitor', 'approved answer in use', 'data-rm="a1"', 'data-edit', '15 likely questions', '&lt;b&gt;keyword&lt;/b&gt;', 'do u do &quot;seo&quot;'])
+    assert.ok(body.includes(s), `missing ${s}`);
+  assert.ok(!body.includes('<b>keyword</b>'));
+  const script = /<script[^>]*>([\s\S]*?)<\/script>/.exec(html)[1];
+  new Function(script.replace(/^var CSRF.*?;/, 'var CSRF="x";'));
+  const empty = await readyPage('n', ed, { error: 'down' }).text();
+  assert.ok(empty.includes('No ready answers yet') && empty.includes('down'));
 });

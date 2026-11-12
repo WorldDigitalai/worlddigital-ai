@@ -319,7 +319,10 @@ Live answers (site search and the public answer API) are written by `claude-haik
 ## Questions written per page (more instant answers)
 
 After each sync, the AI model reads every published page and writes the questions a visitor would ask that the page answers
-(`RAG_PREPARED_PER_PAGE`, default 8; stored in `rag_prepared`, rewritten only when a page changes). The warm step then prepares
+(`RAG_PREPARED_PER_PAGE`, default 15; stored in `rag_prepared`, rewritten only when a page changes). The warm step then prepares
 a ready answer for each one, so a visitor who asks the same thing in similar words gets the answer at once. Ready answers for
 unchanged content are kept (not rewritten daily). With hundreds of ready answers, matching uses an in-memory copy of the
 question vectors and a quick first pass on the first 256 dimensions. Set `RAG_PREPARED_PER_PAGE=0` to turn this off.
+Every answered visitor question from the last 30 days (search, chat and API) is prepared the same way. The admin page
+`/blog-admin/kb/answers` lists every ready answer with where its question came from; "Edit" saves an approved answer for it,
+"Remove" deletes it and stops it being prepared again (`rag_meta` document `ready_blocked`).

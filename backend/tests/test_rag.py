@@ -815,6 +815,13 @@ def test_questions_are_written_per_page_and_prepared_as_ready_answers(env, monke
     a = c.post("/api/rag/answer", headers=H, json={"query": "What does keyword research 9.99 include?"}).json()
     assert a["cached"] is True
     assert c.post("/api/admin/rag/warm", headers=H).json()["prepared"] == 0
+    rl = c.post("/api/admin/rag/insights", headers=H, json={"action": "ready"}).json()
+    row = next(x for x in rl["answers"] if x["q"] == "What does keyword research 9.99 include?")
+    assert row["origin"] == "page" and row["page"].startswith("https://") and rl["by_origin"]["page"] >= 1 and "qv" not in row
+    assert c.post("/api/admin/rag/insights", headers=H, json={"action": "ready-remove", "id": row["id"]}).json()["removed"] is True
+    c.post("/api/admin/rag/warm", headers=H)   # a removed question is not prepared again
+    assert not any(x["q"] == row["q"] for x in c.post("/api/admin/rag/insights", headers=H, json={"action": "ready"}).json()["answers"])
+    assert c.post("/api/admin/rag/insights", headers=H, json={"action": "ready-remove", "id": "nope"}).status_code == 404
 
 
 def test_ready_answer_matching_with_many_stored_questions(env, monkeypatch):

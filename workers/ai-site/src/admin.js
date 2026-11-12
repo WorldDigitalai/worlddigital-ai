@@ -259,6 +259,7 @@ function kbPage(nonce, ed, st, qs, tenants, internal, ins = {}) {
 <p class="muted">What people ask the site search and the public answer API, and how the answers did. Our own automated tests are not counted.</p>
 <div class="card" style="margin-top:10px">${grid([stat('Questions', n(ins.total)), stat('Answered', n(ins.answered), ins.total ? `${Math.round(100 * (ins.answered || 0) / ins.total)}%` : ''),
     stat('Instant answers', n(ins.instant), 'from ready or approved answers'), stat('Ratings', `👍 ${n(ins.up)} · 👎 ${n(ins.down)}`), stat('Asked for an email', n((ins.handoffs || []).length))])}</div>
+<p style="margin-top:12px"><a class="btn" href="/blog-admin/kb/answers">See and edit all ready answers →</a></p>
 <h3 class="h" style="font-size:19px;margin-top:20px">Questions the site could not answer</h3>
 <p class="muted">Each one is a page worth writing, or a question you can answer yourself below.</p>
 ${table(['Question', 'Asked', 'Last asked', ''], una, 'Nothing unanswered. 🎉', 4)}
@@ -379,6 +380,45 @@ function leadsPage(nonce, ed, leads) {
   return new Response(shell('Form entries', body, nonce), { headers: headers(nonce) });
 }
 
+export function readyPage(nonce, ed, data) {
+  const rows = data.answers || [];
+  const by = data.by_origin || {};
+  const label = { page: 'Written from a page', visitor: 'Asked by a visitor', test: 'Quality-test question' };
+  const rowsHtml = rows.map((r) => `<tr data-o="${esc(r.origin)}" data-t="${esc((r.q + ' ' + r.answer).toLowerCase())}"><td><b>${esc(r.q)}</b>${r.approved ? ' <span style="background:#E7F6EC;color:#14532D;font-size:12.5px;padding:2px 8px;border-radius:999px;white-space:nowrap">approved answer in use</span>' : ''}
+<div style="font-size:14.5px;margin-top:4px;white-space:pre-line">${esc(r.answer)}</div>
+<div class="muted" style="font-size:12.5px;margin-top:4px">${esc(label[r.origin] || r.origin)}${r.page ? ': ' + esc(r.page.replace('https://worlddigital.ai', '') || '/') : ''}${r.url ? ' · source: ' + esc(r.url.replace('https://worlddigital.ai', '') || '/') : ''}${r.covered ? '' : ' · says the site does not cover it'}</div></td>
+<td style="white-space:nowrap"><button type="button" data-edit data-q="${esc(r.q)}" data-a="${esc(r.answer)}" data-u="${esc(r.url)}">Edit</button> <button type="button" data-rm="${esc(r.id)}" data-q="${esc(r.q)}">Remove</button></td></tr>`).join('');
+  const body = `${topbar(ed.email, ed.csrf)}<main class="wrap" style="padding-top:36px;padding-bottom:60px"><p><a href="/blog-admin/kb">← Knowledge base</a></p>
+<h1 class="h" style="font-size:32px">Ready answers</h1>
+<p class="muted">Questions the site answers instantly, because the answer was prepared ahead. The AI writes ${esc(String(data.per_page || ''))} likely questions for every page; every question a visitor asks and gets an answer to is added too. They are refreshed whenever a page changes.</p>
+${data.error ? `<p class="err">${esc(data.error)}</p>` : ''}
+<div class="card" style="margin-top:10px"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px">
+<div><div class="muted" style="font-size:13px">Ready answers</div><div style="font-size:26px;font-weight:700">${rows.length}</div></div>
+<div><div class="muted" style="font-size:13px">Written from pages</div><div style="font-size:26px;font-weight:700">${by.page || 0}</div></div>
+<div><div class="muted" style="font-size:13px">Asked by visitors</div><div style="font-size:26px;font-weight:700">${by.visitor || 0}</div></div>
+<div><div class="muted" style="font-size:13px">Quality-test questions</div><div style="font-size:26px;font-weight:700">${by.test || 0}</div></div></div></div>
+<form id="fix" class="card" style="margin-top:14px;display:none"><h2 class="h" style="font-size:20px">Change this answer</h2>
+<p class="muted" style="font-size:14px">Your wording is saved as an approved answer: the AI then gives it word for word for this question, also when it is worded a little differently.</p>
+<label>Question</label><input name="question" maxlength="300" required>
+<label>Answer to give</label><textarea name="answer" rows="4" maxlength="1500" required></textarea>
+<label>Source link (optional)</label><input name="url" maxlength="300" placeholder="https://worlddigital.ai/…">
+<p style="margin-top:12px"><button class="btn" type="submit">Save approved answer</button> <button type="button" id="fixx">Cancel</button> <span id="fmsg" class="muted"></span></p></form>
+<div class="two" style="margin-top:14px"><div><label for="flt">Find a question or answer</label><input id="flt" type="search" placeholder="e.g. keyword research"></div>
+<div><label for="org">Show</label><select id="org"><option value="">All</option><option value="page">Written from pages</option><option value="visitor">Asked by visitors</option><option value="test">Quality-test questions</option></select></div></div>
+<p class="muted" id="cnt" style="font-size:14px;margin-top:8px"></p>
+<div style="overflow-x:auto;margin-top:8px;border:1px solid #DCE5EF;border-radius:14px"><table class="list"><thead><tr><th>Question and ready answer</th><th></th></tr></thead><tbody id="rows">${rowsHtml || '<tr><td colspan="2">No ready answers yet. They are prepared after the next sync.</td></tr>'}</tbody></table></div></main>`;
+  const script = `var CSRF=${JSON.stringify(ed.csrf)};function $(i){return document.getElementById(i)}
+function post(u,b){return fetch(u,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF':CSRF},body:JSON.stringify(b||{})}).then(function(r){return r.json().catch(function(){return {}}).then(function(j){return {ok:r.ok,j:j}})}).catch(function(){return {ok:false,j:{error:'Network problem. Try again.'}}})}
+var trs=[].slice.call(document.querySelectorAll('#rows tr[data-o]'));
+function show(){var t=$('flt').value.trim().toLowerCase(),o=$('org').value,n=0;trs.forEach(function(r){var ok=(!o||r.dataset.o===o)&&(!t||r.dataset.t.indexOf(t)>-1);r.style.display=ok?'':'none';if(ok)n++});$('cnt').textContent='Showing '+n+' of '+trs.length}
+$('flt').oninput=show;$('org').onchange=show;show();
+document.querySelectorAll('[data-edit]').forEach(function(b){b.onclick=function(){var f=$('fix');f.style.display='block';f.question.value=b.dataset.q;f.answer.value=b.dataset.a;f.url.value=b.dataset.u||'';$('fmsg').textContent='';f.scrollIntoView({block:'center'});f.answer.focus()}});
+$('fixx').onclick=function(){$('fix').style.display='none'};
+$('fix').onsubmit=function(e){e.preventDefault();var f=e.target;$('fmsg').textContent='Saving…';post('/blog-admin/kb/insights',{action:'correct',question:f.question.value,answer:f.answer.value,url:f.url.value}).then(function(x){if(x.ok){location.reload()}else{$('fmsg').textContent=(x.j&&x.j.error)||'Could not save.'}})};
+document.querySelectorAll('[data-rm]').forEach(function(b){b.onclick=function(){if(!confirm('Remove the ready answer for "'+b.dataset.q+'"? It will not be prepared again; the AI still answers this question from the website when someone asks.'))return;b.disabled=true;post('/blog-admin/kb/insights',{action:'ready-remove',id:b.dataset.rm}).then(function(x){if(x.ok){var tr=b.closest('tr');trs=trs.filter(function(r){return r!==tr});tr.remove();show()}else{b.disabled=false;alert((x.j&&x.j.error)||'Could not remove.')}})}});`;
+  return new Response(shell('Ready answers', body, nonce, script), { headers: headers(nonce) });
+}
+
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const RESERVED = new Set(['feed', 'feed.xml', 'admin', 'editor', 'new', 'page', 'topic', 'rss']);
 
@@ -483,6 +523,10 @@ export async function handleAdmin(req, env, url, store, ctx, { pingNow, prod }) 
     return kbPage(nonce, ed, st.ok ? st.data : { error: st.data.error || 'Could not load the knowledge base.' }, qs.ok ? qs.data : {},
       tn.ok ? tn.data.tenants : [], it.ok ? it.data.docs : [], ins.ok ? ins.data : {});
   }
+  if (path === '/blog-admin/kb/answers' && method === 'GET') {
+    const r = await backend(env, 'POST', '/api/admin/rag/insights', { action: 'ready' }, 60000);
+    return readyPage(nonce, ed, r.ok ? r.data : { error: r.data.error || 'Could not load the ready answers.' });
+  }
   const kb = /^\/blog-admin\/kb\/(index|ask|eval|tenants|internal|insights)$/.exec(path);
   if (kb && method === 'POST') {
     let b = {}; try { b = await req.json(); } catch {}
@@ -496,12 +540,12 @@ export async function handleAdmin(req, env, url, store, ctx, { pingNow, prod }) 
         sources: (Array.isArray(b.sources) ? b.sources : ['ai']).filter((x) => SCOPES.includes(x)), types: Array.isArray(b.types) ? b.types.slice(0, 3) : null }, 90000),
       internal: () => backend(env, 'POST', '/api/admin/rag/internal', { action: b.action, title: b.title, text: b.text, url: b.url }, 120000),
       tenants: () => backend(env, 'POST', '/api/admin/rag/tenants', b, b.action === 'index-site' ? 280000 : 90000),
-      insights: () => backend(env, 'POST', '/api/admin/rag/insights', { action: ['correct', 'uncorrect', 'report'].includes(b.action) ? b.action : 'report',
+      insights: () => backend(env, 'POST', '/api/admin/rag/insights', { action: ['correct', 'uncorrect', 'report', 'ready-remove'].includes(b.action) ? b.action : 'report',
         source: typeof b.source === 'string' && /^tenant:[a-z0-9-]{1,80}$/.test(b.source) ? b.source : 'ai', days: 30,
         question: String(b.question || '').slice(0, 300), answer: String(b.answer || '').slice(0, 1500), url: String(b.url || '').slice(0, 300), id: String(b.id || '').slice(0, 64) }, 60000),
     }[kb[1]];
     const r = await call();
-    const quiet = kb[1] === 'ask' || (kb[1] === 'index' && b.run) || (['tenants', 'internal'].includes(kb[1]) && ['ask', 'list', 'docs'].includes(b.action)) || (kb[1] === 'insights' && b.action !== 'correct' && b.action !== 'uncorrect');
+    const quiet = kb[1] === 'ask' || (kb[1] === 'index' && b.run) || (['tenants', 'internal'].includes(kb[1]) && ['ask', 'list', 'docs'].includes(b.action)) || (kb[1] === 'insights' && !['correct', 'uncorrect', 'ready-remove'].includes(b.action));
     if (!quiet) {
       await store.log(ed.email, `kb_${kb[1]}${b.action ? '_' + b.action : ''}${b.full ? '_full' : ''}`, JSON.stringify({ tenant: b.tenant, name: b.name || b.title, status: r.status }).slice(0, 300));
     }

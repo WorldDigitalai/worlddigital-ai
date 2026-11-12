@@ -37,6 +37,7 @@ jobs:
     env:
       TOKEN: ${{ secrets.TOOLS_API_TOKEN }}
       API: https://worlddigital-ai-api-250920469327.us-central1.run.app
+      HAS_CLAUDE_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}   # optional secret: lets the quality test try claude-* answer models
     steps:
       - name: Sync the site (incremental, in batches)
         env:
@@ -65,7 +66,7 @@ jobs:
               raise SystemExit("::error::sync finished with problems")
           PY
       - name: Short-lived Claude token (only for claude-* trial models)
-        if: startsWith(inputs.answer_model, 'claude-')
+        if: startsWith(inputs.answer_model, 'claude-') && env.HAS_CLAUDE_KEY != 'true'
         uses: actions/github-script@v8
         with:
           script: |
@@ -81,13 +82,15 @@ jobs:
             core.exportVariable('CLAUDE_TOKEN', d.access_token);
             core.notice(`Claude token valid for ${d.expires_in} s`);
       - name: Answer-quality test
+        env:
+          CLAUDE_KEY: ${{ startsWith(inputs.answer_model, 'claude-') && secrets.ANTHROPIC_API_KEY || '' }}
         run: |
           # prepare ready answers first (own request: it can take a couple of minutes after content changes)
           if [ -z "${{ inputs.answer_model }}${{ inputs.answer_tier }}${{ inputs.eval_limit }}${{ inputs.answer_retrieval }}" ]; then
             wc=$(curl -s -o warm.json -w "%{http_code}" -X POST "$API/api/admin/rag/warm" -H "x-internal-token: $TOKEN" --max-time 290)
             echo "::notice title=Ready answers prepared::HTTP $wc $(head -c 300 warm.json)"
           fi
-          code=$(curl -s -o ev.json -w "%{http_code}" -X POST "$API/api/admin/rag/eval" -H "x-internal-token: $TOKEN" -H "x-claude-token: ${CLAUDE_TOKEN:-}" -H "content-type: application/json" -d "{\"model\": \"${{ inputs.answer_model }}\", \"tier\": \"${{ inputs.answer_tier }}\", \"limit\": \"${{ inputs.eval_limit }}\", \"retrieval\": \"${{ inputs.answer_retrieval }}\"}" --max-time 290)
+          code=$(curl -s -o ev.json -w "%{http_code}" -X POST "$API/api/admin/rag/eval" -H "x-internal-token: $TOKEN" -H "x-claude-token: ${CLAUDE_KEY:-${CLAUDE_TOKEN:-}}" -H "content-type: application/json" -d "{\"model\": \"${{ inputs.answer_model }}\", \"tier\": \"${{ inputs.answer_tier }}\", \"limit\": \"${{ inputs.eval_limit }}\", \"retrieval\": \"${{ inputs.answer_retrieval }}\"}" --max-time 290)
           [ "$code" = "200" ] || { echo "::error::eval returned $code: $(head -c 300 ev.json)"; exit 1; }
           python3 - <<'PY'
           import json

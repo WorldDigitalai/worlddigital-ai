@@ -334,3 +334,12 @@ answer for that search and store it as a ready answer, so "Get an AI answer" sho
 tests, very short queries, or `?ai=1` (which asks straight away). It is not logged as a visitor question and has its own daily
 limits (`RAG_PREPARE_DAILY_LIMIT` per visitor, default 40; `RAG_PREPARE_DAILY_TOTAL`, default 800; 0 turns it off). A question
 that is already being written on a server is not written twice: the second request waits for the first (up to 6 s).
+
+## Answer model chain (live)
+
+New answers are written by `RAG_ANSWER_MODEL` (now `cerebras:qwen-3.8-27b`, reasoning off: first words in about 0.4 s). If it
+errors, is rate-limited or sends nothing for `RAG_FAST_STALL_S` (1.2 s) before writing anything, the models in
+`RAG_ANSWER_FALLBACK` are tried in order (now `claude-haiku-5-5`), then the OpenAI model. Each fallback is counted
+(`answer_fallback` in the daily metrics). Ready answers are prepared in bulk by `RAG_WARM_MODEL` (`claude-haiku-5-5`), so the
+fast provider's allowance is kept for visitors. To go back to Claude only: set `RAG_ANSWER_MODEL=claude-haiku-5-5` in
+deploy-backend.yml and deploy. Trials of other models: run the index workflow with `answer_model` (`groq:<id>`, `cerebras:<id>`).

@@ -126,7 +126,7 @@ FAST_PROVIDERS = {"groq": ("https://api.groq.com/openai/v1", "groq_api_key"), "c
 
 
 def fast_stream(s: Settings, *, system: str, user: str, model: str, max_tokens: int = 500, key: str | None = None,
-                timeout: float = 60, feature: str | None = None):
+                timeout=60, feature: str | None = None, retries: int = 0):
     """Yields answer text from a fast-inference provider with an OpenAI-style API. `model` is "groq:<model id>" or
     "cerebras:<model id>". Reasoning is kept as low as the model allows and never shown: gpt-oss models cannot switch
     it off (effort "low", with room for it in the token limit); qwen models run with reasoning off."""
@@ -145,9 +145,9 @@ def fast_stream(s: Settings, *, system: str, user: str, model: str, max_tokens: 
     if oss and provider == "groq":
         body["include_reasoning"] = False
     usage = {}
-    for attempt in range(4):
+    for attempt in range(retries + 1):
         with http.stream("POST", base + "/chat/completions", headers={"Authorization": f"Bearer {key}"}, json=body, timeout=timeout) as r:
-            if r.status_code == 429 and attempt < 3:   # over the per-minute allowance: wait as told (a few seconds) and try again
+            if r.status_code == 429 and attempt < retries:   # over the per-minute allowance: wait as told (a few seconds) and try again
                 r.read()
                 try:
                     wait = float(r.headers.get("retry-after") or 2)

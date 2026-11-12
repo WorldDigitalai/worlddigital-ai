@@ -905,3 +905,31 @@ def test_fast_stream_shapes_requests_and_reads_only_the_answer(monkeypatch):
     for bad in ("other:model", "groq:"):
         with pytest.raises(services.ApiError):
             "".join(services.fast_stream(s, system="s", user="q", model=bad, key="k", feature="t"))
+
+
+def test_live_answer_chain_fast_then_claude_then_openai(env, monkeypatch):
+    c, w = env
+    c.post("/api/admin/rag/index", headers=H, json={})
+    monkeypatch.setattr(rag_mod, "ANSWER_MODEL", "cerebras:qwen-3.8-27b")
+    monkeypatch.setattr(rag_mod, "ANSWER_FALLBACKS", ["claude-haiku-5-5"])
+    monkeypatch.setattr(rag_mod, "WARM_MODEL", "claude-haiku-5-5")
+    seen = {}
+    monkeypatch.setattr(rag_mod.services, "fast_stream", lambda s, **kw: seen.update(fast=kw) or iter(["COVERED: yes\nFrom Qwen [1]."]))
+    monkeypatch.setattr(rag_mod.services, "claude_stream", lambda s, **kw: iter(["COVERED: yes\nFrom Claude [1]."]))
+    monkeypatch.setattr(rag_mod, "openai_stream", lambda s, **kw: iter(["COVERED: yes\nFrom OpenAI [1]."]))
+    ask = lambda q: c.post("/api/admin/rag/ask", headers=H, json={"q": q}).json()["answer"]  # noqa: E731
+    assert "From Qwen" in ask("Epic FHIR chain one") and seen["fast"]["retries"] == 0 and seen["fast"]["timeout"].read == rag_mod.FAST_STALL_S
+
+    def down(s, **kw):
+        raise httpx.ReadTimeout("stalled")
+        yield ""
+    monkeypatch.setattr(rag_mod.services, "fast_stream", down)
+    assert "From Claude" in ask("Epic FHIR chain two")
+    monkeypatch.setattr(rag_mod.services, "claude_stream", down)
+    assert "From OpenAI" in ask("Epic FHIR chain three")
+    # ready answers are prepared in bulk by the warm model, not the fast one
+    monkeypatch.setattr(rag_mod.services, "fast_stream", lambda s, **kw: iter(["COVERED: yes\nFrom Qwen [1]."]))
+    monkeypatch.setattr(rag_mod.services, "claude_stream", lambda s, **kw: iter(["COVERED: yes\nFrom Claude [1]."]))
+    c.post("/api/admin/rag/warm", headers=H)
+    from app import main
+    assert all("From Claude" in d["answer"] for d in main.rag().answers.find({}))

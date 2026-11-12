@@ -62,6 +62,10 @@ RERANK = os.environ.get("RAG_RERANK", "") == "1"   # rerank search results with 
 # Written answers skip the reranker by default: the model reads all top sources anyway, and it saves ~0.6 s
 RERANK_ANSWERS = os.environ.get("RAG_RERANK_ANSWERS", "") == "1"
 ANSWER_MODEL = os.environ.get("RAG_ANSWER_MODEL", "")
+# if the answer model fails, is rate-limited or does not start in time, these are tried in order, then the OpenAI model
+ANSWER_FALLBACKS = [m.strip() for m in os.environ.get("RAG_ANSWER_FALLBACK", "").split(",") if m.strip()]
+WARM_MODEL = os.environ.get("RAG_WARM_MODEL", "")   # model that prepares ready answers in bulk (keeps a fast provider's allowance for visitors)
+FAST_STALL_S = float(os.environ.get("RAG_FAST_STALL_S", "1.2"))   # a fast provider that sends nothing for this long is dropped
 PREPARED_PER_PAGE = int(os.environ.get("RAG_PREPARED_PER_PAGE", "15"))   # likely visitor questions written per page (0 = off)
 READY_CACHE_S, READY_MAX = 45, 4000        # in-memory copy of the ready answers' question vectors
 PREFIX_DIMS, PREFILTER_OVER, PREFILTER_KEEP = 256, 150, 40
@@ -1177,31 +1181,43 @@ class Rag:
             return
         system, user = self._answer_prompt(question, hits, who)
         head, text, first_ms, covered = "", "", None, None
-        use = model or ANSWER_MODEL or None
         tier = getattr(self._local, "tier", None) or ANSWER_TIER or None
-        if use and use.startswith("@cf/"):
-            writer = workers_stream(self.s, system=system, user=user, model=use, max_tokens=self.ANSWER_TOKENS)
-        elif use and use.split(":")[0] in services.FAST_PROVIDERS:
-            writer = services.fast_stream(self.s, system=system, user=user, model=use, max_tokens=self.ANSWER_TOKENS,
-                                          feature="rag.answer", key=getattr(self._local, "claude_key", None))
-        elif use and use.startswith("claude-"):
-            def writer_claude():
-                wrote = False
-                try:
-                    for p in services.claude_stream(self.s, system=system, user=user, model=use, max_tokens=self.ANSWER_TOKENS,
-                                                    feature="rag.answer", key=getattr(self._local, "claude_key", None)):
-                        wrote = True
-                        yield p
-                    return
-                except (ApiError, httpx.HTTPError) as e:
-                    if wrote or model:  # mid-answer, or a trial of this exact model: do not hide the failure
-                        raise
-                    log.warning("claude answer failed, using the OpenAI model instead: %s", str(e)[:200])
-                    self._metric("answer_fallback", 0)
-                yield from openai_stream(self.s, system=system, user=user, max_tokens=self.ANSWER_TOKENS, feature="rag.answer", tier=tier)
-            writer = writer_claude()
+        trial_key = getattr(self._local, "claude_key", None)
+
+        def write_with(m: str | None):
+            if m and m.startswith("@cf/"):
+                return workers_stream(self.s, system=system, user=user, model=m, max_tokens=self.ANSWER_TOKENS)
+            if m and m.split(":")[0] in services.FAST_PROVIDERS:
+                # live: give up fast (no waiting on a rate limit, no stalled start) so the next model takes over;
+                # a trial of exactly this model waits and retries instead, to measure the model itself
+                return services.fast_stream(self.s, system=system, user=user, model=m, max_tokens=self.ANSWER_TOKENS, feature="rag.answer",
+                                            key=trial_key, retries=3 if model else 0,
+                                            timeout=60 if model else httpx.Timeout(10, connect=1.5, read=FAST_STALL_S))
+            if m and m.startswith("claude-"):
+                return services.claude_stream(self.s, system=system, user=user, model=m, max_tokens=self.ANSWER_TOKENS,
+                                              feature="rag.answer", key=trial_key)
+            return openai_stream(self.s, system=system, user=user, max_tokens=self.ANSWER_TOKENS, feature="rag.answer", model=m or None, tier=tier)
+
+        if model:   # a trial of exactly this model: its failures are shown, not hidden by a fallback
+            writer = write_with(model)
         else:
-            writer = openai_stream(self.s, system=system, user=user, max_tokens=self.ANSWER_TOKENS, feature="rag.answer", model=use, tier=tier)
+            first_choice = (WARM_MODEL if getattr(self._local, "warm", False) else "") or ANSWER_MODEL
+            chain = list(dict.fromkeys([m for m in [first_choice, *ANSWER_FALLBACKS] if m] + [""]))   # "" = the OpenAI model
+
+            def chained():
+                for i, m in enumerate(chain):
+                    wrote = False
+                    try:
+                        for p in write_with(m):
+                            wrote = True
+                            yield p
+                        return
+                    except (ApiError, httpx.HTTPError) as e:
+                        if wrote or i == len(chain) - 1:   # mid-answer, or nothing left to try
+                            raise
+                        log.warning("answer model %s failed, using %s instead: %s", m or "openai", chain[i + 1] or "openai", str(e)[:200])
+                        self._metric("answer_fallback", 0)
+            writer = chained()
         for piece in writer:
             if covered is None:  # hold back the status line, then stream the answer
                 head += piece
@@ -1581,7 +1597,11 @@ class Rag:
         def one(q):
             if time.monotonic() - t0 > budget_s:
                 return None
-            a = self.answer(q, public=True)
+            self._local.warm = True
+            try:
+                a = self.answer(q, public=True)
+            finally:
+                self._local.warm = False
             return a.get("cached", False)
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:

@@ -1,0 +1,29 @@
+name: Check AI provider keys
+# Manual check that the optional fast-inference keys work. Prints only the HTTP status and model names, never a key.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Groq and Cerebras
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+        run: |
+          check() {  # name, key, base url
+            if [ -z "$2" ]; then echo "::warning title=$1::no secret found (expected a repository secret named ${1^^}_API_KEY)"; return; fi
+            k=$(printf %s "$2" | tr -d '[:space:]')
+            code=$(curl -s -o m.json -w "%{http_code}" "$3/models" -H "Authorization: Bearer $k" --max-time 30 || true)
+            if [ "$code" != "200" ]; then echo "::error title=$1::key refused: HTTP $code $(jq -r '(.error.message // .message // "")' m.json 2>/dev/null | head -c 200)"; return; fi
+            echo "::notice title=$1 models::$(jq -r '[.data[].id] | sort | join(", ")' m.json | head -c 900)"
+            t0=$(date +%s%3N)
+            code=$(curl -s -o c.json -w "%{http_code}" "$3/chat/completions" -H "Authorization: Bearer $k" -H "content-type: application/json" --max-time 30 \
+              -d "{\"model\":\"$(jq -r '.data[0].id' m.json)\",\"max_tokens\":8,\"messages\":[{\"role\":\"user\",\"content\":\"Say ok\"}]}" || true)
+            echo "::notice title=$1 test call::HTTP $code in $(( $(date +%s%3N) - t0 )) ms with $(jq -r '.model // ""' c.json 2>/dev/null) $(jq -r '(.error.message // "")' c.json 2>/dev/null | head -c 200)"
+          }
+          check groq "$GROQ_API_KEY" https://api.groq.com/openai/v1
+          check cerebras "$CEREBRAS_API_KEY" https://api.cerebras.ai/v1

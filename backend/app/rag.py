@@ -1080,7 +1080,8 @@ class Rag:
 
     def _content_version(self) -> str:
         d = self.meta.find_one({"_id": "content_version"}) or {}
-        return str(d.get("v") or "0")
+        # ready answers also depend on how answers are built: changing these settings must not reuse old answers
+        return f'{d.get("v") or "0"}.{ANSWER_RETRIEVAL[:1]}{ANSWER_SOURCES}x{ANSWER_CHARS}'
 
     def _bump_content(self) -> None:
         """Called whenever indexed content changes: remembered answers from before are no longer used."""

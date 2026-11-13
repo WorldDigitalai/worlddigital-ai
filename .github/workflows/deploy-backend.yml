@@ -65,6 +65,9 @@ jobs:
             PREVIEW_DAILY_LIMIT=6
             RAG_RERANK=1
             RAG_ANSWER_MODEL=cerebras:qwen-3.8-27b
+            RAG_ANSWER_RETRIEVAL=hybrid
+            RAG_ANSWER_SOURCES=6
+            RAG_ANSWER_CHARS=1200
             RAG_ANSWER_FALLBACK=claude-haiku-5-5
             RAG_WARM_MODEL=claude-haiku-5-5
             CEREBRAS_API_KEY=${{ secrets.CEREBRAS_API_KEY }}

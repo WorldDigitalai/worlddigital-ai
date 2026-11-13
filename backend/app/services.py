@@ -139,7 +139,7 @@ def fast_stream(s: Settings, *, system: str, user: str, model: str, max_tokens: 
     if not key:
         raise ApiError(f"{provider} key missing", 503, "That model is not set up yet.")
     oss = "gpt-oss" in mid
-    body = {"model": mid, "stream": True, "temperature": 0.2, "max_completion_tokens": max_tokens + (500 if oss else 0),
+    body = {"model": mid, "stream": True, "temperature": 0, "max_completion_tokens": max_tokens + (500 if oss else 0),
             "reasoning_effort": "low" if oss else "none",
             "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
     if oss and provider == "groq":

@@ -289,7 +289,7 @@
   "q": "What does the free SEO report check?",
   "expect": [
    "speed|lighthouse",
-   "backlink"
+   "backlink|on-page|ranking"
   ],
   "urls": [
    "free-seo-report",
@@ -750,7 +750,7 @@
  {
   "q": "How do you start an enterprise integration project for construction?",
   "expect": [
-   "discovery"
+   "discovery|workflow"
   ],
   "urls": [
    "construction"

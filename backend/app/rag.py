@@ -1062,8 +1062,6 @@ class Rag:
             "website, blog and document content, given inside <source> tags.\n"
             "Rules:\n"
             "- Do not invent products, services, prices, features, statistics, partnerships or company claims.\n"
-            "- Start from the passage that answers the question most directly (often one under a heading that repeats the "
-            "question) and give its answer first, keeping its own key terms.\n"
             "- Cite the sources behind each factual claim like [1]. Only cite sources you actually used. When more than "
             "one source states the fact you use, cite each of them (up to three), like [1][3].\n"
             "- If the sources do not support a definitive answer, say clearly that the available information does not cover it.\n"

@@ -2,7 +2,7 @@
 
 POST /api/admin/blog/video {title, excerpt, body, category, url, cover_url} -> {b64, type, duration, title}
 
-RULE: every video is 8 seconds or less (MAX_SECONDS). Longer voiceovers are sped up slightly; if still too long,
+RULE: every video is 7 seconds or less (MAX_SECONDS). Longer voiceovers are sped up slightly; if still too long,
 the video is refused.
 
 1. OpenAI writes a 3-part script (hook, 1 key point, call to action) from the post itself.
@@ -31,7 +31,7 @@ from .services import ApiError, openai_json, record_usage
 
 W, H, FPS = 720, 1280, 24
 MAX_BYTES = 1_850_000
-MAX_SECONDS = 8.0
+MAX_SECONDS = 7.0
 ASSETS = os.path.join(os.path.dirname(__file__), "assets")
 NAVY, NAVY2, RED, BLUE, WHITE = (11, 26, 51), (19, 40, 77), (193, 58, 42), (13, 94, 199), (255, 255, 255)
 _TTS_MODELS = ["gpt-4o-mini-tts", "tts-1"]
@@ -45,7 +45,7 @@ def _font(name: str, size: int) -> ImageFont.FreeTypeFont:
 
 def write_script(s: Settings, *, title: str, excerpt: str, body: str, shorter: bool = False) -> dict:
     data = openai_json(s, system=(
-        "You write 7-second vertical videos (YouTube Shorts, TikTok) that promote a business blog post for "
+        "You write 6-second vertical videos (YouTube Shorts, TikTok) that promote a business blog post for "
         "WorldDigital.ai. Plain, friendly English for small business owners. Only use facts that are in the post: "
         "never invent numbers, results, prices, clients or guarantees."), user=(
         f"Blog post title: {title}\nSummary: {excerpt}\nPost text (start):\n{body[:3500]}\n\n"
@@ -57,7 +57,7 @@ def write_script(s: Settings, *, title: str, excerpt: str, body: str, shorter: b
            "11 words in total at most. Do NOT read long brand or product names aloud. The last line is exactly "
            "'More at worlddigital.ai.'" if shorter else
            "- voice: exactly 3 very short voiceover lines in order (hook, point, call to action), max 6 words each, "
-           "15 words in total at most, so the whole video fits in 7 seconds. The last line points to worlddigital.ai.")),
+           "15 words in total at most, so the whole video fits in 6 seconds. The last line points to worlddigital.ai.")),
         max_tokens=700, temperature=0.5)
     pts = [str(data.get("point") or "").strip()] if str(data.get("point") or "").strip() else []
     voice = [str(v).strip() for v in (data.get("voice") or []) if str(v).strip()][:3]
@@ -184,7 +184,7 @@ def _slides(script: dict, cover: Image.Image | None) -> list[dict]:
         num = _text_layer([("QUICK TIP", _font("Poppins-ExtraBold.ttf", 44), (255, 140, 110))], W - 100, 0)
         out.append({"kind": "point", "num": num, "text": _text_layer([(p, mid, WHITE)], W - 110)})
     out.append({"kind": "cta", "text": _text_layer([(script["cta"], big, WHITE)], W - 100),
-                "sub": _text_layer([("worlddigital.ai/blog", small, (159, 227, 180))], W - 100)})
+                "sub": _text_layer([(script.get("sub") or "worlddigital.ai/blog", small, (159, 227, 180))], W - 100)})
     return out
 
 
@@ -208,7 +208,7 @@ def render_frames(script: dict, cover: Image.Image | None, durations: list[float
     """Yields raw RGB frames for the whole video."""
     bg, bar = _background(cover), _brand_bar()
     slides = _slides(script, cover)
-    pill = _pill("Read more", _font("Poppins-ExtraBold.ttf", 40))
+    pill = _pill(script.get("pill") or "Read more", _font("Poppins-ExtraBold.ttf", 40))
     starts, t0 = [], 0.0
     for d in durations:
         starts.append(t0)

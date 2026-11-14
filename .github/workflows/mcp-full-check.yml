@@ -1,0 +1,19 @@
+name: MCP full connection check
+# Manual: walks the whole connection Claude makes (register, sign-in, approve as the owner through the site's own
+# consent endpoint, token, every tool, refresh, revoke). Prints statuses only: no tokens, no lead details.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install requests
+      - run: python tools/mcp_full_check.py
+        env:
+          API: https://worlddigital-ai-api-250920469327.us-central1.run.app
+          TOKEN: ${{ secrets.TOOLS_API_TOKEN }}
+          APPROVER: ahmad.awwad@worlddigital.ai

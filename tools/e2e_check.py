@@ -10,6 +10,7 @@ Checks (each one independent; a failure in one does not stop the others):
   contact   the contact form loads; submitting it empty is refused by the browser and sends nothing
   blog      the blog lists posts; the first post opens with its heading and its images load
   pages     home, services and pricing pages load with a heading, a search icon and no JavaScript errors
+  mcp       the owner's MCP server refuses unsigned requests and publishes its sign-in details
 
 Prints one line per check and a summary; exits 1 if any check failed. Uses two AI calls per run (search answer,
 chat reply), which the free daily limits cover. Google tags are blocked so tests do not count as visits.
@@ -157,7 +158,29 @@ def check_pages(browser, base):
     return "5 pages OK"
 
 
-CHECKS = [("search", check_search), ("extras", check_answer_extras), ("chat", check_chat), ("tools", check_tools),
+API = "https://worlddigital-ai-api-250920469327.us-central1.run.app"
+
+
+def check_mcp(browser, base):
+    """The owner's MCP server: refuses unsigned requests, and publishes how to sign in (nothing is signed in here)."""
+    p = new_page(browser, [])
+    r = p.request.post(f"{API}/mcp", data={"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+                       headers={"accept": "application/json, text/event-stream", "content-type": "application/json"})
+    assert r.status == 401 and "resource_metadata" in r.headers.get("www-authenticate", ""), f"unsigned request answered {r.status}"
+    prm = p.request.get(f"{API}/.well-known/oauth-protected-resource/mcp").json()
+    assert prm["resource"] == f"{API}/mcp", f"resource is {prm.get('resource')}"
+    meta = p.request.get(f"{API}/.well-known/oauth-authorization-server").json()
+    for k in ("authorization_endpoint", "token_endpoint", "registration_endpoint"):
+        assert meta[k].startswith(API), f"{k} is {meta.get(k)}"
+    bad = p.request.post(f"{API}/register", data={"client_name": "x", "redirect_uris": ["https://example.com/cb"], "token_endpoint_auth_method": "none"})
+    assert bad.status == 400, f"unknown redirect address accepted ({bad.status})"
+    pv = p.goto(f"{base}/blog-admin/mcp?req=none", wait_until="domcontentloaded", timeout=45000)
+    assert pv.status == 200 and "Allow read-only access" not in p.content(), "consent page shown without sign-in"
+    p.context.close()
+    return "sign-in required; sign-in details published; unknown apps refused"
+
+
+CHECKS = [("search", check_search), ("mcp", check_mcp), ("extras", check_answer_extras), ("chat", check_chat), ("tools", check_tools),
           ("contact", check_contact), ("blog", check_blog), ("pages", check_pages)]
 
 

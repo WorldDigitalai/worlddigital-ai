@@ -72,3 +72,22 @@ export async function internalAi(req, env) {
     return j({ error: msg.slice(0, 300) }, /3036|limit/i.test(msg) ? 429 : 502);
   }
 }
+
+const LEAD_KINDS = { waitlist: 'Autopilot early list', contact: 'Contact form', plan: 'SEO plan sign-up', question: 'AI question: email back' };
+// Recent form entries for the owner's MCP server (backend only, token-checked; docs/mcp.md)
+export async function internalLeads(req, env, store) {
+  const j = (d, status = 200) => new Response(JSON.stringify(d), { status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
+  if (req.method !== 'POST') return j({ error: 'POST only' }, 405);
+  const want = env.TOOLS_API_TOKEN || '';
+  const [a, b] = await Promise.all([sha256(want), sha256(req.headers.get('x-internal-token') || '')]);
+  if (!want || a !== b) return j({ error: 'Forbidden' }, 403);
+  let body = {}; try { body = JSON.parse((await req.text()).slice(0, 2000)) || {}; } catch {}
+  const limit = Math.max(1, Math.min(50, parseInt(body.limit, 10) || 20));
+  const rows = await store.listLeads();
+  return j({ leads: rows.slice(0, limit).map((l) => {
+    let d = {}; try { d = JSON.parse(l.data) || {}; } catch {}
+    const out = { kind: LEAD_KINDS[l.kind] || 'Job application', at: String(l.created_at || '') };
+    for (const [k, v] of Object.entries(d)) if (typeof v === 'string' || typeof v === 'number') out[k] = String(v).slice(0, 1000);
+    return out;
+  }) });
+}

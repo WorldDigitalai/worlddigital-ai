@@ -380,6 +380,27 @@ function leadsPage(nonce, ed, leads) {
   return new Response(shell('Form entries', body, nonce), { headers: headers(nonce) });
 }
 
+// Consent page for the MCP server (backend app/mcp_server.py): an AI assistant asks for read-only access; a signed-in
+// admin allows or refuses. The answer goes to the backend, which returns where to send the browser.
+export function mcpConsentPage(nonce, ed, req, info) {
+  const bad = !info || info.error;
+  const body = `${topbar(ed.email, ed.csrf)}<main class="wrap" style="max-width:620px;padding-top:48px;padding-bottom:60px"><div class="card">
+<h1 class="h" style="font-size:26px">Connect an AI assistant</h1>
+${bad ? `<p class="err">${esc((info && info.error) || 'This sign-in request has expired. Start again from your assistant.')}</p>` : `
+<p><b>${esc(info.client_name)}</b> is asking for access to WorldDigital.ai. After you allow it, your browser returns to <b>${esc(info.redirect_host)}</b>.</p>
+<p style="margin-top:12px">It will be able to <b>read</b>:</p>
+<ul style="margin:8px 0 0 20px;line-height:1.7"><li>answers from the website's knowledge base</li><li>what visitors asked, and what the site could not answer</li><li>answer quality and speed</li><li>recent leads, including names, emails and messages</li></ul>
+<p class="muted" style="margin-top:12px">It cannot change, send or delete anything. You are signed in as ${esc(ed.email)}. Only allow this if you started it yourself, just now, from your own assistant.</p>
+<p style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap"><button class="btn red" id="allow" type="button">Allow read-only access</button> <button id="deny" type="button">Don't allow</button></p>
+<p id="msg" class="muted" role="status"></p>`}</div></main>`;
+  const script = bad ? '' : `var CSRF=${JSON.stringify(ed.csrf)},REQ=${JSON.stringify(req)};
+function go(allow){var m=document.getElementById('msg');m.textContent='One moment…';document.getElementById('allow').disabled=document.getElementById('deny').disabled=true;
+fetch('/blog-admin/mcp',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF':CSRF},body:JSON.stringify({req:REQ,allow:allow})}).then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j}})})
+.then(function(x){if(x.ok&&x.j.redirect){location.href=x.j.redirect}else{m.textContent=(x.j&&x.j.error)||'Could not finish. Start again from your assistant.'}}).catch(function(){m.textContent='Network problem. Try again.';document.getElementById('allow').disabled=document.getElementById('deny').disabled=false})}
+document.getElementById('allow').onclick=function(){go(true)};document.getElementById('deny').onclick=function(){go(false)};`;
+  return new Response(shell('Connect an AI assistant', body, nonce, script), { headers: headers(nonce) });
+}
+
 export function readyPage(nonce, ed, data) {
   const rows = data.answers || [];
   const by = data.by_origin || {};
@@ -522,6 +543,16 @@ export async function handleAdmin(req, env, url, store, ctx, { pingNow, prod }) 
       backend(env, 'POST', '/api/admin/rag/insights', { action: 'report', source: 'ai', days: 30 })]);
     return kbPage(nonce, ed, st.ok ? st.data : { error: st.data.error || 'Could not load the knowledge base.' }, qs.ok ? qs.data : {},
       tn.ok ? tn.data.tenants : [], it.ok ? it.data.docs : [], ins.ok ? ins.data : {});
+  }
+  if (path === '/blog-admin/mcp') {
+    if (method === 'GET') {
+      const rid = (url.searchParams.get('req') || '').slice(0, 80);
+      const r = rid ? await backend(env, 'POST', '/api/admin/mcp/consent', { req: rid }) : { ok: false, data: {} };
+      return mcpConsentPage(nonce, ed, rid, r.ok ? r.data : { error: r.data && r.data.error });
+    }
+    let b; try { b = await req.json(); } catch { return json({ error: 'Bad request.' }, 400); }
+    const r = await backend(env, 'POST', '/api/admin/mcp/consent', { req: String(b.req || '').slice(0, 80), email: ed.email, allow: b.allow === true });
+    return json(r.ok ? { redirect: r.data.redirect } : { error: r.data.error || 'Could not finish. Start again from your assistant.' }, r.ok ? 200 : 400);
   }
   if (path === '/blog-admin/kb/answers' && method === 'GET') {
     const r = await backend(env, 'POST', '/api/admin/rag/insights', { action: 'ready' }, 60000);

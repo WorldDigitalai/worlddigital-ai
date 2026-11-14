@@ -27,6 +27,7 @@ import hmac
 import html
 import json
 import logging
+import os
 import re
 import time
 import uuid
@@ -839,3 +840,39 @@ def health(request: Request):
         "resend": s.resend_api_key.startswith("re_"), "turnstile": bool(s.turnstile_secret),
         "stripe_webhook": s.stripe_webhook_secret.startswith("whsec_"),
         "internal_token": bool(s.internal_token)}}
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+# MCP server (app/mcp_server.py, docs/mcp.md): read-only tools for the owner's AI assistant, with OAuth sign-in.
+# Off unless MCP_PUBLIC_URL (this service's public https address) is set.
+MCP_PUBLIC_URL = os.environ.get("MCP_PUBLIC_URL", "").strip().rstrip("/")
+_mcp = None
+if MCP_PUBLIC_URL.startswith("https://") or (MCP_PUBLIC_URL.startswith("http://") and os.environ.get("MCP_ALLOW_HTTP") == "1"):
+    from contextlib import asynccontextmanager
+
+    from . import mcp_server
+
+    _mcp_app, _mcp, _mcp_provider = mcp_server.build(settings, rag, lambda: store().db, MCP_PUBLIC_URL)
+
+    @app.post("/api/admin/mcp/consent", dependencies=[Depends(guard)])
+    async def mcp_consent(request: Request):
+        """Used by the site's admin consent page. {"req"}: what is asking for access. {"req", "email", "allow"}: the
+        signed-in admin's answer; returns the address to send the browser to."""
+        b = await body_of(request)
+        if "allow" not in b:
+            p = await run_in_threadpool(lambda: _mcp_provider.pending(b.get("req")))
+            if not p:
+                raise ApiError("unknown mcp request", 404, "This sign-in request has expired. Start again from your assistant.")
+            return json_ok(p)
+        email = str(b.get("email") or "").strip().lower()
+        if "@" not in email:
+            raise ApiError("email missing", 400, "Sign in to the site admin first.")
+        return json_ok({"redirect": await run_in_threadpool(lambda: _mcp_provider.approve(b.get("req"), email, bool(b.get("allow"))))})
+
+    @asynccontextmanager
+    async def _mcp_lifespan(_app):
+        async with _mcp.session_manager.run():
+            yield
+
+    app.router.lifespan_context = _mcp_lifespan
+    app.mount("/", _mcp_app)   # /mcp, /authorize, /token, /register, /revoke and the /.well-known OAuth documents

@@ -12,7 +12,7 @@ import { toolsProxy, ragAnswer, ragAnswerStream, ragFeedback, ragHandoff, askEmb
 import { ASK_WIDGET } from './ask-widget.js';
 import { withTool } from './tools-widget.js';
 import { humanOk } from './human.js';
-import { internalAi } from './ai.js';
+import { internalAi, internalLeads } from './ai.js';
 import { searchPage } from './search.js';
 import { htmlToMarkdown, wantsMarkdown } from './markdown.js';
 export { Store } from './store.js';
@@ -215,6 +215,8 @@ async function handle(req, env, ctx) {
   if (lower === '/api/stripe/webhook') return stripeWebhook(req, env);
   // Workers AI for the knowledge base (embeddings, reranking): backend only, token-checked (src/ai.js)
   if (lower === '/api/internal/ai') return internalAi(req, env);
+  // Recent form entries for the owner's MCP server (backend only, token-checked; docs/mcp.md)
+  if (lower === '/api/internal/leads') return internalLeads(req, env, store(env));
 
   // Old customer app: retired. LEGACY_APP=1 sends these addresses to it again.
   const legacy = env.LEGACY_APP === '1';
@@ -340,3 +342,4 @@ export default {
     ctx.waitUntil(store(env).autopilotTick().catch((e) => console.log('autopilot tick', e.message)));
   },
 };
+

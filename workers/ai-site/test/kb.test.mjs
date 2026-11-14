@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { kbPage, readyPage } from '../src/admin.js';
+import { kbPage, readyPage, mcpConsentPage } from '../src/admin.js';
 import { htmlToMarkdown } from '../src/markdown.js';
 
 const ed = { email: 'a@b.co', csrf: 'x' };
@@ -118,4 +118,28 @@ test('ready answers page lists, escapes and offers edit and remove', async () =>
   new Function(script.replace(/^var CSRF.*?;/, 'var CSRF="x";'));
   const empty = await readyPage('n', ed, { error: 'down' }).text();
   assert.ok(empty.includes('No ready answers yet') && empty.includes('down'));
+});
+
+test('MCP consent page names the assistant, lists what it can read, and escapes', async () => {
+  const html = await mcpConsentPage('n', ed, 'req-1', { client_name: 'Claude <b>', redirect_host: 'claude.ai' }).text();
+  const body = html.split('</style>')[1];
+  for (const s of ['Connect an AI assistant', 'Claude &lt;b&gt;', 'claude.ai', 'names, emails and messages', 'cannot change, send or delete', 'Allow read-only access', "Don't allow"])
+    assert.ok(body.includes(s), `missing ${s}`);
+  new Function(/<script[^>]*>([\s\S]*?)<\/script>/.exec(html)[1]);
+  const gone = await mcpConsentPage('n', ed, 'x', null).text();
+  assert.ok(gone.includes('has expired') && !gone.includes('id="allow"'));
+});
+
+test('internal leads endpoint: token-checked, limited, plain fields only', async () => {
+  const { internalLeads } = await import('../src/ai.js');
+  const rows = Array.from({ length: 60 }, (_, i) => ({ id: i, kind: i ? 'contact' : 'question', created_at: '2026-11-13T10:00:00Z',
+    data: JSON.stringify({ name: 'Pat', email: `p${i}@example.com`, message: 'Hi', nested: { a: 1 } }) }));
+  const env = { TOOLS_API_TOKEN: 'secret' }; const st = { listLeads: async () => rows };
+  const post = (token, body) => internalLeads(new Request('https://worlddigital.ai/api/internal/leads', { method: 'POST', headers: { 'x-internal-token': token }, body: JSON.stringify(body) }), env, st);
+  assert.equal((await post('wrong', {})).status, 403);
+  assert.equal((await internalLeads(new Request('https://worlddigital.ai/api/internal/leads'), env, st)).status, 405);
+  const d = await (await post('secret', { limit: 3 })).json();
+  assert.equal(d.leads.length, 3);
+  assert.deepEqual(d.leads[0], { kind: 'AI question: email back', at: '2026-11-13T10:00:00Z', name: 'Pat', email: 'p0@example.com', message: 'Hi' });
+  assert.equal((await (await post('secret', { limit: 999 })).json()).leads.length, 50);
 });

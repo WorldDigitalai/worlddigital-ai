@@ -5,7 +5,11 @@ Read-only tools for the owner's AI assistant (Claude or any MCP client), served 
 - **Address to add in Claude** (Settings → Connectors → Add custom connector):
   `https://worlddigital-ai-api-250920469327.us-central1.run.app/mcp`
 - **Sign-in:** OAuth 2.1 with PKCE. The backend is its own authorization server. When Claude connects, the browser
-  opens `https://worlddigital.ai/blog-admin/mcp`; a signed-in site admin clicks "Allow read-only access".
+  opens `https://worlddigital.ai/blog-admin/mcp`; a signed-in site admin clicks "Allow read-only access". If the
+  browser is not signed in, the page asks for the admin email; opening the emailed link **in the same browser within
+  15 minutes** returns to the consent page (cookie `wd_next`, only `/blog-admin/mcp?req=…` is accepted).
+- **Diagnose a failed connect:** run the "MCP connector check" workflow (walks Claude's steps; the request-log part
+  needs the deploy account to have the Logs Viewer role, which it does not have yet).
 - **Code:** `backend/app/mcp_server.py` (server, OAuth provider, tools), mounted at the end of `backend/app/main.py`
   when `MCP_PUBLIC_URL` is set (it is, in `.github/workflows/deploy-backend.yml`). Consent page and the
   token-checked leads endpoint are in the site worker: `workers/ai-site/src/admin.js` (`mcpConsentPage`,

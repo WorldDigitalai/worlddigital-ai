@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { kbPage, readyPage, mcpConsentPage } from '../src/admin.js';
+import { kbPage, readyPage, mcpConsentPage, handleAdmin } from '../src/admin.js';
 import { htmlToMarkdown } from '../src/markdown.js';
 
 const ed = { email: 'a@b.co', csrf: 'x' };
@@ -142,4 +142,21 @@ test('internal leads endpoint: token-checked, limited, plain fields only', async
   assert.equal(d.leads.length, 3);
   assert.deepEqual(d.leads[0], { kind: 'AI question: email back', at: '2026-11-13T10:00:00Z', name: 'Pat', email: 'p0@example.com', message: 'Hi' });
   assert.equal((await (await post('secret', { limit: 999 })).json()).leads.length, 50);
+});
+
+test('signing in from an assistant connect request comes back to that request, nowhere else', async () => {
+  const env = { ADMIN_EMAILS: 'owner@example.com' };
+  const st = { useLoginToken: async () => 'owner@example.com', addSession: async () => {} };
+  const call = (u, init = {}) => handleAdmin(new Request(u, init), env, new URL(u), st, {}, { pingNow: () => {}, prod: true });
+  const g = await call('https://worlddigital.ai/blog-admin/mcp?req=abcdefghijklmnop');
+  assert.match(await g.text(), /connect your AI assistant/);
+  assert.match(g.headers.get('Set-Cookie'), /^wd_next=%2Fblog-admin%2Fmcp%3Freq%3Dabcdefghijklmnop; Path=\/blog-admin; HttpOnly; Secure/);
+  assert.equal((await call('https://worlddigital.ai/blog-admin/mcp?req=x"><script>')).headers.get('Set-Cookie'), null);
+  const verify = (cookie) => call('https://worlddigital.ai/blog-admin/verify', { method: 'POST', body: new URLSearchParams({ t: 'tok' }),
+    headers: { Origin: 'https://worlddigital.ai', Cookie: cookie, 'Content-Type': 'application/x-www-form-urlencoded' } });
+  const v = await verify('wd_next=%2Fblog-admin%2Fmcp%3Freq%3Dabcdefghijklmnop');
+  assert.equal(v.status, 303); assert.equal(v.headers.get('Location'), '/blog-admin/mcp?req=abcdefghijklmnop');
+  assert.match(v.headers.get('Set-Cookie'), /wd_next=; Path=\/blog-admin;.*Max-Age=0/);
+  assert.equal((await verify('wd_next=https%3A%2F%2Fevil.example')).headers.get('Location'), '/blog-admin');
+  assert.equal((await verify('')).headers.get('Location'), '/blog-admin');
 });

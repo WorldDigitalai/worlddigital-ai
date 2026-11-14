@@ -92,6 +92,8 @@ function sameOrigin(req, url) {
   return !!r && r.startsWith(url.origin + '/');
 }
 
+const NEXT_RE = /^\/blog-admin\/mcp\?req=[A-Za-z0-9_-]{10,80}$/;   // the only place sign-in may return to
+
 function loginPage(nonce, { sent = false, error = '', notice = '' } = {}) {
   const body = `<main class="wrap" style="max-width:480px;padding-top:70px;padding-bottom:70px"><div class="card">
 <div class="eyebrow">WorldDigital.ai</div><h1 class="h" style="font-size:28px;margin-top:8px">Blog editor</h1>
@@ -503,11 +505,22 @@ export async function handleAdmin(req, env, url, store, ctx, { pingNow, prod }) 
     if (!email || !admins(env).includes(email)) return loginPage(nonce, { error: 'That sign-in link has expired or was already used. Enter your email for a new one.' });
     const tok = randomToken();
     await store.addSession(await sha256(tok), email, SESSION_MS);
-    return new Response(null, { status: 303, headers: { Location: '/blog-admin', 'Set-Cookie': `${COOKIE}=${tok}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${SESSION_MS / 1000}`, 'Cache-Control': 'no-store' } });
+    // back to an assistant's sign-in request if that is what sent the person here (cookie set below, 15 minutes)
+    const next = (/(?:^|;\s*)wd_next=([^;]+)/.exec(req.headers.get('Cookie') || '') || [])[1];
+    const back = next && NEXT_RE.test(decodeURIComponent(next)) ? decodeURIComponent(next) : '/blog-admin';
+    const h = new Headers({ Location: back, 'Cache-Control': 'no-store' });
+    h.append('Set-Cookie', `${COOKIE}=${tok}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${SESSION_MS / 1000}`);
+    if (next) h.append('Set-Cookie', 'wd_next=; Path=/blog-admin; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
+    return new Response(null, { status: 303, headers: h });
   }
 
   const ed = await currentEditor(env, store, req);
   if (!ed) {
+    if (method === 'GET' && path === '/blog-admin/mcp' && NEXT_RE.test(path + url.search)) {
+      const r = loginPage(nonce, { notice: 'Sign in to connect your AI assistant. Open the link from the email in this same browser within 15 minutes, and you will come back here to allow it.' });
+      r.headers.append('Set-Cookie', `wd_next=${encodeURIComponent(path + url.search)}; Path=/blog-admin; HttpOnly; Secure; SameSite=Lax; Max-Age=900`);
+      return r;
+    }
     if (method === 'GET') return loginPage(nonce);
     return json({ error: 'Your session ended. Open the editor in a new tab, sign in, then save again. Your text is kept on this page.' }, 401);
   }

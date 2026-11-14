@@ -67,9 +67,8 @@ const GEO_FAQ = faq('GEO questions', [
 ]);
 
 const CUSTOM_FAQ = faq('Custom software questions', [
-  ['How much does custom software cost?', 'Small projects start at $199.99. Larger apps, portals and integrations are priced by scope: the number of screens, users, integrations and the data involved. After a short discovery conversation we send a written proposal with a fixed price and timeline, so you know the full cost before any work starts.'],
-  ['Can I get a quote?', 'Yes, it is free. Tell us what you need through the <a href="/contact">contact page</a> or call (832) 834-0680; after a short discovery conversation you get a written fixed-price quote.'],
-  ['Can you build a booking app with online payments?', 'Yes. We build booking and scheduling apps with online payments for appointment businesses such as yoga and fitness studios, salons, spas and clinics: class or appointment booking, deposits or full payment at checkout, reminders and a simple admin view. Small projects start at $199.99, and you get a fixed-price quote after a short call.'],
+  ['How much does custom software cost?', 'Small projects start at $199.99. Larger apps and portals are priced by scope (screens, users, integrations, data): after a short discovery call you get a free written quote with a fixed price and timeline.'],
+  ['Can you build a booking app with online payments?', 'Yes, for studios, salons, spas and clinics: class or appointment booking, deposits or full payment, reminders and an admin view. From $199.99 for small projects.'],
   ['How long does a project take?', 'Small tools and integrations often take 2 to 6 weeks. Larger web apps and portals are delivered in phases, with a working demo early so you can give feedback as it is built.'],
   ['Who owns the code?', 'You do. When the project is paid for, the code, data and accounts are yours, and we can keep supporting it or hand it to your own team.'],
   ['Can you connect our existing tools?', 'Yes. We build API and data integrations between CRMs, payment, scheduling, email and ad platforms. For healthcare EHR/EMR systems such as Epic, we bring in a specialist integration partner.'],

@@ -4,6 +4,30 @@ import { AUTOPILOT_DEFAULTS, callAi, cleanAutopilot, nextLocalHour, runAutopilot
 import { sendEmail, validate } from './admin.js';
 import { shareToBuffer } from './buffer.js';
 
+// 2026-11-14 price fix for posts already in the store (see the ads_price_proposal_v1 step below)
+const ADS_PRICE_FIXES = [
+ [
+  "The all-in cost for most SMBs is $49.99/month in management fees plus your ad spend — compared to $1,000–$2,000/month for an agency or $500/month for DIY tools you still need to learn and operate.",
+  "WorldDigital.ai prices Google Ads management by custom proposal after a short call, based on your goals, monthly ad budget and campaign complexity. Ad spend is always separate and paid to Google. For comparison, traditional agencies often charge $1,000–$2,000/month, and DIY tools around $500/month that you still need to learn and operate."
+ ],
+ [
+  "WorldDigital.ai's AI manages your Google Ads campaigns continuously for $49.99/month — including keyword research, ad creation, negative keyword management, and monthly reporting.",
+  "WorldDigital.ai manages your Google Ads campaigns continuously, including keyword research, ad creation, negative keyword management, and monthly reporting. Pricing is a custom proposal after a short call, based on your goals, budget and campaign complexity."
+ ],
+ [
+  "from a single dashboard at $49.99/month each — with separate",
+  "from a single dashboard, priced by custom proposal after a short call, with separate"
+ ],
+ [
+  "**Management (WorldDigital.ai):** $49.99/month per platform",
+  "**Management (WorldDigital.ai):** custom proposal after a short call, based on your platforms, budget and goals"
+ ],
+ [
+  "This is dramatically less than what a traditional multi-channel agency would charge ($5,000–$15,000/month for similar coverage), and AI automation makes the optimization work that used to require multiple specialists.",
+  "Traditional multi-channel agencies often charge $5,000–$15,000/month for similar coverage, and AI automation now handles optimization work that used to require multiple specialists."
+ ]
+];
+
 // A post archived as a duplicate (address ending in -archived) is never public, whatever its status says.
 const isArchived = (slug) => /-archived(-\d+)?$/.test(String(slug || ''));
 
@@ -66,6 +90,14 @@ export class Store extends DurableObject {
       if (!one(this.sql.exec(`SELECT v FROM kv WHERE k = 'archived_to_draft_v2'`))) {
         this.sql.exec(`UPDATE posts SET status = 'draft', publish_at = NULL WHERE slug LIKE '%-archived' AND status != 'draft'`);
         this.sql.exec(`INSERT INTO kv (k,v) VALUES ('archived_to_draft_v2', ?)`, nowIso());
+      }
+      // 2026-11-14: Google Ads management is priced by custom proposal; the seeded posts still said $49.99/month.
+      // Same sentences as the edited files in content/blog; only exact matches change, so owner edits are kept.
+      if (!one(this.sql.exec(`SELECT v FROM kv WHERE k = 'ads_price_proposal_v1'`))) {
+        for (const [from, to] of ADS_PRICE_FIXES) {
+          this.sql.exec(`UPDATE posts SET body = REPLACE(body, ?, ?), updated_at = ? WHERE instr(body, ?) > 0`, from, to, nowIso(), from);
+        }
+        this.sql.exec(`INSERT INTO kv (k,v) VALUES ('ads_price_proposal_v1', ?)`, nowIso());
       }
     });
   }

@@ -916,7 +916,7 @@
  {
   "q": "Do you build Epic FHIR integrations?",
   "expect": [
-   "partner"
+   "partner|firm|connect"
   ],
   "urls": [
    "ehr-emr-integration"

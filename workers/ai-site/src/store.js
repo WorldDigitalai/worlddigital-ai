@@ -102,16 +102,16 @@ export class Store extends DurableObject {
         this.sql.exec(`INSERT INTO kv (k,v) VALUES ('ads_price_proposal_v1', ?)`, nowIso());
       }
       // 2026-11-14: WorldDigital.ai does not build EHR integrations itself (partners do; it runs Google Ads for patient
-      // bookings). An Autopilot post said otherwise; replace it only if it still has the old wording.
-      if (!one(this.sql.exec(`SELECT v FROM kv WHERE k = 'ehr_partner_posts_v1'`))) {
+      // bookings). An Autopilot post said otherwise; replace it once (v1 matched no text: the stored body has links inside that sentence).
+      if (!one(this.sql.exec(`SELECT v FROM kv WHERE k = 'ehr_partner_posts_v2'`))) {
         const slug = 'epic-ehr-api-vs-custom-integration-for-saas-teams';
         const t = nowIso();
-        this.sql.exec(`UPDATE posts SET body = ?, excerpt = ?, description = ?, updated_at = ? WHERE slug = ? AND instr(body, 'EHR/EMR integrations for businesses') > 0`,
+        this.sql.exec(`UPDATE posts SET body = ?, excerpt = ?, description = ?, updated_at = ? WHERE slug = ? AND instr(body, 'does not build Epic integrations itself') = 0`,
           EPIC_POST_BODY.trim(),
           'Epic’s API is the starting point for building against Epic. A specialist integration firm is the better fit when you need it planned, built, tested and launched, and we can connect you with one.',
           'Epic EHR API vs working with an integration firm: what each is best for, how Epic integrations go live, and how to choose a partner.', t, slug);
         this.sql.exec(`UPDATE posts SET body = REPLACE(body, 'data flow into CRM, ERP, or EHR systems', 'data flow into CRM or ERP systems'), updated_at = ? WHERE instr(body, 'data flow into CRM, ERP, or EHR systems') > 0`, t);
-        this.sql.exec(`INSERT INTO kv (k,v) VALUES ('ehr_partner_posts_v1', ?)`, t);
+        this.sql.exec(`INSERT INTO kv (k,v) VALUES ('ehr_partner_posts_v2', ?)`, t);
       }
     });
   }

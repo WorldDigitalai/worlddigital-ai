@@ -1155,7 +1155,9 @@
    "no|cannot|can't|guarantee"
   ],
   "urls": [
-   "/help"
+   "/help",
+   "ai-seo-agency",
+   "google-ads-agency"
   ],
   "tag": "page"
  },
@@ -1177,16 +1179,6 @@
   "urls": [
    "/help",
    "/about"
-  ],
-  "tag": "page"
- },
- {
-  "q": "Do you offer marketing in Spanish?",
-  "expect": [
-   "not|no"
-  ],
-  "urls": [
-   "/help"
   ],
   "tag": "page"
  },

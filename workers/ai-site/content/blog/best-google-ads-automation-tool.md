@@ -57,7 +57,7 @@ Fully managed services combine the automation capabilities of sophisticated soft
 
 WorldDigital.ai's Google Ads management operates this way: AI continuously monitors your campaigns, adjusts bids, generates new ad copy, and manages negative keywords — while surfacing only the decisions that require your input (budget changes, new campaign directions, creative approvals).
 
-The all-in cost for most SMBs is $49.99/month in management fees plus your ad spend — compared to $1,000–$2,000/month for an agency or $500/month for DIY tools you still need to learn and operate.
+WorldDigital.ai prices Google Ads management by custom proposal after a short call, based on your goals, monthly ad budget and campaign complexity. Ad spend is always separate and paid to Google. For comparison, traditional agencies often charge $1,000–$2,000/month, and DIY tools around $500/month that you still need to learn and operate.
 
 ## The Real Cost of Not Automating
 

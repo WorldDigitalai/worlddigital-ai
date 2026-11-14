@@ -67,10 +67,12 @@ const GEO_FAQ = faq('GEO questions', [
 ]);
 
 const CUSTOM_FAQ = faq('Custom software questions', [
-  ['How much does custom software cost?', 'It depends on scope: the number of screens, users, integrations and the data involved. After a short discovery conversation we send a written proposal with a fixed price and timeline, so you know the full cost before any work starts.'],
+  ['How much does custom software cost?', 'Small projects start at $199.99. Larger apps, portals and integrations are priced by scope: the number of screens, users, integrations and the data involved. After a short discovery conversation we send a written proposal with a fixed price and timeline, so you know the full cost before any work starts.'],
+  ['Can I get a quote?', 'Yes, it is free. Tell us what you need through the <a href="/contact">contact page</a> or call (832) 834-0680; after a short discovery conversation you get a written fixed-price quote.'],
+  ['Can you build a booking app with online payments?', 'Yes. We build booking and scheduling apps with online payments for appointment businesses such as yoga and fitness studios, salons, spas and clinics: class or appointment booking, deposits or full payment at checkout, reminders and a simple admin view. Small projects start at $199.99, and you get a fixed-price quote after a short call.'],
   ['How long does a project take?', 'Small tools and integrations often take 2 to 6 weeks. Larger web apps and portals are delivered in phases, with a working demo early so you can give feedback as it is built.'],
   ['Who owns the code?', 'You do. When the project is paid for, the code, data and accounts are yours, and we can keep supporting it or hand it to your own team.'],
-  ['Can you connect our existing tools?', 'Yes. We build API and data integrations between CRMs, payment, scheduling, email and ad platforms, and EHR/EMR systems for healthcare.'],
+  ['Can you connect our existing tools?', 'Yes. We build API and data integrations between CRMs, payment, scheduling, email and ad platforms. For healthcare EHR/EMR systems such as Epic, we bring in a specialist integration partner.'],
   ['Do you support the software after launch?', 'Yes. We offer monitoring, security updates, fixes and new features after launch, month to month.'],
 ]);
 const TOOLS_FAQ = faq('Tool questions', [
@@ -150,8 +152,8 @@ export const PAGES = {
       crumbs([['Home', '/'], ['Services', '/services'], ['Web design', '/build']])], sitemap: { priority: '0.8' } },
   '/ehr-emr-integration': { keywords: 'epic integration, integrate with epic, ehr integration, emr integration, epic ehr integration, ehr integration services, emr integration services, epic fhir api, smart on fhir, fhir integration, hl7 integration, ehr vs emr, patient portal integration, medical website design, healthcare web design', body: ehr, cta: false, tools: false,
     title: 'Epic, EHR & EMR Integration Services | WorldDigital.ai',
-    description: 'Epic integration and EHR and EMR integration services: Epic FHIR API apps, SMART on FHIR, HL7 integration, patient portal tools and medical websites.',
-    schema: [svc('EHR & EMR integration', '/ehr-emr-integration', 'Epic and FHIR-based integrations, AI booking and attribution for Epic clinics, patient-facing AI tools, medical websites and workflow automation for clinics, health systems and health tech companies.', 'Epic integration, EHR and EMR integration, FHIR and HL7 integration'),
+    description: 'Google Ads that book patient visits, plus Epic, EHR and EMR integration through leading integration partners in your region for hospitals, health systems and large clinics.',
+    schema: [svc('EHR & EMR integration', '/ehr-emr-integration', 'Google Ads for patient bookings with cost per booked visit, and Epic, EHR and EMR integration delivered through vetted regional integration partners, with WorldDigital.ai as the single point of contact, for hospitals, health systems and large clinics.', 'Google Ads for healthcare, Epic and EHR integration partner matching'),
       crumbs([['Home', '/'], ['Services', '/services'], ['EHR & EMR integration', '/ehr-emr-integration']])], sitemap: { priority: '0.9', lastmod: '2026-10-27' } },
   '/about': { body: about, cta: false, title: 'About WorldDigital.ai | Software Company',
     description: 'WorldDigital.ai is a software company in Houston, TX and Murfreesboro, TN making AI marketing tools and custom software for businesses across the US and Canada.',
@@ -198,7 +200,7 @@ export const PAGES = {
   '/custom-software': { keywords: 'custom software development, software development company, custom web app development, ai automation services, api integration services, software company for small business', body: customSoftware + CUSTOM_FAQ.html,
     title: 'Custom Software Development & AI Automation | WorldDigital.ai',
     description: 'Custom software development for SMBs, SMEs and enterprises: web apps and portals, AI automation and agents, API and EHR/EMR integrations. Fixed-scope proposals.',
-    schema: [svc('Custom software development', '/custom-software', 'Web apps and customer portals, AI automation and agents, API and data integrations, and EHR/EMR integrations.', 'Software development'),
+    schema: [svc('Custom software development', '/custom-software', 'Web apps and customer portals, booking and payment apps, AI automation and agents, and API and data integrations. Small projects from $199.99, larger ones by fixed-price quote.', 'Software development'),
       crumbs([['Home', '/'], ['Custom software', '/custom-software']])], sitemap: { priority: '0.9' } },
   '/contact': { body: contact, cta: false, tools: false, title: 'Contact WorldDigital.ai | Software & Custom Development',
     description: 'Contact WorldDigital.ai about our marketing software, a custom software or AI automation project, an integration or a managed service. We reply in one business day.',

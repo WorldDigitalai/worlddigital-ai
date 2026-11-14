@@ -51,9 +51,9 @@ A realistic starting budget:
 
 - **Platform 1 (Google or Meta):** $500–$1,000/month in ad spend
 - **Platform 2 (TikTok, Snapchat, or the other of Google/Meta):** $300–$600/month in ad spend
-- **Management (WorldDigital.ai):** $49.99/month per platform
+- **Management (WorldDigital.ai):** custom proposal after a short call, based on your platforms, budget and goals
 
-This is dramatically less than what a traditional multi-channel agency would charge ($5,000–$15,000/month for similar coverage), and AI automation makes the optimization work that used to require multiple specialists.
+Traditional multi-channel agencies often charge $5,000–$15,000/month for similar coverage, and AI automation now handles optimization work that used to require multiple specialists.
 
 ## Getting Started: A Practical Three-Platform Strategy
 

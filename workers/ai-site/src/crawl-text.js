@@ -55,7 +55,7 @@ Last updated: ${UPDATED}
 
 > WorldDigital.ai Corporation LLC is a software company serving SMBs, SMEs and enterprises across the United States and Canada, from hubs in Houston, TX and Murfreesboro, TN. We make AI marketing software (a free SEO and AI visibility report, keyword research and a content generator) and build custom software: web apps and portals, AI automation and agents, API integrations and EHR/EMR integrations. Managed SEO, Google Ads and website services are available as add-ons.
 
-Software: SEO & AI visibility report (free), keyword research ($9.99 one-time), content generator ($24.99 one-time), Social & Email Autopilot (coming soon). Custom software: web apps and customer portals, AI automation and agents, API and data integrations, EHR/EMR integration (Epic, FHIR, HL7).
+Software: SEO & AI visibility report (free), keyword research ($9.99 one-time), content generator ($24.99 one-time), Social & Email Autopilot (coming soon). Custom software (small projects from $199.99, larger ones by free fixed-price quote): web apps and customer portals, booking and payment apps (for example for yoga studios, salons and clinics), AI automation and agents, API and data integrations. Healthcare EHR/EMR integration (Epic, FHIR, HL7) is delivered through specialist partners.
 
 Add-on services: SEO and AI search visibility (SEO, AI SEO, AEO, GEO), technical, national and local SEO, Google Business Profile, keyword research, content marketing, Google Ads and PPC management, website design and management, analytics and reporting (GA4, Search Console).
 
@@ -70,7 +70,7 @@ Clients include Murfreesboro Kabob, RPM Auto Group and Bean Loft Coffee Company 
 ## Pages
 - [Home](${SITE}/) — Our software, custom software and add-on services
 - [Products](${SITE}/tools) — Our software and prices: free SEO & AI visibility report, keyword research ($9.99), content generator ($24.99)
-- [Custom software](${SITE}/custom-software) — Custom software development: web apps and portals, AI automation and agents, API and EHR/EMR integrations
+- [Custom software](${SITE}/custom-software) — Custom software development: web apps and portals, AI automation and agents, API integrations; from $199.99
 - [Contact](${SITE}/contact) — Contact form for software, custom projects and services
 - [About](${SITE}/about) — The company, how we work, founder
 - [Services](${SITE}/services) — Add-on managed services
@@ -81,7 +81,7 @@ Clients include Murfreesboro Kabob, RPM Auto Group and Bean Loft Coffee Company 
 - [Google Ads Agency](${SITE}/google-ads-agency) — Google Search, Maps and Performance Max campaign management
 - [AI Marketing Automation](${SITE}/ai-marketing-automation) — Automated marketing workflows for growing businesses
 - [Website Build](${SITE}/build) — Website design, maintenance and management for SMBs, SMEs and enterprises
-- [EHR & EMR Integration](${SITE}/ehr-emr-integration) — Epic integration and EHR/EMR integration through HL7 FHIR and SMART on FHIR, AI booking + attribution for Epic clinics (cost per booked visit), patient-facing AI tools and medical website design
+- [EHR & EMR Integration](${SITE}/ehr-emr-integration) — Google Ads that book patient visits (cost per booked visit); Epic, EHR and EMR integration through leading regional integration partners, with WorldDigital.ai as single point of contact
 - [Free SEO audit](${SITE}/free-seo-report) — Free SEO and AI visibility report (website SEO checker) in about 60 seconds
 - [Keyword research](${SITE}/services/keyword-research) — Keyword research tool and services: real Google search volume, CPC and competition (3 keywords free, all 10 for $9.99)
 - [SEO content](${SITE}/services/content-marketing) — Content marketing services and an AI content generator for ads and posts on 8 platforms (1 free, 5 for $24.99)
@@ -117,7 +117,8 @@ Last updated: ${UPDATED}
 - Type: Software company (SaaS marketing tools and custom software development), with managed marketing services as add-ons
 - Founded: 2023
 - Service area: the whole United States and Canada (remote). Hubs: Houston, Texas and Murfreesboro, Tennessee
-- Languages: English, Arabic
+- Languages: English, Arabic and Urdu (marketing and content in Arabic and Urdu too). Spanish is not offered.
+- Guarantees: no guaranteed Google rankings or AI citations, because Google and AI assistants decide those; the work and a monthly report of what changed are what is committed to.
 - Website: ${SITE}
 - Email: support@worlddigital.ai
 - Phone: (832) 834-0680
@@ -141,13 +142,13 @@ SEO, AI SEO, AEO and GEO in one flat plan, tax included, no contract, cancel any
 - Monthly one-page progress report
 
 ### Google Ads & PPC management (custom quote)
-Search, Maps and Performance Max campaigns built around calls, bookings and cost per lead, tracked in GA4, with A/B testing of ads, keywords, landing pages and bidding. Existing accounts are audited before changes.
+Search, Maps and Performance Max campaigns built around calls, bookings and cost per lead, tracked in GA4, with A/B testing of ads, keywords, landing pages and bidding. Existing accounts are audited before changes. Priced by custom proposal after a short call; ad spend is separate and paid directly to Google. SEM (search engine marketing) means paid search ads, mainly Google Ads, that put a business at the top of search results from day one, while SEO earns free rankings over months.
 
 ### Website design & management (custom quote)
 Planning, mobile-first design and development, domain/DNS/SSL/hosting (including Cloudflare), SEO-ready launch with schema, sitemap, GA4 and Search Console, conversion optimization and ongoing maintenance.
 
-### EHR & EMR integration (custom quote)
-Epic integration and EHR/EMR integration for clinics, health systems and health tech teams, built on the Epic FHIR API, SMART on FHIR and HL7. Includes AI booking + attribution for Epic clinics: patients book real open Epic slots from Google Ads, Google Business Profile or the clinic website, and each booked visit is credited to the campaign, keyword or listing that drove it (cost per booked visit). Only de-identified conversion counts go to ad platforms; patient data stays in Epic and a HIPAA, BAA-covered environment. ${SITE}/ehr-emr-integration
+### Healthcare: Google Ads for patient bookings, and EHR & EMR integration partners (custom quote)
+WorldDigital.ai itself runs Google Ads for healthcare that are measured by booked patient visits (cost per booked visit); only de-identified conversion counts go to ad platforms. WorldDigital.ai does not build Epic, EHR or EMR integrations itself: for hospitals, health systems and large clinics it brings in leading integration firms in their region with experience on their EHR (Epic FHIR API, SMART on FHIR, HL7), and stays the single point of contact. The partner builds the integration and signs any Business Associate Agreement needed for patient data. ${SITE}/ehr-emr-integration
 
 ### Keyword research tool ($9.99 one-time)
 Enter a website and market (United States or Canada). The tool reads the site, pulls Google Ads keyword data (monthly search volume, cost per click, competition) and ranks the 10 keywords most likely to bring customers, with intent and target page. Top 3 are free; all 10 are $9.99, delivered as PDF, Excel or Word and by email. One free preview per website. ${SITE}/services/keyword-research

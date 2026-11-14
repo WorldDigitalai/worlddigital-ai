@@ -438,7 +438,7 @@
   "q": "How do you handle HIPAA and patient data?",
   "expect": [
    "business associate|baa",
-   "encrypt"
+   "partner|de-identified"
   ],
   "urls": [
    "ehr-emr-integration"
@@ -916,7 +916,7 @@
  {
   "q": "Do you build Epic FHIR integrations?",
   "expect": [
-   "fhir|epic"
+   "partner"
   ],
   "urls": [
    "ehr-emr-integration"
@@ -1148,5 +1148,67 @@
    "/social"
   ],
   "tag": "reworded"
+ },
+ {
+  "q": "Do you guarantee first-page rankings on Google?",
+  "expect": [
+   "no|cannot|can't|guarantee"
+  ],
+  "urls": [
+   "/help"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "What is SEM?",
+  "expect": [
+   "search engine marketing"
+  ],
+  "urls": [
+   "google-ads-agency"
+  ],
+  "tag": "visitor"
+ },
+ {
+  "q": "Do you offer marketing in Urdu?",
+  "expect": [
+   "urdu"
+  ],
+  "urls": [
+   "/help",
+   "/about"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "Do you offer marketing in Spanish?",
+  "expect": [
+   "not|no"
+  ],
+  "urls": [
+   "/help"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "Can you build a booking app for a yoga studio with payments?",
+  "expect": [
+   "booking",
+   "payment"
+  ],
+  "urls": [
+   "custom-software"
+  ],
+  "tag": "visitor"
+ },
+ {
+  "q": "Does the content generator write Instagram captions for a bakery?",
+  "expect": [
+   "bakery|instagram"
+  ],
+  "urls": [
+   "content-marketing"
+  ],
+  "tag": "visitor"
  }
 ]

@@ -1,0 +1,52 @@
+name: MCP connector check
+# Manual: what happened when an assistant tried to connect (request log for the MCP and sign-in addresses, last 6 hours,
+# plus server errors), and a walk through the same steps Claude takes, stopping at the consent page. No tokens printed.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      API: https://worlddigital-ai-api-250920469327.us-central1.run.app
+    steps:
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/250920469327/locations/global/workloadIdentityPools/github/providers/github
+          service_account: github-deploy@cs-poc-0zqkvyxapah85tnxz2byzqa.iam.gserviceaccount.com
+      - uses: google-github-actions/setup-gcloud@v3
+      - name: Request log
+        run: |
+          set +e
+          gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="worlddigital-ai-api" AND (httpRequest.requestUrl:"/mcp" OR httpRequest.requestUrl:"well-known" OR httpRequest.requestUrl:"/register" OR httpRequest.requestUrl:"/authorize" OR httpRequest.requestUrl:"/token" OR httpRequest.requestUrl:"/revoke")' \
+            --project cs-poc-0zqkvyxapah85tnxz2byzqa --freshness=6h --limit=80 \
+            --format='value(timestamp,httpRequest.status,httpRequest.requestMethod,httpRequest.requestUrl,httpRequest.userAgent)' \
+            | sed -E 's#https?://[^/]+##; s#(code|state|code_challenge|req)=[^&[:space:]]+#\1=…#g' | head -80
+          echo "---- server messages about mcp/oauth (6h)"
+          gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="worlddigital-ai-api" AND (textPayload:"mcp" OR textPayload:"oauth" OR textPayload:"auth" OR severity>=ERROR)' \
+            --project cs-poc-0zqkvyxapah85tnxz2byzqa --freshness=6h --limit=40 --format='value(timestamp,severity,textPayload)' | cut -c1-300 | head -40
+      - name: Walk through Claude's steps
+        run: |
+          show() { echo "== $1"; }
+          show "POST /mcp without sign-in"; curl -s -i -X POST "$API/mcp" -H 'content-type: application/json' -H 'accept: application/json, text/event-stream' \
+            -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"t","version":"1"}}}' | grep -i -E "^HTTP|www-authenticate"
+          for p in /.well-known/oauth-protected-resource/mcp /.well-known/oauth-protected-resource /.well-known/oauth-authorization-server /.well-known/openid-configuration /.well-known/oauth-authorization-server/mcp; do
+            show "GET $p"; curl -s -o b.json -w "%{http_code}\n" "$API$p"; head -c 700 b.json; echo; done
+          show "register like Claude"
+          curl -s -o reg.json -w "%{http_code}\n" -X POST "$API/register" -H 'content-type: application/json' \
+            -d '{"client_name":"Claude","redirect_uris":["https://claude.ai/api/mcp/auth_callback"],"grant_types":["authorization_code","refresh_token"],"response_types":["code"],"token_endpoint_auth_method":"client_secret_post","scope":"read"}'
+          jq -c 'del(.client_secret)' reg.json
+          cid=$(jq -r .client_id reg.json)
+          show "authorize"
+          curl -s -o /dev/null -w "%{http_code} -> %{redirect_url}\n" -G "$API/authorize" --data-urlencode response_type=code --data-urlencode client_id=$cid \
+            --data-urlencode redirect_uri=https://claude.ai/api/mcp/auth_callback --data-urlencode state=abc --data-urlencode code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM \
+            --data-urlencode code_challenge_method=S256 --data-urlencode "resource=$API/mcp" | sed -E 's#req=[^&]+#req=…#'
+          show "authorize without scope or resource"
+          curl -s -o a.txt -w "%{http_code} -> %{redirect_url}\n" -G "$API/authorize" --data-urlencode response_type=code --data-urlencode client_id=$cid \
+            --data-urlencode redirect_uri=https://claude.ai/api/mcp/auth_callback --data-urlencode state=abc --data-urlencode code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM \
+            --data-urlencode code_challenge_method=S256 | sed -E 's#req=[^&]+#req=…#'; head -c 300 a.txt; echo
+          show "consent page, not signed in"
+          curl -s -o c.html -w "%{http_code} -> %{redirect_url}\n" "https://worlddigital.ai/blog-admin/mcp?req=test"

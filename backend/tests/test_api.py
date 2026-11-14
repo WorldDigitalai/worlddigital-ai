@@ -34,7 +34,10 @@ class Mocks:
     def chat(self, request):
         self.openai += 1
         user = json.loads(request.content)["messages"][1]["content"]
-        if "exactly 3 very short voiceover lines" in user:
+        if "exactly 3 VERY short voiceover lines" in user:
+            out = {"hook": "Get found on Maps", "point": "Ask for reviews", "cta": "Read more",
+                   "voice": ["Get found.", "Ask for reviews.", "More at worlddigital.ai."]}
+        elif "exactly 3 very short voiceover lines" in user:
             out = {"hook": "Get found on Google Maps", "point": "Ask happy customers for reviews",
                    "cta": "Read the full guide", "voice": [f"Short voice line {i}." for i in range(3)]}
         elif "Write AI Ahmad's next reply" in user:
@@ -372,3 +375,19 @@ def test_blog_video_refuses_over_8_seconds(env):
         r2.post("https://openai.test/v1/audio/speech").mock(side_effect=lambda req: _tone_wav(req, 3.4))
         r = c.post("/api/admin/blog/video", json={"title": "Local SEO guide", "excerpt": "x", "body": "y"})
     assert r.status_code == 503 and "8 seconds" in r.json()["error"]
+
+
+@pytest.mark.skipif(not __import__("shutil").which("ffmpeg"), reason="ffmpeg not installed")
+def test_blog_video_retries_shorter_script(env):
+    c, m = env
+    import json as _j
+    import respx as _r
+    def speech(req):  # long lines on the first script, short lines once the shorter script is used
+        text = _j.loads(req.content)["input"]
+        return _tone_wav(req, 0.8 if text in ("Get found.", "Ask for reviews.", "More at worlddigital.ai.") else 3.4)
+    with _r.mock(assert_all_called=False) as r2:
+        r2.post("https://openai.test/v1/chat/completions").mock(side_effect=m.chat)
+        r2.post("https://openai.test/v1/audio/speech").mock(side_effect=speech)
+        r = c.post("/api/admin/blog/video", json={"title": "Local SEO guide", "excerpt": "x", "body": "y"})
+    assert r.status_code == 200, r.text
+    assert r.json()["duration"] <= 8.0 and r.json()["script"]["voice"][-1] == "More at worlddigital.ai."

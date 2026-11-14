@@ -43,7 +43,7 @@ def _font(name: str, size: int) -> ImageFont.FreeTypeFont:
 
 # ── 1. Script ───────────────────────────────────────────────────────────────
 
-def write_script(s: Settings, *, title: str, excerpt: str, body: str) -> dict:
+def write_script(s: Settings, *, title: str, excerpt: str, body: str, shorter: bool = False) -> dict:
     data = openai_json(s, system=(
         "You write 7-second vertical videos (YouTube Shorts, TikTok) that promote a business blog post for "
         "WorldDigital.ai. Plain, friendly English for small business owners. Only use facts that are in the post: "
@@ -53,8 +53,11 @@ def write_script(s: Settings, *, title: str, excerpt: str, body: str) -> dict:
         "- hook: on-screen headline, max 6 words\n"
         "- point: the single most useful takeaway from the post, on screen, max 6 words\n"
         "- cta: on-screen call to action, max 4 words (e.g. 'Read the full guide')\n"
-        "- voice: exactly 3 very short voiceover lines in order (hook, point, call to action), max 6 words each, "
-        "15 words in total at most, so the whole video fits in 7 seconds. The last line points to worlddigital.ai."),
+        + ("- voice: exactly 3 VERY short voiceover lines in order (hook, point, call to action), max 4 words each, "
+           "11 words in total at most. Do NOT read long brand or product names aloud. The last line is exactly "
+           "'More at worlddigital.ai.'" if shorter else
+           "- voice: exactly 3 very short voiceover lines in order (hook, point, call to action), max 6 words each, "
+           "15 words in total at most, so the whole video fits in 7 seconds. The last line points to worlddigital.ai.")),
         max_tokens=700, temperature=0.5)
     pts = [str(data.get("point") or "").strip()] if str(data.get("point") or "").strip() else []
     voice = [str(v).strip() for v in (data.get("voice") or []) if str(v).strip()][:3]
@@ -265,7 +268,7 @@ def max_volume_db(path: str) -> float:
 def _fit_voice(tmp: str, raws: list[str]) -> tuple[list[float], list[str]]:
     """Normalize each line (trim silence, 0.15 s pause) and make the whole video fit MAX_SECONDS."""
     tail = 0.5  # last slide holds a moment after the voice
-    for tempo in (1.0, 1.12, 1.25):
+    for tempo in (1.0, 1.12, 1.25, 1.33):
         durations, parts = [], []
         for i, raw in enumerate(raws):
             p = os.path.join(tmp, f"vo{i}_{int(tempo * 100)}.wav")
@@ -286,7 +289,6 @@ def _fit_voice(tmp: str, raws: list[str]) -> tuple[list[float], list[str]]:
 def make_video(s: Settings, *, title: str, excerpt: str, body: str, cover_url: str = "") -> dict:
     if not s.openai_api_key:
         raise ApiError("OPENAI_API_KEY missing", 503, "The video maker is being set up.")
-    script = write_script(s, title=title, excerpt=excerpt, body=body)
     cover = None
     if cover_url.startswith("https://"):
         try:
@@ -296,12 +298,21 @@ def make_video(s: Settings, *, title: str, excerpt: str, body: str, cover_url: s
         except Exception as e:  # noqa: BLE001
             print("video cover fetch failed", e, flush=True)
     with tempfile.TemporaryDirectory() as tmp:
-        durations, parts = [], []
-        for i, line in enumerate(script["voice"]):
-            raw = os.path.join(tmp, f"raw{i}.wav")
-            open(raw, "wb").write(speak(s, line))
-            parts.append(raw)
-        durations, parts = _fit_voice(tmp, parts)
+        # Up to 3 tries: a script whose voice runs over MAX_SECONDS (or comes back malformed) is rewritten shorter.
+        for attempt in range(3):
+            try:
+                script = write_script(s, title=title, excerpt=excerpt, body=body, shorter=attempt > 0)
+                parts = []
+                for i, line in enumerate(script["voice"]):
+                    raw = os.path.join(tmp, f"raw{attempt}_{i}.wav")
+                    open(raw, "wb").write(speak(s, line))
+                    parts.append(raw)
+                durations, parts = _fit_voice(tmp, parts)
+                break
+            except ApiError as e:
+                print(f"blog video attempt {attempt + 1} failed: {e}", flush=True)
+                if attempt == 2 or not ("too long" in str(e) or "bad video script" in str(e)):
+                    raise
         lst = os.path.join(tmp, "list.txt")
         open(lst, "w").write("".join(f"file '{p}'\n" for p in parts))
         vo = os.path.join(tmp, "vo.wav")

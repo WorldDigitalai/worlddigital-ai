@@ -291,7 +291,7 @@ def test_blog_video_has_sound(env):
     import base64
     data = base64.b64decode(d["b64"])
     assert d["type"] == "video/mp4" and data[4:8] == b"ftyp" and len(data) < 1_850_000
-    assert d["max_volume_db"] > -30 and 3 < d["duration"] <= 8.0
+    assert d["max_volume_db"] > -30 and 3 < d["duration"] <= 7.0
 
 
 @pytest.mark.skipif(not __import__("shutil").which("ffmpeg"), reason="ffmpeg not installed")
@@ -374,7 +374,7 @@ def test_blog_video_refuses_over_8_seconds(env):
         r2.post("https://openai.test/v1/chat/completions").mock(side_effect=m.chat)
         r2.post("https://openai.test/v1/audio/speech").mock(side_effect=lambda req: _tone_wav(req, 3.4))
         r = c.post("/api/admin/blog/video", json={"title": "Local SEO guide", "excerpt": "x", "body": "y"})
-    assert r.status_code == 503 and "8 seconds" in r.json()["error"]
+    assert r.status_code == 503 and "7 seconds" in r.json()["error"]
 
 
 @pytest.mark.skipif(not __import__("shutil").which("ffmpeg"), reason="ffmpeg not installed")
@@ -390,4 +390,4 @@ def test_blog_video_retries_shorter_script(env):
         r2.post("https://openai.test/v1/audio/speech").mock(side_effect=speech)
         r = c.post("/api/admin/blog/video", json={"title": "Local SEO guide", "excerpt": "x", "body": "y"})
     assert r.status_code == 200, r.text
-    assert r.json()["duration"] <= 8.0 and r.json()["script"]["voice"][-1] == "More at worlddigital.ai."
+    assert r.json()["duration"] <= 7.0 and r.json()["script"]["voice"][-1] == "More at worlddigital.ai."

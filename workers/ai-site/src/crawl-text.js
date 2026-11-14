@@ -118,7 +118,7 @@ Last updated: ${UPDATED}
 - Founded: 2023
 - Service area: the whole United States and Canada (remote). Hubs: Houston, Texas and Murfreesboro, Tennessee
 - Languages: English, Arabic and Urdu (marketing and content in Arabic and Urdu too). Spanish is not offered.
-- Guarantees: no guaranteed Google rankings or AI citations, because Google and AI assistants decide those; the work and a monthly report of what changed are what is committed to.
+- Guarantees: WorldDigital.ai does not guarantee first-page Google rankings or AI citations, because Google and AI assistants decide those; the work and a monthly report of what changed are what is committed to.
 - Website: ${SITE}
 - Email: support@worlddigital.ai
 - Phone: (832) 834-0680

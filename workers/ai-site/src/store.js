@@ -5,6 +5,8 @@ import { sendEmail, validate } from './admin.js';
 import { shareToBuffer } from './buffer.js';
 
 // 2026-11-14 price fix for posts already in the store (see the ads_price_proposal_v1 step below)
+import EPIC_POST_BODY from '../content/fixes/epic-ehr-api-partner.md';
+
 const ADS_PRICE_FIXES = [
  [
   "The all-in cost for most SMBs is $49.99/month in management fees plus your ad spend — compared to $1,000–$2,000/month for an agency or $500/month for DIY tools you still need to learn and operate.",
@@ -98,6 +100,18 @@ export class Store extends DurableObject {
           this.sql.exec(`UPDATE posts SET body = REPLACE(body, ?, ?), updated_at = ? WHERE instr(body, ?) > 0`, from, to, nowIso(), from);
         }
         this.sql.exec(`INSERT INTO kv (k,v) VALUES ('ads_price_proposal_v1', ?)`, nowIso());
+      }
+      // 2026-11-14: WorldDigital.ai does not build EHR integrations itself (partners do; it runs Google Ads for patient
+      // bookings). An Autopilot post said otherwise; replace it only if it still has the old wording.
+      if (!one(this.sql.exec(`SELECT v FROM kv WHERE k = 'ehr_partner_posts_v1'`))) {
+        const slug = 'epic-ehr-api-vs-custom-integration-for-saas-teams';
+        const t = nowIso();
+        this.sql.exec(`UPDATE posts SET body = ?, excerpt = ?, description = ?, updated_at = ? WHERE slug = ? AND instr(body, 'EHR/EMR integrations for businesses') > 0`,
+          EPIC_POST_BODY.trim(),
+          'Epic’s API is the starting point for building against Epic. A specialist integration firm is the better fit when you need it planned, built, tested and launched, and we can connect you with one.',
+          'Epic EHR API vs working with an integration firm: what each is best for, how Epic integrations go live, and how to choose a partner.', t, slug);
+        this.sql.exec(`UPDATE posts SET body = REPLACE(body, 'data flow into CRM, ERP, or EHR systems', 'data flow into CRM or ERP systems'), updated_at = ? WHERE instr(body, 'data flow into CRM, ERP, or EHR systems') > 0`, t);
+        this.sql.exec(`INSERT INTO kv (k,v) VALUES ('ehr_partner_posts_v1', ?)`, t);
       }
     });
   }

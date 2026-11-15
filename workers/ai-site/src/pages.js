@@ -151,7 +151,7 @@ export const PAGES = {
       crumbs([['Home', '/'], ['Services', '/services'], ['Web design', '/build']])], sitemap: { priority: '0.8' } },
   '/ehr-emr-integration': { keywords: 'epic integration, integrate with epic, ehr integration, emr integration, epic ehr integration, ehr integration services, emr integration services, epic fhir api, smart on fhir, fhir integration, hl7 integration, ehr vs emr, patient portal integration, medical website design, healthcare web design', body: ehr, cta: false, tools: false,
     title: 'Epic, EHR & EMR Integration Services | WorldDigital.ai',
-    description: 'Google Ads that book patient visits, plus Epic, EHR and EMR integration through leading integration partners in your region for hospitals, health systems and large clinics.',
+    description: 'Google Ads for patient bookings, plus Epic, EHR and EMR integration through specialist partners for hospitals, health systems and large clinics.',
     schema: [svc('EHR & EMR integration', '/ehr-emr-integration', 'Google Ads for patient bookings with cost per booked visit, and Epic, EHR and EMR integration delivered through vetted regional integration partners, with WorldDigital.ai as the single point of contact, for hospitals, health systems and large clinics.', 'Google Ads for healthcare, Epic and EHR integration partner matching'),
       crumbs([['Home', '/'], ['Services', '/services'], ['EHR & EMR integration', '/ehr-emr-integration']])], sitemap: { priority: '0.9', lastmod: '2026-10-27' } },
   '/about': { body: about, cta: false, title: 'About WorldDigital.ai | Software Company',

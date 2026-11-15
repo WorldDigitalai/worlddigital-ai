@@ -938,7 +938,7 @@ def test_live_answer_chain_fast_then_claude_then_openai(env, monkeypatch):
 def test_approved_answer_rejects_oversized_inputs_without_truncation(env):
     """Approved-answer input must not silently change the admin's wording."""
     client, _ = env
-    rag = rag_mod.rag()
+    rag = main.rag()
     with pytest.raises(Exception, match="Question must be at most 300"):
         rag.correction_set("Q" * 301, "Valid answer")
     with pytest.raises(Exception, match="answer at most 1500"):
@@ -948,7 +948,7 @@ def test_approved_answer_rejects_oversized_inputs_without_truncation(env):
 def test_approved_answer_semantic_scan_not_limited_to_500(env):
     """A later approved answer must remain eligible for semantic matching."""
     client, _ = env
-    rag = rag_mod.rag()
+    rag = main.rag()
     target = vec("target approved question")
     for i in range(510):
         rag.corrections.insert_one({

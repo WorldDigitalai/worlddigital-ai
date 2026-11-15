@@ -126,7 +126,7 @@ FAST_PROVIDERS = {"groq": ("https://api.groq.com/openai/v1", "groq_api_key"), "c
 
 
 def fast_stream(s: Settings, *, system: str, user: str, model: str, max_tokens: int = 500, key: str | None = None,
-                timeout=60, feature: str | None = None, retries: int = 0):
+                timeout=60, feature: str | None = None, retries: int = 0, on_usage=None):
     """Yields answer text from a fast-inference provider with an OpenAI-style API. `model` is "groq:<model id>" or
     "cerebras:<model id>". Reasoning is kept as low as the model allows and never shown: gpt-oss models cannot switch
     it off (effort "low", with room for it in the token limit); qwen models run with reasoning off."""
@@ -160,6 +160,11 @@ def fast_stream(s: Settings, *, system: str, user: str, model: str, max_tokens: 
                 raise ApiError(f"{provider} {r.status_code}: {r.text[:200]}", 502, "The answer model is busy. Please try again.")
             yield from _fast_lines(r, usage)
         break
+    if on_usage:   # spend tracking (a missing usage report is estimated from the text, never counted as free)
+        try:
+            on_usage(model, usage or {"prompt_tokens": (len(system) + len(user)) // 3, "completion_tokens": max_tokens})
+        except Exception:  # noqa: BLE001
+            pass
     record_usage(feature, model, usage)
 
 

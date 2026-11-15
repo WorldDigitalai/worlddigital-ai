@@ -66,6 +66,13 @@ ANSWER_MODEL = os.environ.get("RAG_ANSWER_MODEL", "")
 ANSWER_FALLBACKS = [m.strip() for m in os.environ.get("RAG_ANSWER_FALLBACK", "").split(",") if m.strip()]
 WARM_MODEL = os.environ.get("RAG_WARM_MODEL", "")   # model that prepares ready answers in bulk (keeps a fast provider's allowance for visitors)
 FAST_STALL_S = float(os.environ.get("RAG_FAST_STALL_S", "1.2"))   # a fast provider that sends nothing for this long is dropped
+# Spending caps for paid fast providers, in US dollars across all calls (0 = never used). Prices per million tokens
+# (input, output) from the provider's price list: Cerebras Qwen 3.8 27B $0.99 / $1.49 (checked 2026-11-15).
+FAST_BUDGET_USD = {"cerebras": float(os.environ.get("CEREBRAS_BUDGET_USD", "0") or 0),
+                   "groq": float(os.environ.get("GROQ_BUDGET_USD", "0") or 0)}
+FAST_PRICES = {"cerebras": (float(os.environ.get("CEREBRAS_PRICE_IN", "0.99")), float(os.environ.get("CEREBRAS_PRICE_OUT", "1.49"))),
+               "groq": (float(os.environ.get("GROQ_PRICE_IN", "1")), float(os.environ.get("GROQ_PRICE_OUT", "1")))}
+FAST_RESERVE_USD = 0.01   # stop slightly early so answers already in flight cannot run past the cap
 PREPARED_PER_PAGE = int(os.environ.get("RAG_PREPARED_PER_PAGE", "15"))   # likely visitor questions written per page (0 = off)
 READY_CACHE_S, READY_MAX = 45, 4000        # in-memory copy of the ready answers' question vectors
 PREFIX_DIMS, PREFILTER_OVER, PREFILTER_KEEP = 256, 150, 40
@@ -496,6 +503,35 @@ class Rag:
         return res
 
     # metrics ------------------------------------------------------------------
+    # --- spending cap for paid fast providers (Cerebras, Groq): every call counts, live answers and quality tests ---
+    @staticmethod
+    def _fast_provider(model: str) -> str:
+        return model.split(":", 1)[0]
+
+    def fast_spend(self, provider: str = "cerebras") -> dict:
+        d = self.meta.find_one({"_id": f"spend:{provider}"}) or {}
+        cap = FAST_BUDGET_USD.get(provider, 0.0)
+        usd = round(float(d.get("usd") or 0), 4)
+        return {"provider": provider, "spent_usd": usd, "cap_usd": cap, "left_usd": round(max(cap - usd, 0), 4),
+                "answers": int(d.get("answers") or 0), "input_tokens": int(d.get("in") or 0), "output_tokens": int(d.get("out") or 0),
+                "since": d.get("since"), "price_per_million": FAST_PRICES.get(provider)}
+
+    def _fast_budget_check(self, model: str) -> None:
+        p = self._fast_provider(model)
+        sp = self.fast_spend(p)
+        if sp["spent_usd"] + FAST_RESERVE_USD >= sp["cap_usd"]:
+            self._metric(f"{p}_cap_reached", 0)
+            raise ApiError(f"{p} spending cap reached: ${sp['spent_usd']:.2f} of ${sp['cap_usd']:.2f}", 503,
+                           "The fast answer model has reached its spending cap.")
+
+    def _fast_spend(self, model: str, usage: dict) -> None:
+        p = self._fast_provider(model)
+        price_in, price_out = FAST_PRICES.get(p, (0.0, 0.0))
+        t_in, t_out = int(usage.get("prompt_tokens") or 0), int(usage.get("completion_tokens") or 0)
+        usd = (t_in * price_in + t_out * price_out) / 1e6
+        self.meta.update_one({"_id": f"spend:{p}"}, {"$inc": {"usd": usd, "in": t_in, "out": t_out, "answers": 1},
+                                                    "$setOnInsert": {"since": now()}}, upsert=True)
+
     def _metric(self, kind: str, ms: int | None = None) -> None:
         try:
             inc = {kind: 1, **({f"{kind}_ms": ms} if ms is not None else {})}
@@ -1190,10 +1226,11 @@ class Rag:
             if m and m.startswith("@cf/"):
                 return workers_stream(self.s, system=system, user=user, model=m, max_tokens=self.ANSWER_TOKENS)
             if m and m.split(":")[0] in services.FAST_PROVIDERS:
+                self._fast_budget_check(m)   # over its spending cap: refused here, so the next model in the chain answers
                 # live: give up fast (no waiting on a rate limit, no stalled start) so the next model takes over;
                 # a trial of exactly this model waits and retries instead, to measure the model itself
                 return services.fast_stream(self.s, system=system, user=user, model=m, max_tokens=self.ANSWER_TOKENS, feature="rag.answer",
-                                            key=trial_key, retries=3 if model else 0,
+                                            key=trial_key, retries=3 if model else 0, on_usage=self._fast_spend,
                                             timeout=60 if model else httpx.Timeout(10, connect=1.5, read=FAST_STALL_S))
             if m and m.startswith("claude-"):
                 return services.claude_stream(self.s, system=system, user=user, model=m, max_tokens=self.ANSWER_TOKENS,

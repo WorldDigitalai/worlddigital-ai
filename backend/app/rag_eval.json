@@ -482,7 +482,8 @@
    "per location|location"
   ],
   "urls": [
-   "/enterprise"
+   "/enterprise",
+   "local-seo-services"
   ],
   "tag": "page"
  },
@@ -650,7 +651,8 @@
   "urls": [
    "/services",
    "/help",
-   "ai-seo-agency"
+   "ai-seo-agency",
+   "ai-seo-pricing"
   ],
   "tag": "page"
  },

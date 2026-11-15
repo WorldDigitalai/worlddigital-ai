@@ -913,6 +913,7 @@ def test_live_answer_chain_fast_then_claude_then_openai(env, monkeypatch):
     monkeypatch.setattr(rag_mod, "ANSWER_MODEL", "cerebras:qwen-3.8-27b")
     monkeypatch.setattr(rag_mod, "ANSWER_FALLBACKS", ["claude-haiku-5-5"])
     monkeypatch.setattr(rag_mod, "WARM_MODEL", "claude-haiku-5-5")
+    monkeypatch.setattr(rag_mod, "FAST_BUDGET_USD", {"cerebras": 5.0, "groq": 0.0})
     seen = {}
     monkeypatch.setattr(rag_mod.services, "fast_stream", lambda s, **kw: seen.update(fast=kw) or iter(["COVERED: yes\nFrom Qwen [1]."]))
     monkeypatch.setattr(rag_mod.services, "claude_stream", lambda s, **kw: iter(["COVERED: yes\nFrom Claude [1]."]))
@@ -957,3 +958,35 @@ def test_approved_answer_semantic_scan_not_limited_to_500(env):
         })
     result = rag._similar_correction(target, ["ai"])
     assert result is not None and result["_id"] == "approved-509"
+
+
+def test_cerebras_spending_cap_counts_every_call_and_falls_back(env, monkeypatch):
+    c, w = env
+    c.post("/api/admin/rag/index", headers=H, json={})
+    monkeypatch.setattr(rag_mod, "ANSWER_MODEL", "cerebras:qwen-3.8-27b")
+    monkeypatch.setattr(rag_mod, "ANSWER_FALLBACKS", ["claude-haiku-5-5"])
+    monkeypatch.setattr(rag_mod, "FAST_BUDGET_USD", {"cerebras": 0.02, "groq": 0.0})
+    calls = []
+
+    def fake_fast(s, **kw):
+        calls.append(kw["model"])
+        yield "COVERED: yes\nFrom Qwen [1]."
+        kw["on_usage"](kw["model"], {"prompt_tokens": 2000, "completion_tokens": 100})   # $0.002129 at 0.99 / 1.49
+    monkeypatch.setattr(rag_mod.services, "fast_stream", fake_fast)
+    monkeypatch.setattr(rag_mod.services, "claude_stream", lambda s, **kw: iter(["COVERED: yes\nFrom Claude [1]."]))
+    ask = lambda q: c.post("/api/admin/rag/ask", headers=H, json={"q": q}).json()["answer"]  # noqa: E731
+    from app import main
+    got = [ask(f"Epic FHIR budget {i}") for i in range(8)]
+    sp = main.rag().fast_spend("cerebras")
+    # $0.02 cap with $0.01 kept in reserve: five answers fit (about $0.0106), the rest go to Claude, the cap is never passed
+    assert sum("From Qwen" in a for a in got) == 5 and all("From Claude" in a for a in got[5:])
+    assert sp["answers"] == 5 and sp["spent_usd"] < 0.02 and sp["input_tokens"] == 10000 and sp["left_usd"] > 0
+    # a quality-test trial of Cerebras is refused once the cap is reached, with a clear reason
+    r = main.rag()
+    with pytest.raises(rag_mod.ApiError, match="spending cap"):
+        r._fast_budget_check("cerebras:qwen-3.8-27b")
+    # no cap set = Cerebras is never called
+    monkeypatch.setattr(rag_mod, "FAST_BUDGET_USD", {"cerebras": 0.0, "groq": 0.0})
+    n = len(calls)
+    assert "From Claude" in ask("Epic FHIR budget off")
+    assert len(calls) == n

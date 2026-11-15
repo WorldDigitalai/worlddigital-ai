@@ -343,3 +343,13 @@ errors, is rate-limited or sends nothing for `RAG_FAST_STALL_S` (1.2 s) before w
 (`answer_fallback` in the daily metrics). Ready answers are prepared in bulk by `RAG_WARM_MODEL` (`claude-haiku-5-5`), so the
 fast provider's allowance is kept for visitors. To go back to Claude only: set `RAG_ANSWER_MODEL=claude-haiku-5-5` in
 deploy-backend.yml and deploy. Trials of other models: run the index workflow with `answer_model` (`groq:<id>`, `cerebras:<id>`).
+
+## Cerebras spending cap
+
+`CEREBRAS_BUDGET_USD` (now 2) caps total Cerebras spend across every call, live answers and quality-test trials alike.
+Spend is counted from the token usage Cerebras reports, at `CEREBRAS_PRICE_IN` / `CEREBRAS_PRICE_OUT` per million
+tokens (0.99 / 1.49 for Qwen 3.8 27B, checked 2026-11-15), in `rag_meta` document `spend:cerebras`. Cerebras stops
+$0.01 before the cap; after that live answers go to the next model in the chain and trials fail with "spending cap
+reached". A cap of 0 means Cerebras is never called. The MCP tool `quality_and_speed` shows the spend.
+Cerebras is used live only when `RAG_ANSWER_MODEL` is a `cerebras:` model (it is not, as of 2026-11-15: off until
+the owner turns it on). To reset the count: delete `spend:cerebras`, or raise the cap.

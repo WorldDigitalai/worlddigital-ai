@@ -18,7 +18,7 @@ jobs:
       - name: Crawl both sites
         run: python3 tools/site_audit.py
       - name: Deep SEO check (canonical, breadcrumbs, metadata, structured data, internal links)
-        continue-on-error: true
+        # SEO regressions must fail the audit rather than being reported as a green run.
         run: python3 tools/seo_deep_audit.py
       - uses: google-github-actions/auth@v3
         id: gcp

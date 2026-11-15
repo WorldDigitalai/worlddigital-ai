@@ -933,3 +933,27 @@ def test_live_answer_chain_fast_then_claude_then_openai(env, monkeypatch):
     c.post("/api/admin/rag/warm", headers=H)
     from app import main
     assert all("From Claude" in d["answer"] for d in main.rag().answers.find({}))
+
+
+def test_approved_answer_rejects_oversized_inputs_without_truncation(env):
+    """Approved-answer input must not silently change the admin's wording."""
+    client, _ = env
+    rag = rag_mod.rag()
+    with pytest.raises(Exception, match="Question must be at most 300"):
+        rag.correction_set("Q" * 301, "Valid answer")
+    with pytest.raises(Exception, match="answer at most 1500"):
+        rag.correction_set("Valid question?", "A" * 1501)
+
+
+def test_approved_answer_semantic_scan_not_limited_to_500(env):
+    """A later approved answer must remain eligible for semantic matching."""
+    client, _ = env
+    rag = rag_mod.rag()
+    target = vec("target approved question")
+    for i in range(510):
+        rag.corrections.insert_one({
+            "_id": f"approved-{i}", "q": f"Question {i}", "src": ["ai"],
+            "answer": f"Answer {i}", "qv": target if i == 509 else [-x for x in target],
+        })
+    result = rag._similar_correction(target, ["ai"])
+    assert result is not None and result["_id"] == "approved-509"

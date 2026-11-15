@@ -141,8 +141,8 @@ jobs:
               if not r.get("ok"):
                   why = r.get("why") or "failed"
                   print(f"::warning title=Failed question ({r.get('tag') or 'other'})::{r['q']} | {why} | sources {r.get('sources')} | {r.get('answer','')[:200]}")
-          if d["score"] < 75:
-              raise SystemExit(f"::error::answer quality dropped to {d['score']}%")
+          if d["score"] < 98:
+              raise SystemExit(f"::error::answer quality below 98%: {d['score']}%")
           PY
       - name: Test question
         if: inputs.question != ''

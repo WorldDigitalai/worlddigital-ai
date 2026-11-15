@@ -1415,7 +1415,9 @@ class Rag:
     def _similar_correction(self, qvec: list[float], srcs: list[str]) -> dict | None:
         best, best_sim = None, SIMILAR_AT
         qn = math.sqrt(sum(x * x for x in qvec)) or 1
-        for d in self.corrections.find({"src": srcs}).limit(500):
+        # Iterate every approved answer; a fixed 500-row cap silently misses later records.
+        # TODO: replace this linear scan with an indexed vector search for large collections.
+        for d in self.corrections.find({"src": srcs}):
             v = d.get("qv") or []
             sim = sum(a * b for a, b in zip(qvec, v)) / (qn * (math.sqrt(sum(x * x for x in v)) or 1)) if v else 0
             if sim >= best_sim:
@@ -1424,7 +1426,9 @@ class Rag:
 
     def correction_set(self, question: str, answer: str, source: str = "ai", url: str = "") -> dict:
         """An admin-approved answer: used word for word for this question and for questions that mean the same."""
-        question, answer = " ".join(str(question or "").split())[:300], str(answer or "").strip()[:1500]
+        question, answer = " ".join(str(question or "").split()), str(answer or "").strip()
+        if len(question) > 300 or len(answer) > 1500:
+            raise ApiError("too long", 400, "Question must be at most 300 characters and answer at most 1500 characters.")
         if len(question) < 3 or len(answer) < 3:
             raise ApiError("empty", 400, "Enter the question and the answer to give.")
         srcs = self._sources([source])

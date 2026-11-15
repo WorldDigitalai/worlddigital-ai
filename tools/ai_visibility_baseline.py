@@ -40,5 +40,5 @@ if __name__ == "__main__":
     p.add_argument("--output", type=Path)
     a = p.parse_args()
     output = json.dumps(analyze(a.csv_file), indent=2)
-    if a.output: a.output.write_text(output + "\\n", encoding="utf-8")
+    if a.output: a.output.write_text(output + "\n", encoding="utf-8")
     print(output)

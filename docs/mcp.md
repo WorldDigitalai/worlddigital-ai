@@ -27,7 +27,8 @@ Read-only tools for the owner's AI assistant (Claude or any MCP client), served 
 
 ## Security
 
-- Only redirect addresses on `claude.ai` / `claude.com` may register (`MCP_REDIRECT_HOSTS` to change), so the
+- Only redirect addresses on `claude.ai` / `claude.com` (Claude) and `chatgpt.com` (ChatGPT, e.g.
+  `https://chatgpt.com/connector_platform_oauth_redirect`) may register (`MCP_REDIRECT_HOSTS` to change), so the
   consent page can't be used to send a sign-in code to someone else.
 - Tokens are random and stored only as SHA-256 hashes (`mcp_tokens`); access 1 hour, refresh 30 days, rotated on use;
   revoking one removes its pair. Codes are single-use, 5 minutes. Expired rows are removed by TTL indexes.

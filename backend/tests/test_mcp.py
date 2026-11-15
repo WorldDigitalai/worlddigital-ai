@@ -36,6 +36,8 @@ def sign_in(c, allow=True):
     assert reg.status_code == 201, reg.text
     evil = c.post("/register", headers=HOST, json={"client_name": "Claude", "redirect_uris": ["https://evil.example/cb"], "token_endpoint_auth_method": "none"})
     assert evil.status_code == 400 and evil.json()["error"] == "invalid_redirect_uri"      # only known assistants may register
+    gpt = c.post("/register", headers=HOST, json={"client_name": "ChatGPT", "redirect_uris": ["https://chatgpt.com/connector_platform_oauth_redirect"], "token_endpoint_auth_method": "none"})
+    assert gpt.status_code == 201                                                                # ChatGPT may register too
     cid = reg.json()["client_id"]
     verifier = secrets.token_urlsafe(40)
     challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).decode().rstrip("=")

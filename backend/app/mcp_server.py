@@ -38,7 +38,7 @@ ACCESS_S, REFRESH_S, CODE_S, PENDING_S = 3600, 30 * 86400, 300, 900
 CONSENT_URL = os.environ.get("MCP_CONSENT_URL", "https://worlddigital.ai/blog-admin/mcp")
 LEADS_URL = os.environ.get("MCP_LEADS_URL", "https://worlddigital.ai/api/internal/leads")
 # where an assistant may send the browser back to after sign-in (its OAuth callback host)
-REDIRECT_HOSTS = {h.strip().lower() for h in os.environ.get("MCP_REDIRECT_HOSTS", "claude.ai,claude.com").split(",") if h.strip()}
+REDIRECT_HOSTS = {h.strip().lower() for h in os.environ.get("MCP_REDIRECT_HOSTS", "claude.ai,claude.com,chatgpt.com").split(",") if h.strip()}
 READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 
 
@@ -275,5 +275,5 @@ def build(settings, rag, db, public_url: str):
     app = mcp.streamable_http_app(
         streamable_http_path="/mcp", json_response=True, stateless_http=True, host="0.0.0.0",
         transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=True, allowed_hosts=[host, host + ":443"],
-                                                     allowed_origins=["https://claude.ai", "https://claude.com"]))
+                                                     allowed_origins=["https://claude.ai", "https://claude.com", "https://chatgpt.com"]))
     return app, mcp, provider

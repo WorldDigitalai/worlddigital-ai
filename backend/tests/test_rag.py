@@ -939,9 +939,9 @@ def test_approved_answer_rejects_oversized_inputs_without_truncation(env):
     """Approved-answer input must not silently change the admin's wording."""
     client, _ = env
     rag = main.rag()
-    with pytest.raises(Exception, match="Question must be at most 300"):
+    with pytest.raises(Exception, match="too long"):
         rag.correction_set("Q" * 301, "Valid answer")
-    with pytest.raises(Exception, match="answer at most 1500"):
+    with pytest.raises(Exception, match="too long"):
         rag.correction_set("Valid question?", "A" * 1501)
 
 

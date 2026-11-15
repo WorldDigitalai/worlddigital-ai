@@ -4,8 +4,8 @@ import argparse, csv, json, re
 from collections import defaultdict
 from pathlib import Path
 DOMAIN = "worlddigital.ai"
-NAME = re.compile(r"\\bworld\\s*digital(?:\\.ai)?\\b", re.I)
-URL = re.compile(r"https?://[^\\s<>\\]\)\"']+", re.I)
+NAME = re.compile(r"\bworld\s*digital(?:\.ai)?\b", re.I)
+URL = re.compile(r"https?://[^\s<>\]\)\"']+", re.I)
 FIELDS = ["date_utc","platform","prompt_id","run_id","response","source_urls"]
 
 def analyze(path):

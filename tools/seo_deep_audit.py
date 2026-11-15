@@ -257,6 +257,8 @@ def main():
     print(out)
     open("seo-deep.md", "w").write(out)
     if os.environ.get("GITHUB_STEP_SUMMARY"): open(os.environ["GITHUB_STEP_SUMMARY"], "a").write(out)
+    if any(totals.values()):
+        raise SystemExit(f"Deep SEO audit failed: {dict(totals)} findings; see seo-deep.md")
 
 
 if __name__ == "__main__":

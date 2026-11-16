@@ -552,7 +552,7 @@
  {
   "q": "Can you take over my existing Google Ads account?",
   "expect": [
-   "audit|yes"
+   "editor|access|your own"
   ],
   "urls": [
    "google-ads-agency"

@@ -208,7 +208,7 @@ def build(settings, rag, db, public_url: str):
         q = " ".join(str(question).split())[:500]
         if len(q) < 3:
             raise ToolError("Ask a full question.")
-        a = await run(lambda: rag().answer(q))
+        a = await run(lambda: rag().answer(q, public=True))   # same path as visitors: approved answers apply
         src = "\n".join(f"[{i}] {s.get('title') or s['url']} - {s['url']}" for i, s in enumerate(a.get("sources") or [], 1))
         note = "" if a.get("covered", True) else "\n(The website does not cover this.)"
         return f"{a.get('answer', '')}{note}" + (f"\n\nSources:\n{src}" if src else "")

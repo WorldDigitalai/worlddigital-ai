@@ -38,7 +38,7 @@ jobs:
           uv export --frozen --no-dev --no-hashes --no-emit-project -o /tmp/req.lock --quiet
           diff <(grep -v '^#' requirements.lock) <(grep -v '^#' /tmp/req.lock) || { echo "::error::requirements.lock is stale: run uv export --frozen --no-dev --no-hashes --no-emit-project -o requirements.lock"; exit 1; }
       - name: Dependency vulnerability scan
-        run: uvx pip-audit -r requirements.lock --progress-spinner off || echo "::warning::pip-audit found advisories (see log)"
+        run: uvx pip-audit -r requirements.lock --progress-spinner off
 
   deploy:
     needs: test

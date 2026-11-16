@@ -13,6 +13,8 @@ dependencies = [
   "reportlab>=4.2",
   "pillow>=10.4",
   "mcp>=2.3,<3",
+  "dnspython>=2.9.2",
+  "opentelemetry-api>=1.45.2",
 ]
 
 [dependency-groups]

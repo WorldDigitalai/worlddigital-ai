@@ -67,8 +67,8 @@ jobs:
             MCP_PUBLIC_URL=https://worlddigital-ai-api-250920469327.us-central1.run.app
             RAG_ANSWER_MODEL=claude-haiku-5-5
             RAG_ANSWER_RETRIEVAL=hybrid
-            RAG_ANSWER_SOURCES=6
-            RAG_ANSWER_CHARS=1200
+            RAG_ANSWER_SOURCES=4
+            RAG_ANSWER_CHARS=900
             RAG_ANSWER_FALLBACK=
             CEREBRAS_BUDGET_USD=2
             RAG_WARM_MODEL=claude-haiku-5-5

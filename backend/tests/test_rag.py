@@ -936,6 +936,7 @@ def test_live_answer_chain_fast_then_claude_then_openai(env, monkeypatch):
     assert all("From Claude" in d["answer"] for d in main.rag().answers.find({}))
 
 
+<<<<<<< HEAD
 def test_approved_answer_rejects_oversized_inputs_without_truncation(env):
     """Approved-answer input must not silently change the admin's wording."""
     client, _ = env
@@ -1033,3 +1034,15 @@ def test_approved_answer_page_options_and_fix_grammar(env, monkeypatch):
     # admin only
     assert c.post("/api/admin/rag/insights", json={"action": "pages"}).status_code in (401, 403)
     assert c.post("/api/admin/rag/insights", json={"action": "fix-grammar", "answer": "hello there"}).status_code in (401, 403)
+=======
+def test_ungrounded_figures_flags_made_up_numbers():
+    from app.rag import ungrounded_figures
+    hits = [{"text": "Custom software starts at $199.99. Most sites launch in 14 days. Results improve by 30%."}]
+    assert ungrounded_figures("It starts at $199.99 and takes 14 days [1].", hits) == []
+    assert ungrounded_figures("It starts at $49.99 and takes 14 days [1].", hits) == ["$49.99"]
+    assert ungrounded_figures("Expect 45% more leads in 3 months.", hits) == ["45%", "3 months"]
+    assert ungrounded_figures("Nothing numeric here.", hits) == []
+    # only the cited source counts when citations exist
+    two = [{"text": "Price is $10."}, {"text": "Price is $99."}]
+    assert ungrounded_figures("It costs $99 [1].", two, cited=[1]) == ["$99"]
+>>>>>>> feat/answer-grounding-check

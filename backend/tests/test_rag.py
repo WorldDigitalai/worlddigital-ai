@@ -152,6 +152,9 @@ def test_index_is_incremental_and_prunes(env):
     s3 = c.post("/api/admin/rag/index", headers=H, json={"source": "ai"}).json()
     assert s3["removed"] == 1 and s3["updated"] == 1
     assert c.get("/api/admin/rag", headers=H).json()["sites"]["ai"]["pages"] == 4
+    for d in (0, 7, 30):
+        lv = c.get(f"/api/admin/rag/live?days={d}", headers=H).json()
+        assert lv["days"] == d and "usage" in lv and "ai_usage" in lv and "total" in lv["insights"]
 
 
 def test_boilerplate_and_duplicates_skipped(env):

@@ -273,7 +273,7 @@ if(!x.ok){m.textContent=err(x,'Could not fix the grammar right now.');return}
 if(!x.j.changed){m.textContent='No changes needed.';return}
 a.value=x.j.text;m.textContent='Fixed. Read it through, edit if needed, then save. ';var u=el('button','Undo','margin-left:4px');u.type='button';u.onclick=function(){a.value=before;m.textContent='Original restored.'};m.appendChild(u)})};`;
 
-function kbPage(nonce, ed, st, qs, tenants, internal, ins = {}) {
+function kbPage(nonce, ed, st, qs, tenants, internal, ins = {}, live = null, win = 30) {
   const n = (v) => (v == null ? '–' : Number(v).toLocaleString('en-US'));
   const ms = (v) => (v == null ? '–' : `${(v / 1000).toFixed(1)} s`);
   const ai = (st.sites || {}).ai || {};
@@ -297,15 +297,17 @@ function kbPage(nonce, ed, st, qs, tenants, internal, ins = {}) {
     rag_answer: 'Knowledge base answers', rag_embed: 'Knowledge base embeddings', blog_ai_research: 'Blog research', blog_ai_draft: 'Blog drafts', blog_ai_social: 'Social copy',
     blog_ai_cover_image: 'Cover images', blog_video_voiceover: 'Video voice-over', blog_video_write_script: 'Video scripts' };
   const aiRows = (au.features || []).map((r) => `<tr><td>${esc(NAMES[r.feature] || r.feature.replace(/_/g, ' '))}</td><td>${n(r.calls)}</td><td>${n(r.in)}</td><td>${n(r.out)}</td><td>${r.units ? n(r.units) : ''}</td></tr>`).join('');
+  const lu = live ? live.usage || {} : us, la = live ? live.ai_usage || {} : au, li = live ? live.insights || {} : ins;
+  const winLabel = win === 0 ? 'today' : win === 1 ? 'last 24 hours' : `last ${win} days`;
   const pctOf = (a, b) => (b ? `${Math.round((100 * (a || 0)) / b)}%` : '–');
-  const pubN = us.public_answers || 0, instN = us.cached_answers || 0, fbN = au.fallbacks || 0, ungN = us.ungrounded_answers || 0;
-  const mixTotal = Object.values(au.models || {}).reduce((a, c) => a + (c || 0), 0);
-  const mixBars = Object.entries(au.models || {}).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([m, c]) => `<div style="display:flex;align-items:center;gap:10px;margin-top:6px;font-size:14px"><span style="width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.replace(/_/g, '.'))}</span><span style="flex:1;background:#EAF0F7;border-radius:6px;height:12px"><span style="display:block;height:12px;border-radius:6px;background:#1D6FDC;width:${mixTotal ? Math.max(2, Math.round((100 * c) / mixTotal)) : 0}%"></span></span><b style="width:90px;text-align:right">${n(c)} · ${pctOf(c, mixTotal)}</b></div>`).join('');
+  const pubN = lu.public_answers || 0, instN = lu.cached_answers || 0, fbN = la.fallbacks || 0, ungN = lu.ungrounded_answers || 0;
+  const mixTotal = Object.values(la.models || {}).reduce((a, c) => a + (c || 0), 0);
+  const mixBars = Object.entries(la.models || {}).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([m, c]) => `<div style="display:flex;align-items:center;gap:10px;margin-top:6px;font-size:14px"><span style="width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.replace(/_/g, '.'))}</span><span style="flex:1;background:#EAF0F7;border-radius:6px;height:12px"><span style="display:block;height:12px;border-radius:6px;background:#1D6FDC;width:${mixTotal ? Math.max(2, Math.round((100 * c) / mixTotal)) : 0}%"></span></span><b style="width:90px;text-align:right">${n(c)} · ${pctOf(c, mixTotal)}</b></div>`).join('');
   const liveCard = `${grid([
-    stat('Answers written', n(pubN + (us.answers || 0)), `${n(pubN)} to visitors`), stat('Instant answers', pctOf(instN, pubN + instN), `${n(instN)} from memory`),
-    stat('First words', ms(us.avg_first_words_ms), 'average'), stat('Full answer', ms(us.avg_public_answer_ms), 'average, public'),
+    stat('Answers written', n(pubN + (lu.answers || 0)), `${n(pubN)} to visitors`), stat('Instant answers', pctOf(instN, pubN + instN), `${n(instN)} from memory`),
+    stat('First words', ms(lu.avg_first_words_ms), 'average'), stat('Full answer', ms(lu.avg_public_answer_ms), 'average, public'),
     stat('Backup model used', pctOf(fbN, pubN), `${n(fbN)} fallback calls`), stat('Figures not in sources', n(ungN), 'prices or numbers to check'),
-    stat('Visitor questions answered', ins.total ? pctOf(ins.answered, ins.total) : '–', `${n(ins.total)} asked`), stat('Visitor ratings', `👍 ${n(ins.up)} · 👎 ${n(ins.down)}`)])}
+    stat('Visitor questions answered', li.total ? pctOf(li.answered, li.total) : '–', `${n(li.total)} asked${win === 0 ? ' (last 24 hours)' : ''}`), stat('Visitor ratings', `👍 ${n(li.up)} · 👎 ${n(li.down)}`)])}
 <h3 class="h" style="font-size:16px;margin-top:14px">Which models are answering</h3>${mixBars || '<p class="muted">No AI calls recorded yet.</p>'}`;
   const aiTable = `<h3 class="h" style="font-size:17px;margin-top:16px">AI usage (OpenAI, last 30 days)</h3>${au.fallbacks ? `<p style="color:#B42318;font-weight:700">${n(au.fallbacks)} calls used a different model than the configured one (fallback): check the OpenAI project's model access.</p>` : ''}
 <div style="overflow-x:auto;border:1px solid #DCE5EF;border-radius:14px;margin-top:8px"><table class="list"><thead><tr><th>Feature</th><th>Calls</th><th>Input tokens</th><th>Output tokens</th><th>Images / characters</th></tr></thead><tbody>${aiRows || '<tr><td colspan="5">No AI calls recorded yet.</td></tr>'}</tbody></table></div>
@@ -355,7 +357,8 @@ ${removed ? `<details style="margin-top:8px"><summary>Pages removed in the last 
     stat('Right page cited', pc(em.citation_accuracy)), stat('Answer correct', pc(em.answer_accuracy)),
     stat('Made-up answers', pc(em.unsupported_answer_rate), 'to questions the site does not cover'), stat('First words shown', ms(em.first_words_ms), `slowest 5%: ${ms(em.first_words_p95_ms)}`), stat('Full answer written', ms(em.avg_ms), `slowest 5%: ${ms(em.p95_ms)}`)]) : '<p class="muted">Not run yet.</p>'}
 <p style="margin-top:12px"><button type="button" id="evalb">Run quality test</button> <span id="emsg" class="muted"></span></p><div id="evout"></div></div>
-<div class="card" id="live" style="margin-top:14px"><h2 class="h" style="font-size:20px">Live statistics <span class="muted" style="font-size:13px;font-weight:400">last 30 days · updates every minute · <span id="livet"></span></span></h2>${liveCard}</div>
+<div class="card" id="live" style="margin-top:14px"><h2 class="h" style="font-size:20px">Live statistics <span class="muted" style="font-size:13px;font-weight:400">${winLabel} · updates every minute · <span id="livet"></span></span></h2>
+<p style="margin:0 0 10px">${[[0, 'Today'], [7, '7 days'], [30, '30 days']].map(([w, l]) => `<a class="btn" style="padding:6px 14px;${w === win ? 'font-weight:700;text-decoration:underline' : 'opacity:.75'}" href="?w=${w}#live">${l}</a>`).join(' ')}</p>${liveCard}</div>
 <div class="card" style="margin-top:14px"><h2 class="h" style="font-size:20px">Use (last 30 days)</h2>${grid([
     stat('Searches', n(us.searches), `avg ${ms(us.avg_search_ms)}`), stat('Answers (admin and tests)', n(us.answers), `avg ${ms(us.avg_answer_ms)}`), stat('Public answers written', n(us.public_answers), 'search, API and quality tests'),
     stat('Instant answers', n(us.cached_answers), 'served from memory'), stat('Chat questions', n(qs.total), `${n(qs.uncovered)} not covered`)])}
@@ -401,7 +404,7 @@ $('smsg').textContent=(full?'Rebuilding: ':'Syncing: ')+d.done+' of '+d.total+' 
 $('smsg').textContent='Done: '+d.updated+' updated, '+d.unchanged+' unchanged, '+d.removed+' removed'+(d.errors&&d.errors.length?', '+d.errors.length+' errors':'')+'.';setTimeout(function(){location.reload()},1800)})})(null)}
 $('quick').onclick=function(){sync(false)};
 $('full').onclick=function(){if(confirm('Re-read and re-embed every page? It takes a few minutes and costs a few cents of OpenAI usage.'))sync(true)};
-(function(){var t=$('livet');function tick(){fetch(location.pathname,{credentials:'same-origin'}).then(function(r){return r.text()}).then(function(h){var d=new DOMParser().parseFromString(h,'text/html').getElementById('live');if(d&&$('live')){$('live').innerHTML=d.innerHTML;t=$('livet');}if(t)t.textContent='updated '+new Date().toLocaleTimeString();}).catch(function(){})}tick();setInterval(function(){if(!document.hidden)tick()},60000)})();
+(function(){var t=$('livet');function tick(){fetch(location.pathname+location.search,{credentials:'same-origin'}).then(function(r){return r.text()}).then(function(h){var d=new DOMParser().parseFromString(h,'text/html').getElementById('live');if(d&&$('live')){$('live').innerHTML=d.innerHTML;t=$('livet');}if(t)t.textContent='updated '+new Date().toLocaleTimeString();}).catch(function(){})}tick();setInterval(function(){if(!document.hidden)tick()},60000)})();
 $('evalb').onclick=function(){$('emsg').textContent='Testing answers… one to two minutes.';post('/blog-admin/kb/eval',{}).then(function(x){if(!x.ok){$('emsg').textContent=err(x,'Test failed.');return}$('emsg').textContent=x.j.passed+'/'+x.j.total+' passed ('+x.j.score+'%).';var o=$('evout');o.textContent='';(x.j.results||[]).filter(function(r){return !r.ok}).forEach(function(r){o.appendChild(el('div','✗ '+r.q+(r.why?' ('+r.why+')':r.missing&&r.missing.length?' (missing: '+r.missing.join(', ')+')':!r.source_ok?' (expected page not cited)':' (expected page not found)'),'font-size:14px;color:#B42318;margin-top:4px'))});setTimeout(function(){location.reload()},4000)})};
 function showAnswer(x){var o=$('aout');o.textContent='';$('askb').disabled=false;if(!x.ok){$('amsg').textContent=err(x,'Could not answer.');return}$('amsg').textContent=x.j.covered===false?'Not covered by the knowledge base.':'';
 o.appendChild(el('p',x.j.answer,'margin-top:12px;font-size:16.5px;line-height:1.6'));if(x.j.undocumented)o.appendChild(el('p','Not documented: '+x.j.undocumented,'font-size:14px;color:#92400E'));
@@ -616,11 +619,12 @@ export async function handleAdmin(req, env, url, store, ctx, { pingNow, prod }) 
   if (path === '/blog-admin' && method === 'GET') return dashboard(nonce, ed, await store.listPosts({ all: true }), url.searchParams.get('m') || '');
   if (path === '/blog-admin/leads' && method === 'GET') return leadsPage(nonce, ed, await store.listLeads());
   if (path === '/blog-admin/kb' && method === 'GET') {
-    const [st, qs, tn, it, ins] = await Promise.all([backend(env, 'GET', '/api/admin/rag'), backend(env, 'GET', '/api/admin/rag/questions?days=30'),
+    const w = [0, 7, 30].includes(Number(url.searchParams.get('w'))) && url.searchParams.get('w') !== null ? Number(url.searchParams.get('w')) : 30;
+    const [st, qs, tn, it, ins, lv] = await Promise.all([backend(env, 'GET', '/api/admin/rag'), backend(env, 'GET', '/api/admin/rag/questions?days=30'),
       backend(env, 'POST', '/api/admin/rag/tenants', { action: 'list' }), backend(env, 'POST', '/api/admin/rag/internal', { action: 'list' }),
-      backend(env, 'POST', '/api/admin/rag/insights', { action: 'report', source: 'ai', days: 30 })]);
+      backend(env, 'POST', '/api/admin/rag/insights', { action: 'report', source: 'ai', days: 30 }), backend(env, 'GET', `/api/admin/rag/live?days=${w}`)]);
     return kbPage(nonce, ed, st.ok ? st.data : { error: st.data.error || 'Could not load the knowledge base.' }, qs.ok ? qs.data : {},
-      tn.ok ? tn.data.tenants : [], it.ok ? it.data.docs : [], ins.ok ? ins.data : {});
+      tn.ok ? tn.data.tenants : [], it.ok ? it.data.docs : [], ins.ok ? ins.data : {}, lv.ok ? lv.data : null, w);
   }
   if (path === '/blog-admin/mcp') {
     if (method === 'GET') {

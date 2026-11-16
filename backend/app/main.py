@@ -512,6 +512,19 @@ async def rag_status():
     return json_ok(await run_in_threadpool(_rag_call, lambda: rag().status()))
 
 
+@app.get("/api/admin/rag/live", dependencies=[Depends(guard)])
+async def rag_live(days: int = 30):
+    """Usage, AI model mix and visitor-question summary for one window: 0 = today, otherwise the last N days."""
+    d = max(0, min(int(days), 180))
+
+    def run():
+        r = rag()
+        ins = r.insights("ai", max(1, d))
+        return {"days": d, "usage": r._usage(d), "ai_usage": r.ai_usage(d),
+                "insights": {k: ins.get(k) for k in ("total", "answered", "instant", "up", "down")}}
+    return json_ok(await run_in_threadpool(_rag_call, run))
+
+
 @app.get("/api/admin/rag/history", dependencies=[Depends(guard)])
 async def rag_history(limit: int = 30):
     return json_ok({"runs": await run_in_threadpool(_rag_call, lambda: rag().sync_history(max(1, min(int(limit), 100))))})

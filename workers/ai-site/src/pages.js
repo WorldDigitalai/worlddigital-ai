@@ -75,6 +75,7 @@ const CUSTOM_FAQ = faq('Custom software questions', [
   ['Do you support the software after launch?', 'Yes. We offer monitoring, security updates, fixes and new features after launch, month to month.'],
 ]);
 const TOOLS_FAQ = faq('Tool questions', [
+  ['Do I need an account to use the tools?', 'No. You can try each tool without creating an account or entering a card. The paid versions are one-time payments through Stripe, with no subscription.'],
   ['Are the tools really free to try?', 'Yes. The SEO report is completely free. Keyword research shows your top 3 keywords free and the content generator writes your first piece free, with no sign-up and no card.'],
   ['How much do the paid versions cost?', 'All 10 keywords cost $9.99 and a pack of 5 ads or posts costs $24.99. Both are one-time payments through Stripe, with no subscription.'],
   ['How many free tries do I get?', 'One free preview per website for each tool. If you run the same website again, we show you the result you already have and offer the full version.'],

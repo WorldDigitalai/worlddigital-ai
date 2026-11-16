@@ -1,0 +1,40 @@
+name: Refresh patched dependency locks (temporary)
+on:
+  push:
+    branches: [fix/security-audit-cves-20261115]
+    paths:
+      - backend/pyproject.toml
+      - .github/workflows/refresh-security-locks.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-locks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: true
+      - uses: astral-sh/setup-uv@v7
+      - name: Re-resolve patched package versions
+        run: |
+          uv lock --upgrade-package dnspython --upgrade-package opentelemetry-api
+          uv export --frozen --no-dev --no-hashes --no-emit-project -o requirements.lock
+      - name: Ensure both CVEs are resolved
+        run: |
+          uvx pip-audit -r requirements.lock --progress-spinner off
+      - name: Commit deterministic lockfiles
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/uv.lock backend/requirements.lock
+          if ! git diff --cached --quiet; then
+            git commit -m "Lock patched dnspython and opentelemetry-api releases"
+            git push origin HEAD:fix/security-audit-cves-20261115
+          fi

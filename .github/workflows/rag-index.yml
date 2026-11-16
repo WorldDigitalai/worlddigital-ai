@@ -6,6 +6,10 @@ name: Knowledge base (RAG) index
 on:
   schedule:
     - cron: "37 9 * * *"   # ~3:30-4:30am Chicago, after the nightly site deploy
+  workflow_run:
+    workflows: ["Deploy tools API (Python + MongoDB → Cloud Run)"]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       question:
@@ -32,6 +36,7 @@ permissions:
   id-token: write   # only used to get a short-lived Claude token when answer_model is a claude-* model
 jobs:
   index:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:

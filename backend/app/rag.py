@@ -114,6 +114,29 @@ _EMAIL = re.compile(r"[\w.+-]+@[\w-]+(\.[\w-]+)+")
 _PHONE = re.compile(r"(?<!\w)(\+?\d[\d\s().-]{7,}\d)(?!\w)")
 
 
+_FIGURE = re.compile(r"\$\s?\d[\d,]*(?:\.\d+)?|\d+(?:\.\d+)?\s?%|\b\d{1,3}(?:,\d{3})+\b|\b\d+(?:\.\d+)?\s?(?:days?|hours?|weeks?|months?|years?)\b", re.I)
+
+
+def _fig(s: str) -> str:
+    return re.sub(r"[\s,]", "", s.lower()).replace("days", "day").replace("hours", "hour").replace("weeks", "week") \
+        .replace("months", "month").replace("years", "year")
+
+
+def ungrounded_figures(answer: str, hits: list[dict], cited: list[int] | None = None) -> list[str]:
+    """Prices, percentages and durations in an answer that appear in none of its sources: a likely made-up figure.
+    Checks the cited sources when there are any, else all retrieved ones. Deterministic, no model call."""
+    pool = [hits[n - 1] for n in (cited or []) if 0 < n <= len(hits)] or hits
+    blob = _fig(" ".join(str(h.get("text", "")) for h in pool))
+    seen, bad = set(), []
+    for m in _FIGURE.findall(answer or ""):
+        f = _fig(m)
+        if f not in seen:
+            seen.add(f)
+            if f not in blob:
+                bad.append(m.strip())
+    return bad[:10]
+
+
 def redact(text: str) -> str:
     """Strip contact details visitors type into chat before anything is stored."""
     return _PHONE.sub("[phone]", _EMAIL.sub("[email]", str(text or "")))
@@ -534,7 +557,7 @@ class Rag:
                 "answers": tot.get("answer", 0), "avg_answer_ms": avg("answer"),
                 "public_answers": tot.get("public_answer", 0), "avg_public_answer_ms": avg("public_answer"),
                 "cached_answers": tot.get("public_answer_cached", 0), "avg_first_words_ms": avg("first_words"),
-                "embed_errors": tot.get("embed_error", 0)}
+                "embed_errors": tot.get("embed_error", 0), "ungrounded_answers": tot.get("ungrounded_answer", 0)}
 
     # writing ------------------------------------------------------------------
     def _embed(self, texts: list[str], model: str | None = None) -> list[list[float]]:
@@ -1260,6 +1283,10 @@ class Rag:
                 seen.add(h["url"]); srcl.append({"n": n, "title": h["title"], "url": h["url"]})
         if public:
             srcl = [x for x in srcl if x["url"].startswith("https://")]
+        ungrounded = ungrounded_figures(text, hits, cited) if covered else []
+        if ungrounded:
+            self._metric("ungrounded_answer", 0)
+            log.warning("answer has figures not in its sources: %s", ungrounded)
         ms = _ms(t0)
         self._metric("public_answer" if public else "answer", ms)
         if first_ms is not None:
@@ -1282,7 +1309,7 @@ class Rag:
             except Exception:  # noqa: BLE001  the cache is an extra
                 pass
         yield {"type": "done", "sources": srcl, "covered": covered, "undocumented": undoc, "cached": False, "related": related,
-               "ms": ms, "first_ms": first_ms, "search_ms": search_ms, "timing": dict(getattr(self._local, "timing", {})), "hits": hits}
+               "ungrounded": ungrounded, "ms": ms, "first_ms": first_ms, "search_ms": search_ms, "timing": dict(getattr(self._local, "timing", {})), "hits": hits}
 
     @staticmethod
     def _ensure_ttl(coll, field: str, seconds: int) -> None:

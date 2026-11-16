@@ -933,3 +933,15 @@ def test_live_answer_chain_fast_then_claude_then_openai(env, monkeypatch):
     c.post("/api/admin/rag/warm", headers=H)
     from app import main
     assert all("From Claude" in d["answer"] for d in main.rag().answers.find({}))
+
+
+def test_ungrounded_figures_flags_made_up_numbers():
+    from app.rag import ungrounded_figures
+    hits = [{"text": "Custom software starts at $199.99. Most sites launch in 14 days. Results improve by 30%."}]
+    assert ungrounded_figures("It starts at $199.99 and takes 14 days [1].", hits) == []
+    assert ungrounded_figures("It starts at $49.99 and takes 14 days [1].", hits) == ["$49.99"]
+    assert ungrounded_figures("Expect 45% more leads in 3 months.", hits) == ["45%", "3 months"]
+    assert ungrounded_figures("Nothing numeric here.", hits) == []
+    # only the cited source counts when citations exist
+    two = [{"text": "Price is $10."}, {"text": "Price is $99."}]
+    assert ungrounded_figures("It costs $99 [1].", two, cited=[1]) == ["$99"]

@@ -222,6 +222,57 @@ upd()})();
 }
 
 
+// Approved-answer form pieces shared by the Knowledge base page and the Ready answers page:
+// Fix Grammar button under the answer, and a searchable Source link dropdown fed by the indexed pages (server-side search).
+const ANSWER_SOURCE_FIELDS = `<label for="fixans">Answer to give</label><textarea id="fixans" name="answer" rows="4" maxlength="1500" required></textarea>
+<p style="margin:8px 0 0"><button type="button" id="gfix">Fix Grammar</button> <span id="gmsg" class="muted" style="font-size:14px" role="status" aria-live="polite"></span></p>
+<label for="srcq">Source link (optional)</label>
+<div id="srcbox" style="position:relative"><input type="text" id="srcq" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="srclist" aria-autocomplete="list" placeholder="Search or select an indexed website page ▼">
+<div id="srclist" role="listbox" hidden style="position:absolute;left:0;right:0;top:100%;z-index:20;max-height:320px;overflow:auto;background:#fff;border:1px solid #DCE5EF;border-radius:12px;box-shadow:0 10px 30px rgba(15,35,70,.14);margin-top:4px"></div></div>
+<input type="hidden" name="url" id="srcval">
+<div id="srcmanw" hidden style="margin-top:8px"><input type="url" id="srcman" maxlength="300" placeholder="https://worlddigital.ai/…" aria-label="Manual source URL"><div id="srcerr" class="err" style="font-size:14px;margin-top:4px"></div></div>`;
+const ANSWER_SOURCE_JS = String.raw`var SRCSEQ=0,SRCT=0,SRCOPT=[],SRCI=-1;
+function srcKey(u){return String(u||'').trim().toLowerCase().replace(/\/+$/,'')}
+function srcValid(u){if(!u||u.length>300||/\s/.test(u))return false;try{var p=new URL(u);return p.protocol==='https:'&&!!p.hostname&&p.hostname.indexOf('.')>0}catch(e){return false}}
+function srcLabel(u,t){return u?(t&&t!==u?t+' — '+u:u):''}
+function srcOpen(o){$('srclist').hidden=!o;$('srcq').setAttribute('aria-expanded',o?'true':'false')}
+function srcShow(){var u=$('srcval').value;$('srcq').value=srcLabel(u,$('srcq').dataset.t)}
+function srcPick(o){SRCI=-1;srcOpen(false);$('srcerr').textContent='';
+if(o.manual){$('srcmanw').hidden=false;$('srcval').value='';$('srcq').dataset.t='';$('srcq').value='Manual URL';$('srcman').value='';$('srcman').focus();return}
+$('srcmanw').hidden=true;$('srcman').value='';$('srcval').value=o.url||'';$('srcq').dataset.t=o.title||'';srcShow()}
+function srcRender(pages,total,q){var box=$('srclist'),seen={},opts=[{manual:true}];box.textContent='';
+if(!q)opts.push({url:'',none:true});
+(pages||[]).forEach(function(p){var k=srcKey(p.url);if(!k||seen[k])return;seen[k]=1;opts.push(p)});
+SRCOPT=opts;
+opts.forEach(function(o,i){var d=document.createElement('div');d.setAttribute('role','option');d.dataset.i=i;d.style.cssText='padding:9px 14px;cursor:pointer;border-bottom:1px solid #EEF3F8';
+if(o.manual){var a=el('div','✎ Manual URL','font-weight:600;color:#0D5EC7');d.appendChild(a);d.appendChild(el('div','Type your own https:// link','font-size:13px;color:#5B6B80'))}
+else if(o.none){d.appendChild(el('div','No source link','font-weight:600'));d.appendChild(el('div','Save the answer without a link','font-size:13px;color:#5B6B80'))}
+else{d.appendChild(el('div',o.title||o.url,'font-weight:600'));d.appendChild(el('div',o.url,'font-size:13px;color:#5B6B80;word-break:break-all'))}
+d.onmousedown=function(e){e.preventDefault();srcPick(o)};d.onmouseover=function(){srcHi(i)};box.appendChild(d)});
+if(total>(pages||[]).length)box.appendChild(el('div','Showing '+(pages||[]).length+' of '+total+'. Type to narrow the list.','padding:8px 14px;font-size:13px;color:#5B6B80'));
+if(!(pages||[]).length)box.appendChild(el('div',q?'No indexed page matches “'+q+'”. Use Manual URL for another link.':'No indexed pages yet.','padding:8px 14px;font-size:13px;color:#5B6B80'));
+SRCI=-1}
+function srcHi(i){SRCI=i;var c=$('srclist').children;for(var k=0;k<c.length;k++)c[k].style.background=(k===i?'#EAF2FF':'')}
+function srcLoad(q){var n=++SRCSEQ;post('/blog-admin/kb/insights',{action:'pages',q:q,limit:40}).then(function(x){if(n!==SRCSEQ)return;if(!x.ok){$('srclist').textContent='';$('srclist').appendChild(el('div',err(x,'Could not load the pages.'),'padding:10px 14px;color:#B42318'));SRCOPT=[{manual:true}];return}srcRender(x.j.pages,x.j.total||0,q)})}
+function setSrc(url,title){url=String(url||'').trim();$('srcerr').textContent='';$('srcmanw').hidden=true;$('srcman').value='';$('srcval').value=url;$('srcq').dataset.t=title||'';srcShow();
+if(url&&!title){var n=++SRCSEQ;post('/blog-admin/kb/insights',{action:'pages',q:url,limit:5}).then(function(x){if(n!==SRCSEQ||!x.ok||$('srcval').value!==url)return;var m=(x.j.pages||[]).filter(function(p){return srcKey(p.url)===srcKey(url)})[0];if(m){$('srcq').dataset.t=m.title;srcShow()}})}}
+function srcOk(){var m=!$('srcmanw').hidden;if(!m)return true;var v=$('srcman').value.trim();if(!v){$('srcval').value='';return true}if(srcValid(v)){$('srcval').value=v;return true}$('srcerr').textContent='Enter a full link that starts with https:// (for example https://worlddigital.ai/tools).';$('srcman').focus();return false}
+$('srcq').onfocus=function(){this.select();srcOpen(true);srcLoad('')};
+$('srcq').onclick=function(){if($('srclist').hidden){srcOpen(true);srcLoad('')}};
+$('srcq').oninput=function(){var q=this.value.trim();srcOpen(true);clearTimeout(SRCT);SRCT=setTimeout(function(){srcLoad(q)},180)};
+$('srcq').onblur=function(){srcOpen(false);if($('srcmanw').hidden)srcShow();else if(!$('srcval').value)$('srcq').value='Manual URL'};
+$('srcq').onkeydown=function(e){var k=e.key;if(k==='ArrowDown'||k==='ArrowUp'){e.preventDefault();if($('srclist').hidden){srcOpen(true);srcLoad('');return}var n=SRCOPT.length;if(!n)return;srcHi(k==='ArrowDown'?(SRCI+1)%n:(SRCI<=0?n-1:SRCI-1));var c=$('srclist').children[SRCI];if(c&&c.scrollIntoView)c.scrollIntoView({block:'nearest'})}
+else if(k==='Enter'&&!$('srclist').hidden){e.preventDefault();if(SRCI>=0&&SRCOPT[SRCI])srcPick(SRCOPT[SRCI])}
+else if(k==='Escape'){srcOpen(false);srcShow()}};
+$('srcman').oninput=function(){var v=this.value.trim();$('srcerr').textContent='';if(!v){$('srcval').value='';return}if(srcValid(v)){$('srcval').value=v}else{$('srcval').value='';if(v.length>8||/\s/.test(v))$('srcerr').textContent='Enter a full link that starts with https://'}};
+var GPREV=null;
+$('gfix').onclick=function(){var a=$('fixans'),b=this,m=$('gmsg'),t=a.value.trim();m.textContent='';if(t.length<3){m.textContent='Write the answer first.';return}
+var before=a.value;b.disabled=true;a.readOnly=true;a.setAttribute('aria-busy','true');b.textContent='⏳ Fixing…';m.textContent='Checking spelling and grammar…';
+post('/blog-admin/kb/insights',{action:'fix-grammar',answer:before}).then(function(x){b.disabled=false;a.readOnly=false;a.removeAttribute('aria-busy');b.textContent='Fix Grammar';m.textContent='';
+if(!x.ok){m.textContent=err(x,'Could not fix the grammar right now.');return}
+if(!x.j.changed){m.textContent='No changes needed.';return}
+a.value=x.j.text;m.textContent='Fixed. Read it through, edit if needed, then save. ';var u=el('button','Undo','margin-left:4px');u.type='button';u.onclick=function(){a.value=before;m.textContent='Original restored.'};m.appendChild(u)})};`;
+
 function kbPage(nonce, ed, st, qs, tenants, internal, ins = {}) {
   const n = (v) => (v == null ? '–' : Number(v).toLocaleString('en-US'));
   const ms = (v) => (v == null ? '–' : `${(v / 1000).toFixed(1)} s`);
@@ -273,8 +324,7 @@ ${table(['When', 'Email', 'Question'], hand, 'No requests yet.', 3)}
 <h3 class="h" style="font-size:19px;margin-top:20px" id="fixh">Approved answers</h3>
 <p class="muted">Write the exact answer to a question. The AI then gives it word for word, also when the question is worded a little differently.</p>
 <form id="fix" class="card" style="margin-top:10px"><label>Question</label><input name="question" maxlength="300" required placeholder="e.g. Do I need an account to use the tools?">
-<label>Answer to give</label><textarea name="answer" rows="4" maxlength="1500" required></textarea>
-<label>Source link (optional)</label><input name="url" maxlength="300" placeholder="https://worlddigital.ai/tools">
+${ANSWER_SOURCE_FIELDS}
 <p style="margin-top:12px"><button class="btn" type="submit">Save approved answer</button> <span id="fmsg" class="muted"></span></p></form>
 ${table(['Question and approved answer', 'Saved', ''], fixes, 'No approved answers yet.', 3)}
 <h3 class="h" style="font-size:19px;margin-top:20px">Top questions by week</h3>
@@ -357,7 +407,8 @@ document.querySelectorAll('[data-t-ask]').forEach(function(b){b.onclick=function
 document.querySelectorAll('[data-t-doc]').forEach(function(b){b.onclick=function(){var f=$('tdoc');f.style.display='block';f.tenant.value=b.dataset.tDoc;$('tdoch').textContent='Add document for '+b.dataset.name;f.scrollIntoView({behavior:'smooth'})}});
 $('tdocx').onclick=function(){$('tdoc').style.display='none'};
 document.querySelectorAll('[data-fix]').forEach(function(b){b.onclick=function(){var f=$('fix');f.question.value=b.dataset.fix;$('fixh').scrollIntoView({behavior:'smooth'});f.answer.focus()}});
-$('fix').onsubmit=function(e){e.preventDefault();var f=e.target;$('fmsg').textContent='Saving…';post('/blog-admin/kb/insights',{action:'correct',question:f.question.value,answer:f.answer.value,url:f.url.value}).then(function(x){$('fmsg').textContent=x.ok?'Saved.':err(x,'Could not save.');if(x.ok)setTimeout(function(){location.reload()},900)})};
+${ANSWER_SOURCE_JS}
+$('fix').onsubmit=function(e){e.preventDefault();var f=e.target;if(!srcOk())return;$('fmsg').textContent='Saving…';post('/blog-admin/kb/insights',{action:'correct',question:f.question.value,answer:f.answer.value,url:f.url.value}).then(function(x){$('fmsg').textContent=x.ok?'Saved.':err(x,'Could not save.');if(x.ok)setTimeout(function(){location.reload()},900)})};
 document.querySelectorAll('[data-unfix]').forEach(function(b){b.onclick=function(){if(!confirm('Remove the approved answer for "'+b.dataset.name+'"? The AI will answer from the website again.'))return;post('/blog-admin/kb/insights',{action:'uncorrect',id:b.dataset.unfix}).then(function(x){if(x.ok)location.reload();else alert(err(x,'Could not remove.'))})}});
 function embCode(k){return '<script src="https://worlddigital.ai/ask.js" data-key="'+k+'" async><\\/script>'}
 var embId='';document.querySelectorAll('[data-t-embed]').forEach(function(b){b.onclick=function(){embId=b.dataset.id;$('temb').style.display='block';$('tembh').textContent='Website widget for '+b.dataset.name;$('tembcode').value=embCode(b.dataset.tEmbed);$('tembprev').href='/ask-preview?key='+b.dataset.tEmbed;$('embmsg').textContent='';$('temb').scrollIntoView({behavior:'smooth'})}});
@@ -423,8 +474,7 @@ ${data.error ? `<p class="err">${esc(data.error)}</p>` : ''}
 <form id="fix" class="card" style="margin-top:14px;display:none"><h2 class="h" style="font-size:20px">Change this answer</h2>
 <p class="muted" style="font-size:14px">Your wording is saved as an approved answer: the AI then gives it word for word for this question, also when it is worded a little differently.</p>
 <label>Question</label><input name="question" maxlength="300" required>
-<label>Answer to give</label><textarea name="answer" rows="4" maxlength="1500" required></textarea>
-<label>Source link (optional)</label><input name="url" maxlength="300" placeholder="https://worlddigital.ai/…">
+${ANSWER_SOURCE_FIELDS}
 <p style="margin-top:12px"><button class="btn" type="submit">Save approved answer</button> <button type="button" id="fixx">Cancel</button> <span id="fmsg" class="muted"></span></p></form>
 <div class="two" style="margin-top:14px"><div><label for="flt">Find a question or answer</label><input id="flt" type="search" placeholder="e.g. keyword research"></div>
 <div><label for="org">Show</label><select id="org"><option value="">All</option><option value="page">Written from pages</option><option value="visitor">Asked by visitors</option><option value="test">Quality-test questions</option></select></div></div>
@@ -432,12 +482,15 @@ ${data.error ? `<p class="err">${esc(data.error)}</p>` : ''}
 <div style="overflow-x:auto;margin-top:8px;border:1px solid #DCE5EF;border-radius:14px"><table class="list"><thead><tr><th>Question and ready answer</th><th></th></tr></thead><tbody id="rows">${rowsHtml || '<tr><td colspan="2">No ready answers yet. They are prepared after the next sync.</td></tr>'}</tbody></table></div></main>`;
   const script = `var CSRF=${JSON.stringify(ed.csrf)};function $(i){return document.getElementById(i)}
 function post(u,b){return fetch(u,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF':CSRF},body:JSON.stringify(b||{})}).then(function(r){return r.json().catch(function(){return {}}).then(function(j){return {ok:r.ok,j:j}})}).catch(function(){return {ok:false,j:{error:'Network problem. Try again.'}}})}
+function el(tag,txt,css){var e=document.createElement(tag);if(txt!=null)e.textContent=txt;if(css)e.style.cssText=css;return e}
+function err(x,d){return (x.j&&(x.j.error||x.j.detail))||d}
 var trs=[].slice.call(document.querySelectorAll('#rows tr[data-o]'));
 function show(){var t=$('flt').value.trim().toLowerCase(),o=$('org').value,n=0;trs.forEach(function(r){var ok=(!o||r.dataset.o===o)&&(!t||r.dataset.t.indexOf(t)>-1);r.style.display=ok?'':'none';if(ok)n++});$('cnt').textContent='Showing '+n+' of '+trs.length}
 $('flt').oninput=show;$('org').onchange=show;show();
-document.querySelectorAll('[data-edit]').forEach(function(b){b.onclick=function(){var f=$('fix');f.style.display='block';f.question.value=b.dataset.q;f.answer.value=b.dataset.a;f.url.value=b.dataset.u||'';$('fmsg').textContent='';f.scrollIntoView({block:'center'});f.answer.focus()}});
+document.querySelectorAll('[data-edit]').forEach(function(b){b.onclick=function(){var f=$('fix');f.style.display='block';f.question.value=b.dataset.q;f.answer.value=b.dataset.a;setSrc(b.dataset.u||'');$('fmsg').textContent='';f.scrollIntoView({block:'center'});f.answer.focus()}});
 $('fixx').onclick=function(){$('fix').style.display='none'};
-$('fix').onsubmit=function(e){e.preventDefault();var f=e.target;$('fmsg').textContent='Saving…';post('/blog-admin/kb/insights',{action:'correct',question:f.question.value,answer:f.answer.value,url:f.url.value}).then(function(x){if(x.ok){location.reload()}else{$('fmsg').textContent=(x.j&&x.j.error)||'Could not save.'}})};
+${ANSWER_SOURCE_JS}
+$('fix').onsubmit=function(e){e.preventDefault();var f=e.target;if(!srcOk())return;$('fmsg').textContent='Saving…';post('/blog-admin/kb/insights',{action:'correct',question:f.question.value,answer:f.answer.value,url:f.url.value}).then(function(x){if(x.ok){location.reload()}else{$('fmsg').textContent=(x.j&&x.j.error)||'Could not save.'}})};
 document.querySelectorAll('[data-rm]').forEach(function(b){b.onclick=function(){if(!confirm('Remove the ready answer for "'+b.dataset.q+'"? It will not be prepared again; the AI still answers this question from the website when someone asks.'))return;b.disabled=true;post('/blog-admin/kb/insights',{action:'ready-remove',id:b.dataset.rm}).then(function(x){if(x.ok){var tr=b.closest('tr');trs=trs.filter(function(r){return r!==tr});tr.remove();show()}else{b.disabled=false;alert((x.j&&x.j.error)||'Could not remove.')}})}});`;
   return new Response(shell('Ready answers', body, nonce, script), { headers: headers(nonce) });
 }
@@ -584,9 +637,10 @@ export async function handleAdmin(req, env, url, store, ctx, { pingNow, prod }) 
         sources: (Array.isArray(b.sources) ? b.sources : ['ai']).filter((x) => SCOPES.includes(x)), types: Array.isArray(b.types) ? b.types.slice(0, 3) : null }, 90000),
       internal: () => backend(env, 'POST', '/api/admin/rag/internal', { action: b.action, title: b.title, text: b.text, url: b.url }, 120000),
       tenants: () => backend(env, 'POST', '/api/admin/rag/tenants', b, b.action === 'index-site' ? 280000 : 90000),
-      insights: () => backend(env, 'POST', '/api/admin/rag/insights', { action: ['correct', 'uncorrect', 'report', 'ready-remove'].includes(b.action) ? b.action : 'report',
+      insights: () => backend(env, 'POST', '/api/admin/rag/insights', { action: ['correct', 'uncorrect', 'report', 'ready-remove', 'pages', 'fix-grammar'].includes(b.action) ? b.action : 'report',
         source: typeof b.source === 'string' && /^tenant:[a-z0-9-]{1,80}$/.test(b.source) ? b.source : 'ai', days: 30,
-        question: String(b.question || '').slice(0, 300), answer: String(b.answer || '').slice(0, 1500), url: String(b.url || '').slice(0, 300), id: String(b.id || '').slice(0, 64) }, 60000),
+        question: String(b.question || '').slice(0, 300), answer: String(b.answer || '').slice(0, 1500), url: String(b.url || '').slice(0, 300), id: String(b.id || '').slice(0, 64),
+        q: String(b.q || '').slice(0, 80), limit: Math.max(1, Math.min(Number(b.limit) || 40, 100)) }, 60000),
     }[kb[1]];
     const r = await call();
     const quiet = kb[1] === 'ask' || (kb[1] === 'index' && b.run) || (['tenants', 'internal'].includes(kb[1]) && ['ask', 'list', 'docs'].includes(b.action)) || (kb[1] === 'insights' && !['correct', 'uncorrect', 'ready-remove'].includes(b.action));

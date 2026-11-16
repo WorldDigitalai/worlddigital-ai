@@ -61,6 +61,7 @@ RERANK_MODEL = "@cf/baai/bge-reranker-base"
 RERANK = os.environ.get("RAG_RERANK", "") == "1"   # rerank search results with RERANK_MODEL (Workers AI)
 # Written answers skip the reranker by default: the model reads all top sources anyway, and it saves ~0.6 s
 RERANK_ANSWERS = os.environ.get("RAG_RERANK_ANSWERS", "") == "1"
+FIX_MODEL = os.environ.get("RAG_FIX_MODEL", "claude-haiku-5-5")   # admin Fix Grammar button only; visitor answers are not affected
 ANSWER_MODEL = os.environ.get("RAG_ANSWER_MODEL", "")
 # if the answer model fails, is rate-limited or does not start in time, these are tried in order, then the OpenAI model
 ANSWER_FALLBACKS = [m.strip() for m in os.environ.get("RAG_ANSWER_FALLBACK", "").split(",") if m.strip()]
@@ -1480,8 +1481,10 @@ class Rag:
             raise ApiError("empty", 400, "Enter the question and the answer to give.")
         srcs = self._sources([source])
         url = str(url or "").strip()
-        if url and not url.startswith("https://"):
-            raise ApiError("bad url", 400, "The source link must start with https://")
+        if url:
+            host = urlparse(url).hostname or ""
+            if not url.startswith("https://") or len(url) > 300 or any(c.isspace() for c in url) or "." not in host:
+                raise ApiError("bad url", 400, "The source link must be a full link that starts with https://")
         key = self._correction_key(question, srcs)
         self.corrections.replace_one({"_id": key}, {"_id": key, "q": question, "answer": answer, "src": srcs, "at": now(),
                                                     "sources": [{"n": 1, "title": "Source", "url": url}] if url else [],
@@ -1492,6 +1495,42 @@ class Rag:
         return [{"id": d["_id"], "q": d["q"], "answer": d["answer"], "at": _iso(d.get("at")),
                  "url": (d.get("sources") or [{}])[0].get("url", "")}
                 for d in self.corrections.find({"src": self._sources([source])}, {"qv": 0}).sort("at", -1).limit(200)]
+
+    def page_options(self, q: str = "", limit: int = 40, source: str = "ai") -> dict:
+        """Indexed website pages for the Source link dropdown: title and address, newest first, matched on title or address."""
+        limit = max(1, min(int(limit or 40), 100))
+        q = " ".join(str(q or "").split())[:80]
+        flt: dict = {"source": (self._sources([source]) or ["ai"])[0], "kind": "page"}
+        if q:
+            rx = {"$regex": re.escape(q), "$options": "i"}
+            flt["$or"] = [{"title": rx}, {"url": rx}]
+        total = self.pages.count_documents(flt)
+        rows = self.pages.find(flt, {"url": 1, "title": 1}).sort([("updated", -1), ("url", 1)]).limit(limit)
+        seen, out = set(), []
+        for d in rows:
+            u = d.get("url") or ""
+            if u and u not in seen:
+                seen.add(u)
+                out.append({"url": u, "title": d.get("title") or u})
+        return {"pages": out, "total": total}
+
+    def fix_grammar(self, text: str) -> dict:
+        """Corrects spelling, grammar and punctuation of an approved answer without changing its meaning. Does not save."""
+        text = str(text or "").strip()
+        if len(text) < 3:
+            raise ApiError("empty", 400, "Write the answer first.")
+        if len(text) > 1500:
+            raise ApiError("too long", 400, "The answer must be at most 1500 characters.")
+        system = ("You are a careful copy editor. Correct spelling, grammar, punctuation and minor sentence structure of the text. "
+                  "Keep the meaning, facts, names, numbers, prices, URLs and tone exactly as written. Do not add, remove or invent information. "
+                  "Do not add greetings, notes or quotation marks. Reply with the corrected text only.")
+        out = "".join(services.claude_stream(self.s, system=system, user=text, model=FIX_MODEL, max_tokens=700, timeout=25,
+                                             feature="fix_grammar")).strip()
+        if not out:
+            raise ApiError("empty fix", 502, "Could not fix the grammar right now. Please try again.")
+        if len(out) > 1500:
+            out = out[:1500]
+        return {"text": out, "changed": out != text}
 
     def correction_remove(self, cid: str) -> dict:
         return {"removed": self.corrections.delete_one({"_id": str(cid or "")}).deleted_count}

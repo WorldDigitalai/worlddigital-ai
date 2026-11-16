@@ -990,3 +990,46 @@ def test_cerebras_spending_cap_counts_every_call_and_falls_back(env, monkeypatch
     n = len(calls)
     assert "From Claude" in ask("Epic FHIR budget off")
     assert len(calls) == n
+
+
+def test_approved_answer_page_options_and_fix_grammar(env, monkeypatch):
+    c, w = env
+    c.post("/api/admin/rag/index", headers=H, json={})
+    ins = lambda **b: c.post("/api/admin/rag/insights", headers=H, json=b)  # noqa: E731
+    # Source link dropdown: built from the indexed pages, no hardcoded list
+    allp = ins(action="pages").json()
+    urls = [p["url"] for p in allp["pages"]]
+    assert "https://worlddigital.ai/tools" in urls and len(urls) == len(set(urls)) and allp["total"] == len(urls)
+    assert all(p["title"] for p in allp["pages"])
+    assert not any("worlddigital.us" in u or "bayoudental" in u for u in urls)          # this site's index only
+    assert [p["url"] for p in ins(action="pages", q="TOOLS").json()["pages"]] == ["https://worlddigital.ai/tools"]  # url, any case
+    assert ins(action="pages", q="zzzz-none").json() == {"pages": [], "total": 0}
+    assert len(ins(action="pages", limit=1).json()["pages"]) == 1
+    assert ins(action="pages", q="(.*").status_code == 200                                # search text is not a pattern
+    # a page indexed later appears right away
+    w.ai["/new-service"] = "# New service\n\nBrand new page."
+    c.post("/api/admin/rag/index-url", headers=H, json={"url": "https://worlddigital.ai/new-service"})
+    assert "https://worlddigital.ai/new-service" in [p["url"] for p in ins(action="pages", q="new-service").json()["pages"]]
+    # saving: source optional, https only, a chosen page is kept as the answer's source
+    assert ins(action="correct", question="Do you sell boats?", answer="No.", url="").status_code == 200
+    assert ins(action="correct", question="Where are the tools?", answer="Here.", url="https://worlddigital.ai/tools").status_code == 200
+    got = {x["q"]: x["url"] for x in ins(action="corrections").json()["corrections"]}
+    assert got == {"Do you sell boats?": "", "Where are the tools?": "https://worlddigital.ai/tools"}
+    for bad in ("http://worlddigital.ai/tools", "https://nodot", "https://a b.com/x", "javascript:alert(1)", "ftp://x.com"):
+        assert ins(action="correct", question="Bad link?", answer="Nope.", url=bad).status_code == 400, bad
+    # Fix Grammar: corrected text returned, nothing is saved, bad input refused
+    sent = {}
+    monkeypatch.setattr(services, "claude_stream", lambda s, **k: sent.update(k) or iter(["You will receive ", "a report."]))
+    r = ins(action="fix-grammar", answer="You will recieve a report")
+    assert r.json() == {"text": "You will receive a report.", "changed": True}
+    assert sent["model"] == rag_mod.FIX_MODEL and "Do not add, remove or invent" in sent["system"] and sent["user"] == "You will recieve a report"
+    assert len(ins(action="corrections").json()["corrections"]) == 2                       # still only the two saved above
+    monkeypatch.setattr(services, "claude_stream", lambda s, **k: iter(["Already fine."]))
+    assert ins(action="fix-grammar", answer="Already fine.").json()["changed"] is False
+    assert ins(action="fix-grammar", answer="").status_code == 400
+    assert ins(action="fix-grammar", answer="x" * 1501).status_code == 400
+    monkeypatch.setattr(services, "claude_stream", lambda s, **k: iter([""]))
+    assert ins(action="fix-grammar", answer="Some text here").status_code >= 500
+    # admin only
+    assert c.post("/api/admin/rag/insights", json={"action": "pages"}).status_code in (401, 403)
+    assert c.post("/api/admin/rag/insights", json={"action": "fix-grammar", "answer": "hello there"}).status_code in (401, 403)

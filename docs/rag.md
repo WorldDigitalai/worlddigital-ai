@@ -353,3 +353,11 @@ $0.01 before the cap; after that live answers go to the next model in the chain 
 reached". A cap of 0 means Cerebras is never called. The MCP tool `quality_and_speed` shows the spend.
 Cerebras is used live only when `RAG_ANSWER_MODEL` is a `cerebras:` model (it is not, as of 2026-11-15: off until
 the owner turns it on). To reset the count: delete `spend:cerebras`, or raise the cap.
+
+## Approved answers form (admin)
+
+Same form on `/blog-admin/kb` and `/blog-admin/kb/answers`; the saved record is unchanged (`rag_corrections`: question, answer, optional source url).
+
+- **Fix Grammar** (under "Answer to give"): `insights` action `fix-grammar` sends the text to `RAG_FIX_MODEL` (default `claude-haiku-5-5`; used only by this button) with a copy-editor prompt: fix spelling, grammar, punctuation; keep meaning, facts, names, numbers, URLs, tone; add nothing. The corrected text replaces the field, is **not** saved, and has an Undo link.
+- **Source link**: searchable dropdown fed by `insights` action `pages` (`q`, `limit` up to 100): indexed pages of this site from `rag_pages` (`kind: page`), matched on title or address, one row per address, newest first, queried on every open/keystroke so new pages appear as soon as they are indexed. "Manual URL" accepts a full `https://` link (checked in the browser and again in `correction_set`); "No source link" leaves it empty. Editing an approved answer keeps its saved link.
+- Both actions are admin-only (same session and CSRF as the rest of the knowledge base page). Retrieval, embeddings and answer models are not touched.

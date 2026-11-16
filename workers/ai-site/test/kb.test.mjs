@@ -160,3 +160,16 @@ test('signing in from an assistant connect request comes back to that request, n
   assert.equal((await verify('wd_next=https%3A%2F%2Fevil.example')).headers.get('Location'), '/blog-admin');
   assert.equal((await verify('')).headers.get('Location'), '/blog-admin');
 });
+
+test('approved answer form: Fix Grammar button and searchable source dropdown on both pages', async () => {
+  for (const html of [await kbPage('N', ed, st, {}, [], [], { corrections: [] }), await readyPage('N', ed, { answers: [], per_page: 15 })]) {
+    const h = typeof html === 'string' ? html : await html.text();
+    assert.match(h, /id="gfix"[^>]*>Fix Grammar</);
+    assert.match(h, /id="srcq"[^>]*placeholder="Search or select an indexed website page/);
+    assert.match(h, /name="url" id="srcval"/);                 // the saved field is still called url
+    assert.match(h, /action:'fix-grammar'/);
+    assert.match(h, /action:'pages'/);
+    assert.match(h, /Manual URL/);
+    assert.ok(!h.includes('https://worlddigital.ai/tools"'));  // no hardcoded page list in the form
+  }
+});

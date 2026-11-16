@@ -936,7 +936,7 @@ class Rag:
 
     def search(self, query: str, k: int = 6, sources=None, *, types=None, categories=None, language=None,
                allow_internal: bool = False, variant: str = "main", rerank_hits: bool | None = None,
-               fresh: bool = False) -> list[dict]:
+               fresh: bool = False, query_vector: list[float] | None = None) -> list[dict]:
         """Hybrid retrieval. variant "alt" searches the side-by-side embedding (ALT_MODEL, see compare());
         rerank_hits re-sorts a wider candidate set with the Workers AI reranker (default: RAG_RERANK)."""
         t0 = time.monotonic()
@@ -950,7 +950,7 @@ class Rag:
         flt = {"source": srcs, **self._filters(types, categories, language)}
         alt = variant == "alt"
         index, path = (ALT_INDEX, "embedding_alt") if alt else (INDEX_NAME, "embedding")
-        q = self._query_vector(query, ALT_MODEL if alt else EMBED_MODEL, fresh)
+        q = query_vector if query_vector is not None and not alt else self._query_vector(query, ALT_MODEL if alt else EMBED_MODEL, fresh)
         timing = self._local.timing = {"embed_ms": _ms(t0)}
         t1 = time.monotonic()
         proj = {"_id": 0, "url": 1, "title": 1, "section": 1, "text": 1, "source": 1, "content_type": 1, "category": 1, "published_at": 1}
@@ -1212,7 +1212,7 @@ class Rag:
         if len(hits) < 2:  # too little found by words alone: search by meaning too
             want = k or ANSWER_SOURCES
             wide = self.search(question, min(want * 2, 12), srcs, types=types, categories=categories, language=language,
-                               allow_internal=allow_internal, rerank_hits=RERANK_ANSWERS, fresh=fresh)
+                               allow_internal=allow_internal, rerank_hits=RERANK_ANSWERS, fresh=fresh, query_vector=qvec)
             # at most 2 passages per page, so one long page cannot crowd out the page that has the answer
             hits, per_url = [], {}
             for h in wide:

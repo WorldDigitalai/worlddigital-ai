@@ -55,4 +55,4 @@ The most effective approach for most growing businesses is to run both platforms
 - **TikTok:** Awareness and reach campaigns targeting 18–30 year olds with video content at lower CPMs
 - **Instagram:** Retargeting, conversion, and shopping campaigns targeting 25–45 year olds with multiple ad formats
 
-WorldDigital.ai manages both platforms from a single dashboard, priced by custom proposal after a short call, with separate campaign strategies, audiences, and creative tailored to each platform's unique requirements. You don't have to choose; you can scale into both as your budget allows.
+WorldDigital.ai prepares the ad content for both platforms (copy, images or short videos, hashtags and keywords), priced by custom proposal after a short call, with separate creative and keywords tailored to each platform's unique requirements. You don't have to choose; you can scale into both as your budget allows.

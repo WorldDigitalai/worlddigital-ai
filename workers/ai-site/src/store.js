@@ -101,6 +101,11 @@ export class Store extends DurableObject {
         }
         this.sql.exec(`INSERT INTO kv (k,v) VALUES ('ads_price_proposal_v1', ?)`, nowIso());
       }
+      // 2026-11-16: TikTok work is ad preparation (content, images or videos, hashtags, keywords) by custom proposal, not campaign management.
+      if (!one(this.sql.exec(`SELECT v FROM kv WHERE k = 'tiktok_prep_wording_v1'`))) {
+        this.sql.exec(`UPDATE posts SET body = REPLACE(body, ?, ?), updated_at = ? WHERE instr(body, ?) > 0`, "WorldDigital.ai manages both platforms from a single dashboard, priced by custom proposal after a short call, with separate campaign strategies, audiences, and creative tailored to each platform's unique requirements.", "WorldDigital.ai prepares the ad content for both platforms (copy, images or short videos, hashtags and keywords), priced by custom proposal after a short call, with separate creative and keywords tailored to each platform's unique requirements.", nowIso(), "WorldDigital.ai manages both platforms from a single dashboard, priced by custom proposal after a short call, with separate campaign strategies, audiences, and creative tailored to each platform's unique requirements.");
+        this.sql.exec(`INSERT INTO kv (k,v) VALUES ('tiktok_prep_wording_v1', ?)`, nowIso());
+      }
       // 2026-11-14: WorldDigital.ai does not build EHR integrations itself (partners do; it runs Google Ads for patient
       // bookings). An Autopilot post said otherwise; replace it once (v1 matched no text: the stored body has links inside that sentence).
       if (!one(this.sql.exec(`SELECT v FROM kv WHERE k = 'ehr_partner_posts_v2'`))) {

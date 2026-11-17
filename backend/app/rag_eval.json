@@ -1251,7 +1251,9 @@
    "yes|multi"
   ],
   "urls": [
-   "help"
+   "help",
+   "multi-location",
+   "multiple-locations"
   ],
   "tag": "page"
  }

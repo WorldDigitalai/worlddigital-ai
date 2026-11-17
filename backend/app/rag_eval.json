@@ -1266,5 +1266,16 @@
    "help"
   ],
   "tag": "page"
+ },
+ {
+  "q": "Do you sign a BAA for healthcare clients?",
+  "expect": [
+   "yes|sign"
+  ],
+  "urls": [
+   "help",
+   "ehr-emr"
+  ],
+  "tag": "page"
  }
 ]

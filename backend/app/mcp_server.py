@@ -247,7 +247,10 @@ def build(settings, rag, db, public_url: str):
                     "answer_models_in_order": [x for x in [rag_mod.ANSWER_MODEL, *rag_mod.ANSWER_FALLBACKS, settings().openai_model] if x],
                     "cerebras_spend": r.fast_spend("cerebras"),
                     "today_utc": {"answers_written": today.get("answer", 0), "fell_back_to_backup_model": today.get("answer_fallback", 0),
-                                  "visitor_answers": today.get("public_answer", 0), "instant_answers": today.get("public_answer_cached", 0)}}
+                                  "visitor_answers": max(0, today.get("public_answer", 0) - today.get("bulk_answer", 0)),
+                                  "instant_answers": max(0, today.get("public_answer_cached", 0) - today.get("bulk_cached", 0)),
+                                  "tests_and_admin_answers": today.get("answer", 0),
+                                  "bulk_preparation": today.get("bulk_answer", 0) + today.get("bulk_cached", 0)}}
         return _text(await run(get))
 
     @mcp.tool(title="Recent leads", annotations=READ_ONLY)

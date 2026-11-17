@@ -564,6 +564,11 @@ class Rag:
         except Exception:  # noqa: BLE001  metrics must never break a request
             pass
 
+    def _bulk(self, kind: str) -> None:
+        """Counts answers prepared in bulk (the nightly warm-up), so visitor numbers can leave them out."""
+        if getattr(self._local, "warm", False):
+            self._metric(kind, 0)
+
     def ai_usage(self, days: int = 30) -> dict:
         """AI calls and tokens per feature, calls per model and fallbacks, summed over the last `days`."""
         since = (now() - timedelta(days=days)).strftime("%Y-%m-%d")
@@ -594,7 +599,8 @@ class Rag:
                 "answers": tot.get("answer", 0), "avg_answer_ms": avg("answer"),
                 "public_answers": tot.get("public_answer", 0), "avg_public_answer_ms": avg("public_answer"),
                 "cached_answers": tot.get("public_answer_cached", 0), "avg_first_words_ms": avg("first_words"),
-                "embed_errors": tot.get("embed_error", 0), "ungrounded_answers": tot.get("ungrounded_answer", 0)}
+                "embed_errors": tot.get("embed_error", 0), "ungrounded_answers": tot.get("ungrounded_answer", 0),
+                "bulk_answers": tot.get("bulk_answer", 0), "bulk_cached": tot.get("bulk_cached", 0)}
 
     # writing ------------------------------------------------------------------
     def _embed(self, texts: list[str], model: str | None = None) -> list[list[float]]:
@@ -1216,6 +1222,7 @@ class Rag:
                 yield {"type": "text", "text": fixed["answer"]}
                 ms = _ms(t0)
                 self._metric("public_answer_cached", ms)
+                self._bulk("bulk_cached")
                 yield {"type": "done", "sources": fixed.get("sources") or [], "covered": True, "undocumented": "", "cached": True,
                        "corrected": True, "related": [], "ms": ms, "first_ms": ms}
                 return
@@ -1223,6 +1230,7 @@ class Rag:
                 yield {"type": "text", "text": hit["answer"]}
                 ms = _ms(t0)
                 self._metric("public_answer_cached", ms)
+                self._bulk("bulk_cached")
                 yield {"type": "done", "sources": hit["sources"], "covered": hit["covered"], "undocumented": hit.get("undocumented", ""),
                        "cached": True, "matched": hit.get("q"), "related": related or hit.get("related") or [], "ms": ms, "first_ms": ms}
                 return
@@ -1337,6 +1345,8 @@ class Rag:
             log.warning("answer has figures not in its sources: %s", ungrounded)
         ms = _ms(t0)
         self._metric("public_answer" if public else "answer", ms)
+        if public:
+            self._bulk("bulk_answer")
         if first_ms is not None:
             self._metric("first_words", first_ms)
         if key and text and not check_only:

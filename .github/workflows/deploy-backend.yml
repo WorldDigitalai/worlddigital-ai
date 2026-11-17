@@ -72,6 +72,7 @@ jobs:
             RAG_ANSWER_FALLBACK=claude-haiku-5-5
             CEREBRAS_BUDGET_USD=15
             RAG_WARM_MODEL=claude-haiku-5-5
+            RAG_EVAL_MODEL=claude-haiku-5-5
             CEREBRAS_API_KEY=${{ secrets.CEREBRAS_API_KEY }}
             ANTHROPIC_WORKSPACE_ID=wrkspc_01UoCYkSs47KkmB2JSvzmN3m
             ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}

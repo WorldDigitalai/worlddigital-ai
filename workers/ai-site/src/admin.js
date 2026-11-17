@@ -300,13 +300,13 @@ function kbPage(nonce, ed, st, qs, tenants, internal, ins = {}, live = null, win
   const lu = live ? live.usage || {} : us, la = live ? live.ai_usage || {} : au, li = live ? live.insights || {} : ins;
   const winLabel = win === 0 ? 'today' : win === 1 ? 'last 24 hours' : `last ${win} days`;
   const pctOf = (a, b) => (b ? `${Math.round((100 * (a || 0)) / b)}%` : '–');
-  const pubN = lu.public_answers || 0, instN = lu.cached_answers || 0, fbN = la.fallbacks || 0, ungN = lu.ungrounded_answers || 0;
+  const bulkN = lu.bulk_answers || 0, bulkC = lu.bulk_cached || 0, pubN = Math.max(0, (lu.public_answers || 0) - bulkN), instN = Math.max(0, (lu.cached_answers || 0) - bulkC), fbN = la.fallbacks || 0, ungN = lu.ungrounded_answers || 0;
   const mixTotal = Object.values(la.models || {}).reduce((a, c) => a + (c || 0), 0);
   const mixBars = Object.entries(la.models || {}).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([m, c]) => `<div style="display:flex;align-items:center;gap:10px;margin-top:6px;font-size:14px"><span style="width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.replace(/_/g, '.'))}</span><span style="flex:1;background:#EAF0F7;border-radius:6px;height:12px"><span style="display:block;height:12px;border-radius:6px;background:#1D6FDC;width:${mixTotal ? Math.max(2, Math.round((100 * c) / mixTotal)) : 0}%"></span></span><b style="width:90px;text-align:right">${n(c)} · ${pctOf(c, mixTotal)}</b></div>`).join('');
   const liveCard = `${grid([
-    stat('Answers written', n(pubN + (lu.answers || 0)), `${n(pubN)} to visitors`), stat('Instant answers', pctOf(instN, pubN + instN), `${n(instN)} from memory`),
+    stat('Visitor answers', n(pubN + instN), `${n(instN)} of them instant`), stat('Instant answers', pctOf(instN, pubN + instN), 'served from memory'),
     stat('First words', ms(lu.avg_first_words_ms), 'average'), stat('Full answer', ms(lu.avg_public_answer_ms), 'average, public'),
-    stat('Backup model used', pctOf(fbN, pubN), `${n(fbN)} fallback calls`), stat('Figures not in sources', n(ungN), 'prices or numbers to check'),
+    stat('Tests & bulk preparation', n((lu.answers || 0) + bulkN + bulkC), 'not visitors: quality tests, admin and the nightly warm-up'), stat('Figures not in sources', n(ungN), 'prices or numbers to check'),
     stat('Visitor questions answered', li.total ? pctOf(li.answered, li.total) : '–', `${n(li.total)} asked${win === 0 ? ' (last 24 hours)' : ''}`), stat('Visitor ratings', `👍 ${n(li.up)} · 👎 ${n(li.down)}`)])}
 <h3 class="h" style="font-size:16px;margin-top:14px">Which models are answering</h3>${mixBars || '<p class="muted">No AI calls recorded yet.</p>'}`;
   const aiTable = `<h3 class="h" style="font-size:17px;margin-top:16px">AI usage (OpenAI, last 30 days)</h3>${au.fallbacks ? `<p style="color:#B42318;font-weight:700">${n(au.fallbacks)} calls used a different model than the configured one (fallback): check the OpenAI project's model access.</p>` : ''}

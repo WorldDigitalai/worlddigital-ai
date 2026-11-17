@@ -567,7 +567,7 @@ async def rag_ask(request: Request):
 async def rag_eval(request: Request):
     """Runs the quality test. {"model": "..."} tries another answer model (allow-listed) without changing the site."""
     b = await body_of(request) if (await request.body()).strip() else {}
-    model = str(b.get("model") or "").strip() or None
+    model = str(b.get("model") or "").strip() or (os.environ.get("RAG_EVAL_MODEL") or "").strip() or None   # tests use their own model so they do not spend the live provider's allowance
     tier = str(b.get("tier") or "").strip() or None
     if model and model not in EVAL_MODELS:
         raise ApiError("model not allowed", 400, f"Model must be one of: {', '.join(EVAL_MODELS)}")

@@ -122,6 +122,7 @@ Last updated: ${UPDATED}
 - NDA: WorldDigital.ai signs NDAs. Certifications: not SOC 2 or ISO 27001 certified. Access: accounts stay in the client's name; only the two founders and directly hired staff see client accounts, using editor access the client can remove at any time.
 - BAA: WorldDigital.ai signs a Business Associate Agreement with healthcare clients who need one; the integration partner firm signs its own BAA before any patient data is involved.
 - Contracts: negotiable, from one month up to six months, agreed in the custom proposal. Cancellation: one month's notice, and the client pays for one additional month.
+- Ownership: after full payment the client owns the custom work, including the code; tools, accounts and materials the client provided stay the client's.
 - Reporting: a monthly report by email. Multiple locations or brands: yes, a multi-location project for a company in the US and Canada has been handled before; scope goes into the custom proposal.
 - Website: ${SITE}
 - Email: support@worlddigital.ai

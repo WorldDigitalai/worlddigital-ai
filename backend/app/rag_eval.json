@@ -1288,5 +1288,17 @@
    "llms-full"
   ],
   "tag": "page"
+ },
+ {
+  "q": "Who owns the custom work and code after payment?",
+  "expect": [
+   "you|client"
+  ],
+  "urls": [
+   "help",
+   "llms-full",
+   "custom-software"
+  ],
+  "tag": "page"
  }
 ]

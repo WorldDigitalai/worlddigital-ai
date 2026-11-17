@@ -31,7 +31,7 @@ class Store:
         self.cache: Collection = db["tool_cache"]
         self.paid: Collection = db["tool_paid"]
         self.limits: Collection = db["tool_limits"]
-        self.free: Collection = db["tool_free_used"]  # one free preview per website per tool, kept for good
+        self.free: Collection = db["tool_free_used"]  # free previews per website per tool (count in n), kept for good
 
     def ensure_indexes(self) -> None:
         for c in (self.jobs, self.cache, self.paid, self.limits):
@@ -73,13 +73,21 @@ class Store:
         self.paid.replace_one({"_id": session_id}, {"_id": session_id, "job_id": job_id, "expires_at": now() + PAID_TTL},
                               upsert=True)
 
-    # one free preview per website
+    # free previews per website per tool (the limit comes from settings, default 2); documents from before the count existed count as 1
     def free_used(self, kind: str, domain: str) -> dict | None:
         return self.free.find_one({"_id": f"{kind}:{domain}"})
 
+    @staticmethod
+    def free_count(doc: dict | None) -> int:
+        return int((doc or {}).get("n") or (1 if doc else 0))
+
     def mark_free(self, kind: str, domain: str, job_id: str) -> None:
+        doc = self.free.find_one({"_id": f"{kind}:{domain}"})
+        if doc and "n" not in doc:  # older record: it already stands for one preview
+            self.free.update_one({"_id": doc["_id"]}, {"$set": {"n": 1}})
         self.free.update_one({"_id": f"{kind}:{domain}"},
-                             {"$setOnInsert": {"job_id": job_id, "created": now()}}, upsert=True)
+                             {"$inc": {"n": 1}, "$set": {"job_id": job_id, "updated": now()}, "$setOnInsert": {"created": now()}},
+                             upsert=True)
 
     # rate limit
     def hit(self, ip: str, limit: int) -> bool:

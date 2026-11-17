@@ -78,7 +78,7 @@ const TOOLS_FAQ = faq('Tool questions', [
   ['Do I need an account to use the tools?', 'No. You can try each tool without creating an account or entering a card. The paid versions are one-time payments through Stripe, with no subscription.'],
   ['Are the tools really free to try?', 'Yes. The SEO report is completely free. Keyword research shows your top 3 keywords free and the content generator writes your first piece free, with no sign-up and no card.'],
   ['How much do the paid versions cost?', 'All 10 keywords cost $9.99 and a pack of 5 ads or posts costs $24.99. Both are one-time payments through Stripe, with no subscription.'],
-  ['How many free tries do I get?', 'One free preview per website for each tool. If you run the same website again, we show you the result you already have and offer the full version.'],
+  ['How many free tries do I get?', 'Two free previews per website for each tool. If you run the same website with the same settings again, we show you the result you already have. After the second preview, we offer the full version.'],
   ['What formats do I get?', 'Paid results download as PDF, Excel or Word, and we also email them to you.'],
   ['What if I want you to do the work?', 'The <a href="/ai-seo-agency">SEO &amp; AI Search Visibility plan</a> is $199.99 a month with no contract and includes keyword research, content and fixes done for you.'],
 ]);

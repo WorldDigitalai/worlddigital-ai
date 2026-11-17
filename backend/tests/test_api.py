@@ -186,20 +186,31 @@ def test_requires_internal_token(env):
     assert TestClient(main.app).get("/api/tools/health").status_code == 200
 
 
-def test_one_free_preview_per_website(env):
+def test_two_free_previews_per_website(env):
     c, _ = env
-    first = c.post("/api/tools/content/preview", json={"url": "acme-roofing.com", "platform": "instagram", "kind": "post"}).json()
+    post = lambda u, plat: c.post("/api/tools/content/preview", json={"url": u, "platform": plat, "kind": "post"}).json()  # noqa: E731
+    first = post("acme-roofing.com", "instagram")
     assert first["notice"] is None and len(first["items"]) == 1
-    # Same request again: the same preview comes back, with the "already generated" message.
-    again = c.post("/api/tools/content/preview", json={"url": "www.acme-roofing.com", "platform": "instagram", "kind": "post"}).json()
-    assert again["id"] == first["id"] and "already been generated" in again["notice"]
-    # Different platform for the same website: nothing free, everything locked until paid.
-    other = c.post("/api/tools/content/preview", json={"url": "acme-roofing.com", "platform": "linkedin", "kind": "post"}).json()
-    assert other["items"] == [] and other["locked"] == 5 and "already been generated" in other["notice"]
-    assert c.post("/api/tools/checkout", json={"id": other["id"], "format": "pdf"}).status_code == 200
+    # Same request again: the same preview comes back and does not use up a free preview.
+    again = post("www.acme-roofing.com", "instagram")
+    assert again["id"] == first["id"] and not again.get("notice")
+    # A different platform for the same website is the second free preview.
+    second = post("acme-roofing.com", "linkedin")
+    assert second["notice"] is None and len(second["items"]) == 1 and second["id"] != first["id"]
+    # The third run is locked until paid, with the "already had its free previews" message.
+    third = post("acme-roofing.com", "facebook")
+    assert third["items"] == [] and third["locked"] == 5 and "2 free" in third["notice"]
+    assert c.post("/api/tools/checkout", json={"id": third["id"], "format": "pdf"}).status_code == 200
+    # Both free previews still open from the cache, with the message.
+    assert post("acme-roofing.com", "instagram")["id"] == first["id"]
+    assert "2 free" in post("acme-roofing.com", "linkedin")["notice"]
+    # Another website starts fresh with its own two free previews.
+    other = c.post("/api/tools/content/preview", headers={"cf-connecting-ip": "5.6.7.8"},
+                   json={"url": "other-shop.com", "platform": "instagram", "kind": "post"}).json()
+    assert other["notice"] is None and len(other["items"]) == 1
     # Our own sites stay unlimited for testing.
     for plat in ("instagram", "linkedin", "facebook"):
-        d = c.post("/api/tools/content/preview", json={"url": "worlddigital.us", "platform": plat, "kind": "post"}).json()
+        d = post("worlddigital.us", plat)
         assert d["notice"] is None and len(d["items"]) == 1
 
 

@@ -160,11 +160,13 @@ def _preview(request: Request, body: dict, kind: str):
     key = f"{kind}:" + hashlib.sha256(json.dumps({**inp, "url": domain}, sort_keys=True).encode()).hexdigest()
     test_site = domain in s.test_domains
     used = None if test_site else st.free_used(kind, domain)
+    limit = s.free_per_site
+    exhausted = bool(used) and st.free_count(used) >= limit
     notice = None
-    if used:
+    if exhausted:
         what = "keyword preview" if kind == "keywords" else "content preview"
-        notice = (f"A free {what} for {domain} has already been generated. "
-                  f"Each website gets one free preview; unlock the full report to get more.")
+        notice = (f"{domain} has already had its {limit} free {what}s. "
+                  f"Each website gets {limit} free previews per tool; unlock the full report to get more.")
         prior = st.get_job(used.get("job_id"))
         cached = st.get_job(st.cached_job_id(key))
         same = cached or (prior if prior and prior["input"] == inp else None)
@@ -183,11 +185,11 @@ def _preview(request: Request, body: dict, kind: str):
     result = generate_keywords(s, **inp) if kind == "keywords" else generate_content(s, **inp)
     job = {"_id": str(uuid.uuid4()), "type": kind, "input": inp, "items": result["items"], "meta": result["meta"],
            "created": now(), "paid": False}
-    if used:
-        job["free"] = 0  # free preview already used for this website: everything stays locked until paid
+    if exhausted:
+        job["free"] = 0  # this website has used all its free previews: everything stays locked until paid
     st.save_job(job)
     st.put_cache(key, job["_id"])
-    if not test_site and not used:
+    if not test_site and not exhausted:
         st.mark_free(kind, domain, job["_id"])
     return json_ok(public_preview({**job, "_notice": notice}))
 

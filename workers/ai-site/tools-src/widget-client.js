@@ -85,7 +85,7 @@
     if (d.notice) popup(d.notice, unlock, function () { checkout(d); });
   }
 
-  // "Already generated" message: one free preview per website.
+  // "Already generated" message: free previews per website (two).
   function popup(msg, buyLabel, onBuy) {
     var o = document.createElement("div");
     o.className = "wdt-modal";

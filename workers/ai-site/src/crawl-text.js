@@ -153,10 +153,10 @@ Planning, mobile-first design and development, domain/DNS/SSL/hosting (including
 WorldDigital.ai itself runs Google Ads for healthcare that are measured by booked patient visits (cost per booked visit); only de-identified conversion counts go to ad platforms. WorldDigital.ai does not build Epic, EHR or EMR integrations itself: for hospitals, health systems and large clinics it brings in leading integration firms in their region with experience on their EHR (Epic FHIR API, SMART on FHIR, HL7), but does not manage or supervise the integration. The independent provider handles scoping, implementation, support, and any required Business Associate Agreement directly with the client. ${SITE}/ehr-emr-integration
 
 ### Keyword research tool ($9.99 one-time)
-Enter a website and market (United States or Canada). The tool reads the site, pulls Google Ads keyword data (monthly search volume, cost per click, competition) and ranks the 10 keywords most likely to bring customers, with intent and target page. Top 3 are free; all 10 are $9.99, delivered as PDF, Excel or Word and by email. One free preview per website. ${SITE}/services/keyword-research
+Enter a website and market (United States or Canada). The tool reads the site, pulls Google Ads keyword data (monthly search volume, cost per click, competition) and ranks the 10 keywords most likely to bring customers, with intent and target page. Top 3 are free; all 10 are $9.99, delivered as PDF, Excel or Word and by email. Two free previews per website. ${SITE}/services/keyword-research
 
 ### Content generator ($24.99 one-time)
-Five ads or posts written from the website's real offer, within each platform's character limits: Google Search Ads, Facebook, Instagram, LinkedIn, X (Twitter), TikTok, YouTube Shorts or Snapchat. One is free to preview; all five are $24.99, as PDF, Excel or Word and by email. One free preview per website. ${SITE}/services/content-marketing
+Five ads or posts written from the website's real offer, within each platform's character limits: Google Search Ads, Facebook, Instagram, LinkedIn, X (Twitter), TikTok, YouTube Shorts or Snapchat. One is free to preview; all five are $24.99, as PDF, Excel or Word and by email. Two free previews per website. ${SITE}/services/content-marketing
 
 ## How we work
 1. Listen: what customers ask Google, ChatGPT and Gemini, and who shows up today.

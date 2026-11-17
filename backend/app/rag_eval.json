@@ -1256,5 +1256,15 @@
    "multiple-locations"
   ],
   "tag": "page"
+ },
+ {
+  "q": "Is there a minimum contract length?",
+  "expect": [
+   "month"
+  ],
+  "urls": [
+   "help"
+  ],
+  "tag": "page"
  }
 ]

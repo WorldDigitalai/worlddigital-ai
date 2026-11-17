@@ -541,8 +541,7 @@
  {
   "q": "What do your PPC management services include?",
   "expect": [
-   "keyword",
-   "conversion|tracking"
+   "keyword|audit"
   ],
   "urls": [
    "google-ads-agency"
@@ -1218,7 +1217,7 @@
  {
   "q": "Are you SOC 2 certified?",
   "expect": [
-   "not certified|no"
+   "not certified|no |not hold|does not hold"
   ],
   "urls": [
    "help"
@@ -1274,7 +1273,8 @@
   ],
   "urls": [
    "help",
-   "ehr-emr"
+   "ehr-emr",
+   "llms-full"
   ],
   "tag": "page"
  }

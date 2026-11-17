@@ -1204,5 +1204,55 @@
    "content-marketing"
   ],
   "tag": "visitor"
+ },
+ {
+  "q": "Will you sign an NDA?",
+  "expect": [
+   "yes|sign"
+  ],
+  "urls": [
+   "help"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "Are you SOC 2 certified?",
+  "expect": [
+   "not certified|no"
+  ],
+  "urls": [
+   "help"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "Who can see my accounts and data?",
+  "expect": [
+   "founder|hire|editor"
+  ],
+  "urls": [
+   "help"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "What reporting do I get?",
+  "expect": [
+   "monthly|email"
+  ],
+  "urls": [
+   "help"
+  ],
+  "tag": "page"
+ },
+ {
+  "q": "Can you handle multiple locations?",
+  "expect": [
+   "yes|multi"
+  ],
+  "urls": [
+   "help"
+  ],
+  "tag": "page"
  }
 ]

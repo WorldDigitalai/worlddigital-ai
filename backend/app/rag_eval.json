@@ -1277,5 +1277,16 @@
    "llms-full"
   ],
   "tag": "page"
+ },
+ {
+  "q": "How much notice do I need to give to cancel?",
+  "expect": [
+   "one month|1 month"
+  ],
+  "urls": [
+   "help",
+   "llms-full"
+  ],
+  "tag": "page"
  }
 ]

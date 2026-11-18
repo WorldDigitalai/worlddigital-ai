@@ -1,0 +1,13 @@
+[
+  {
+    "id": 1,
+    "category": "Example only",
+    "question": "What is an example question?",
+    "answer": "This is placeholder content, not an approved answer.",
+    "paraphrases": [],
+    "scope": "pending_verification",
+    "source_url": null,
+    "verified_at": null,
+    "status": "draft"
+  }
+]

@@ -980,7 +980,13 @@ class Rag:
         flt = {"source": srcs, **self._filters(types, categories, language)}
         alt = variant == "alt"
         index, path = (ALT_INDEX, "embedding_alt") if alt else (INDEX_NAME, "embedding")
-        q = query_vector if query_vector is not None and not alt else self._query_vector(query, ALT_MODEL if alt else EMBED_MODEL, fresh)
+        try:
+            q = query_vector if query_vector is not None and not alt else self._query_vector(query, ALT_MODEL if alt else EMBED_MODEL, fresh)
+        except ApiError:   # embeddings down (e.g. no credit): the site search keeps working on keywords
+            if alt or any(self._filters(types, categories, language).values()):
+                raise
+            self._metric("embed_error", 0)
+            return self.text_search(query, k, srcs)
         timing = self._local.timing = {"embed_ms": _ms(t0)}
         t1 = time.monotonic()
         proj = {"_id": 0, "url": 1, "title": 1, "section": 1, "text": 1, "source": 1, "content_type": 1, "category": 1, "published_at": 1}
@@ -1214,10 +1220,15 @@ class Rag:
             if not fixed and not hit and not any(filters.values()):
                 # same meaning, other words: compare with the approved and ready answers for this content (the embedding
                 # is reused by the search below if nothing matches, so a miss costs nothing extra)
-                qvec = self._query_vector(" ".join(question.split())[:500], EMBED_MODEL, fresh)
-                fixed = None if check_only else self._similar_correction(qvec, srcs)
-                if not fixed:
-                    hit, related = self._similar_answer(qvec, srcs, exclude=question if check_only else None, with_related=True)
+                try:
+                    qvec = self._query_vector(" ".join(question.split())[:500], EMBED_MODEL, fresh)
+                except ApiError as e:   # embeddings down (e.g. no credit): skip the same-meaning match, answer from keyword search
+                    log.warning("embedding unavailable, using keyword search: %s", str(e)[:120])
+                    self._metric("embed_error", 0)
+                if qvec is not None:
+                    fixed = None if check_only else self._similar_correction(qvec, srcs)
+                    if not fixed:
+                        hit, related = self._similar_answer(qvec, srcs, exclude=question if check_only else None, with_related=True)
             if fixed:
                 yield {"type": "text", "text": fixed["answer"]}
                 ms = _ms(t0)
@@ -1243,8 +1254,14 @@ class Rag:
                 log.info("text retrieval unavailable (%s)", type(e).__name__)
         if len(hits) < 2:  # too little found by words alone: search by meaning too
             want = k or ANSWER_SOURCES
-            wide = self.search(question, min(want * 2, 12), srcs, types=types, categories=categories, language=language,
-                               allow_internal=allow_internal, rerank_hits=RERANK_ANSWERS, fresh=fresh, query_vector=qvec)
+            try:
+                wide = self.search(question, min(want * 2, 12), srcs, types=types, categories=categories, language=language,
+                                   allow_internal=allow_internal, rerank_hits=RERANK_ANSWERS, fresh=fresh, query_vector=qvec)
+            except ApiError:   # embeddings down: keep the site answering from keyword search
+                if types or categories or language:
+                    raise
+                self._metric("embed_error", 0)
+                wide = self.text_search(" ".join(question.split())[:300], min(want * 2, 12), srcs)
             # at most 2 passages per page, so one long page cannot crowd out the page that has the answer
             hits, per_url = [], {}
             for h in wide:

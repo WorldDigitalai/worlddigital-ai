@@ -1867,7 +1867,7 @@ class Rag:
 
     # answer-quality tests ------------------------------------------------------
     def evaluate(self, model: str | None = None, tier: str | None = None, limit: int | None = None,
-                 retrieval: str | None = None, claude_key: str | None = None) -> dict:
+                 retrieval: str | None = None, claude_key: str | None = None, save: bool = False) -> dict:
         """Golden questions. Per question: expected page retrieved (and at which rank), expected page cited,
         expected words in the answer, and for questions we have no answer to, that the assistant says so."""
         cases = json.loads(EVAL_FILE.read_text())
@@ -1967,7 +1967,7 @@ class Rag:
                   "results": results, "at": now()}
         if not limit and not model and not tier and not retrieval:
             report["ready"] = self._ready_check(cases)
-        if not model:  # a trial of another answer model does not replace the live site's score in the admin
+        if not model or save:  # a trial of another answer model does not replace the live site's score in the admin; the default test model (RAG_EVAL_MODEL) does
             self.meta.replace_one({"_id": "eval"}, {"_id": "eval", **report}, upsert=True)
         return {**report, "at": _iso(report["at"])}
 

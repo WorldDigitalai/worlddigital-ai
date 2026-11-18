@@ -567,7 +567,10 @@ async def rag_ask(request: Request):
 async def rag_eval(request: Request):
     """Runs the quality test. {"model": "..."} tries another answer model (allow-listed) without changing the site."""
     b = await body_of(request) if (await request.body()).strip() else {}
-    model = str(b.get("model") or "").strip() or (os.environ.get("RAG_EVAL_MODEL") or "").strip() or None   # tests use their own model so they do not spend the live provider's allowance
+    asked = str(b.get("model") or "").strip()
+    default_model = (os.environ.get("RAG_EVAL_MODEL") or "").strip()
+    model = asked or default_model or None   # tests use their own model so they do not spend the live provider's allowance
+    save = bool(model) and not asked and model == default_model   # only the standard test updates the score shown in the admin
     tier = str(b.get("tier") or "").strip() or None
     if model and model not in EVAL_MODELS:
         raise ApiError("model not allowed", 400, f"Model must be one of: {', '.join(EVAL_MODELS)}")
@@ -578,7 +581,7 @@ async def rag_eval(request: Request):
     if retrieval and retrieval not in ("text", "hybrid"):
         raise ApiError("retrieval not allowed", 400, "Retrieval must be text or hybrid.")
     return json_ok(await run_in_threadpool(_rag_call, lambda: rag().evaluate(model, tier, limit, retrieval,
-                                                                                         request.headers.get("x-claude-token") or None)))
+                                                                                         request.headers.get("x-claude-token") or None, save)))
 
 
 EVAL_MODELS = ("groq:openai/gpt-oss-120b", "groq:qwen/qwen3.8-27b", "cerebras:gpt-oss-120b", "cerebras:qwen-3.8-27b", "claude-haiku-5-5", "gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-5.4-nano", "gpt-5-mini", "gpt-5-nano", "gpt-4.1-mini", "gpt-4.1-nano", "gpt-4o-mini",

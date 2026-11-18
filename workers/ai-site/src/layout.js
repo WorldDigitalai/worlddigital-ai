@@ -59,7 +59,7 @@ a{color:#0D5EC7}a:hover{color:#0B4FA8}
 .tick{display:flex;gap:10px;align-items:flex-start;line-height:1.5}
 .tick svg{flex:none;margin-top:3px}
 .svc{text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:10px}
-.kv{display:grid;grid-template-columns:max-content 1fr;gap:12px 24px;font-size:15.5px;margin:0}.kv dt{color:#4A5B70}.kv dd{margin:0;font-weight:600}
+.kv{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:12px 24px;font-size:15.5px;margin:0}.kv dt{color:#4A5B70}.kv dd{margin:0;font-weight:600;min-width:0;overflow-wrap:anywhere}
 .foot{background:#0E1A2B;color:#C9D6E6;padding:56px 0 32px}
 .foot a{color:#E6EDF6;text-decoration:none}.foot a:hover{text-decoration:underline}
 .foot p a[href$="-policy"],.foot p a[href="/terms-and-conditions"]{text-decoration:underline;text-underline-offset:2px}.foot h2.fh{font-family:Sora,Inter,sans-serif;color:#fff;font-size:15px;margin:0 0 12px}
@@ -93,7 +93,7 @@ textarea{min-height:120px;resize:vertical}
 @media (max-width:1260px){.brand small{display:none}.nav{gap:16px;font-size:14.5px}}
 @media (max-width:1000px){.nav{display:none}.menu{display:block}.top .btn.red{display:none}}@media (max-width:720px){.nav-cta .btn.ghost{display:none}}
 @media (max-width:420px){.brand small{display:none}}
-@media (max-width:720px){.sec{padding:48px 0}.hero-h{font-size:36px!important}.kv{grid-template-columns:1fr}.wrap{padding:0 16px}h2.h{font-size:30px!important}}
+@media (max-width:720px){.sec{padding:48px 0}.hero-h{font-size:36px!important}.kv{grid-template-columns:minmax(0,1fr)}.wrap{padding:0 16px}h2.h{font-size:30px!important}}
 .menu summary{list-style:none;border:1.5px solid #B9C7D8;border-radius:10px;padding:10px 14px;font-size:15px}.menu summary::-webkit-details-marker{display:none}
 .menu{border:0;padding:0;position:relative}.menu nav{position:absolute;right:0;top:52px;background:#fff;border:1px solid #DCE5EF;border-radius:14px;padding:10px;display:flex;flex-direction:column;min-width:230px;box-shadow:0 20px 40px -20px rgba(14,26,43,.35)}
 .menu nav a{padding:12px 12px;border-radius:10px;text-decoration:none;color:#0E1A2B;font-weight:600}.menu nav a:hover{background:#EAF2FB}

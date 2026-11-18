@@ -980,13 +980,7 @@ class Rag:
         flt = {"source": srcs, **self._filters(types, categories, language)}
         alt = variant == "alt"
         index, path = (ALT_INDEX, "embedding_alt") if alt else (INDEX_NAME, "embedding")
-        try:
-            q = query_vector if query_vector is not None and not alt else self._query_vector(query, ALT_MODEL if alt else EMBED_MODEL, fresh)
-        except ApiError:   # embeddings down (e.g. no credit): the site search keeps working on keywords
-            if alt or any(self._filters(types, categories, language).values()):
-                raise
-            self._metric("embed_error", 0)
-            return self.text_search(query, k, srcs)
+        q = query_vector if query_vector is not None and not alt else self._query_vector(query, ALT_MODEL if alt else EMBED_MODEL, fresh)
         timing = self._local.timing = {"embed_ms": _ms(t0)}
         t1 = time.monotonic()
         proj = {"_id": 0, "url": 1, "title": 1, "section": 1, "text": 1, "source": 1, "content_type": 1, "category": 1, "published_at": 1}

@@ -27,7 +27,7 @@ def validate(records):
             errors.append(f"{where}: missing {', '.join(sorted(missing))}")
             continue
         ident = item["id"]
-        if not isinstance(ident, int) or not 1 <= ident <= 565 or ident in seen_ids:
+        if not isinstance(ident, int) or not 1 <= ident <= 625 or ident in seen_ids:
             errors.append(f"{where}: invalid or duplicate id")
         seen_ids.add(ident)
         q, a = item["question"], item["answer"]
@@ -57,8 +57,8 @@ def main():
     print(f"Records: {len(records) if isinstance(records, list) else 'invalid'}; errors: {len(errors)}")
     for error in errors:
         print("ERROR:", error)
-    if isinstance(records, list) and len(records) != 565:
-        print("WARNING: Expected 565 records in final curated dataset")
+    if isinstance(records, list) and len(records) not in (60, 565, 625):
+        print("WARNING: Expected 565 original records or 625 combined records in final curated dataset")
     raise SystemExit(1 if errors else 0)
 
 if __name__ == "__main__":

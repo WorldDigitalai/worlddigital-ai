@@ -73,6 +73,10 @@ jobs:
             CEREBRAS_BUDGET_USD=15
             RAG_WARM_MODEL=gpt-5.4-mini
             RAG_EVAL_MODEL=gpt-5.4-mini
+            RAG_OPENAI_BULK_PER_DAY=3000
+            RAG_OPENAI_TESTS_PER_DAY=500
+            RAG_OPENAI_BACKUP_PER_DAY=200
+            RAG_READY_LIVE_MAX=3000
             CEREBRAS_API_KEY=${{ secrets.CEREBRAS_API_KEY }}
             ANTHROPIC_WORKSPACE_ID=wrkspc_01UoCYkSs47KkmB2JSvzmN3m
             ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}

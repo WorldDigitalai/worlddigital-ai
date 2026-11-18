@@ -1047,3 +1047,56 @@ def test_ungrounded_figures_flags_made_up_numbers():
     # only the cited source counts when citations exist
     two = [{"text": "Price is $10."}, {"text": "Price is $99."}]
     assert ungrounded_figures("It costs $99 [1].", two, cited=[1]) == ["$99"]
+
+
+def test_daily_openai_limits_bulk_tests_backup(env, monkeypatch):
+    c, w = env
+    c.post("/api/admin/rag/index", headers=H, json={})
+    monkeypatch.setattr(rag_mod, "ANSWER_MODEL", "")          # OpenAI writes everything in this test
+    monkeypatch.setattr(rag_mod, "ANSWER_FALLBACKS", [])
+    monkeypatch.setattr(rag_mod, "WARM_MODEL", "")
+    monkeypatch.setattr(rag_mod, "OPENAI_DAILY", {"bulk": 3, "tests": 2, "backup": 1})
+    r = rag_mod.Rag(main.settings(), db())
+    # live visitor answers that land on OpenAI count as backup: one allowed, then refused for the day
+    assert not r.answer("How much is keyword research?", public=True)["cached"]
+    calls = len(w.prompts)
+    with pytest.raises(services.ApiError) as e:
+        r.answer("Do you build Epic FHIR integrations?", public=True)
+    assert e.value.status == 429 and len(w.prompts) == calls
+    assert r.answer("keyword research, how much is?", public=True)["cached"]   # ready answers cost nothing and still work
+    # admin and test answers count as tests
+    r.answer("What does the free SEO report include?"); r.answer("Do you offer Google Ads?")
+    with pytest.raises(services.ApiError):
+        r.answer("Where are the tools?")
+    # the quality test refuses to start when today's test answers would not cover it
+    with pytest.raises(services.ApiError) as e:
+        r.evaluate("gpt-5.4-mini", limit=3)
+    assert e.value.status == 429 and "test limit" in e.value.public
+    # bulk preparation stops at its limit and leaves the rest for tomorrow, with no errors
+    out = r.warm(budget_s=60)
+    assert out["paused_for_today"] is True and out["prepared"] == 3 and out["left"] > 0 and out["errors"] == 0
+    assert r.openai_daily() == {"bulk": {"used": 3, "limit": 3, "left": 0}, "tests": {"used": 2, "limit": 2, "left": 0},
+                                "backup": {"used": 1, "limit": 1, "left": 0}}
+
+
+def test_warm_prepares_most_asked_first_and_trim_archives_the_rest(env, monkeypatch):
+    c, w = env
+    c.post("/api/admin/rag/index", headers=H, json={})
+    monkeypatch.setattr(rag_mod, "OPENAI_DAILY", {"bulk": 1, "tests": 50, "backup": 50})
+    monkeypatch.setattr(rag_mod, "ANSWER_MODEL", ""); monkeypatch.setattr(rag_mod, "ANSWER_FALLBACKS", []); monkeypatch.setattr(rag_mod, "WARM_MODEL", "")
+    r = rag_mod.Rag(main.settings(), db())
+    for _ in range(3):   # a question visitors really asked, three times
+        db()["rag_questions"].insert_one({"q": "Do you have a phone number I can call?", "at": rag_mod.now(), "channel": "search",
+                                          "covered": True, "source": "ai", "urls": ["https://worlddigital.ai/contact"]})
+    out = r.warm(budget_s=60)
+    assert out["prepared"] == 1
+    assert db()["rag_answers"].find_one({"q": "Do you have a phone number I can call?"})   # the most-asked one went first
+    # more answers than the live limit: the best stay, the rest move to the archive (nothing deleted)
+    for q in ("How much is keyword research?", "What does the free SEO report include?"):
+        r.answer(q, public=True)
+    n = db()["rag_answers"].count_documents({})
+    assert n == 3
+    moved = r.ready_trim(keep=1)
+    assert moved == 2 and db()["rag_answers"].count_documents({}) == 1 and db()["rag_answers_archive"].count_documents({}) == 2
+    assert db()["rag_answers"].find_one()["q"] == "Do you have a phone number I can call?"
+    assert r.ready_trim(keep=1) == 0

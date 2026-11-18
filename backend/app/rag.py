@@ -65,6 +65,12 @@ FIX_MODEL = os.environ.get("RAG_FIX_MODEL", "claude-haiku-5-5")   # admin Fix Gr
 ANSWER_MODEL = os.environ.get("RAG_ANSWER_MODEL", "")
 # if the answer model fails, is rate-limited or does not start in time, these are tried in order, then the OpenAI model
 ANSWER_FALLBACKS = [m.strip() for m in os.environ.get("RAG_ANSWER_FALLBACK", "").split(",") if m.strip()]
+# Daily OpenAI answer limits per kind of work (owner's limits): bulk preparation of ready answers, tests and admin
+# answers, and live answers that had to fall back to OpenAI. Past a limit the work waits for the next day (UTC).
+OPENAI_DAILY = {"bulk": int(os.environ.get("RAG_OPENAI_BULK_PER_DAY", "3000")),
+                "tests": int(os.environ.get("RAG_OPENAI_TESTS_PER_DAY", "500")),
+                "backup": int(os.environ.get("RAG_OPENAI_BACKUP_PER_DAY", "200"))}
+READY_LIVE_MAX = int(os.environ.get("RAG_READY_LIVE_MAX", "3000"))   # best ready answers kept live; the rest go to rag_answers_archive
 WARM_MODEL = os.environ.get("RAG_WARM_MODEL", "")   # model that prepares ready answers in bulk (keeps a fast provider's allowance for visitors)
 FAST_STALL_S = float(os.environ.get("RAG_FAST_STALL_S", "1.2"))   # a fast provider that sends nothing for this long is dropped
 # Spending caps for paid fast providers, in US dollars across all calls (0 = never used). Prices per million tokens
@@ -531,6 +537,31 @@ class Rag:
     @staticmethod
     def _fast_provider(model: str) -> str:
         return model.split(":", 1)[0]
+
+    @staticmethod
+    def _is_openai(model: str | None) -> bool:
+        return not model or model.startswith(("gpt-", "o1", "o3", "o4"))
+
+    def _openai_kind(self, public: bool) -> str:
+        if getattr(self._local, "warm", False):
+            return "bulk"
+        return "backup" if public else "tests"
+
+    def openai_daily(self) -> dict:
+        """Today's OpenAI answer calls per kind against the daily limits (UTC day)."""
+        d = self.meta.find_one({"_id": f"openai:{now():%Y-%m-%d}"}) or {}
+        return {k: {"used": int(d.get(k) or 0), "limit": lim, "left": max(lim - int(d.get(k) or 0), 0)} for k, lim in OPENAI_DAILY.items()}
+
+    def _openai_take(self, kind: str) -> None:
+        """Counts one OpenAI answer call of this kind, or refuses it when today's limit is used up."""
+        lim = OPENAI_DAILY.get(kind, 0)
+        did = f"openai:{now():%Y-%m-%d}"
+        self.meta.update_one({"_id": did}, {"$setOnInsert": {"day": now().strftime("%Y-%m-%d")}}, upsert=True)
+        got = self.meta.find_one_and_update({"_id": did, "$or": [{kind: {"$lt": lim}}, {kind: {"$exists": False}}]}, {"$inc": {kind: 1}})
+        if lim <= 0 or got is None:
+            self._metric(f"openai_{kind}_limit", 0)
+            raise ApiError(f"daily OpenAI limit for {kind} reached ({lim})", 429,
+                           "Answers are paused for today. Please try again tomorrow or contact us.")
 
     def fast_spend(self, provider: str = "cerebras") -> dict:
         d = self.meta.find_one({"_id": f"spend:{provider}"}) or {}
@@ -1288,6 +1319,8 @@ class Rag:
             if m and m.startswith("claude-"):
                 return services.claude_stream(self.s, system=system, user=user, model=m, max_tokens=self.ANSWER_TOKENS,
                                               feature="rag.answer", key=trial_key)
+            if self._is_openai(m):
+                self._openai_take(self._openai_kind(public))   # daily OpenAI limits: bulk 3000, tests 500, backup 200
             return openai_stream(self.s, system=system, user=user, max_tokens=self.ANSWER_TOKENS, feature="rag.answer", model=m or None, tier=tier)
 
         if model:   # a trial of exactly this model: its failures are shown, not hidden by a fallback
@@ -1707,7 +1740,11 @@ class Rag:
         questions written per page (prepare_questions). Run after each content sync (nightly), so common questions are
         answered instantly. Stops starting new ones after budget_s ("left" > 0: call again)."""
         t0 = time.monotonic()
-        qs = [c["q"] for c in json.loads(EVAL_FILE.read_text()) if not c.get("negative")]
+        # Order = best first: questions visitors actually asked (most asked first), then the quality-test questions,
+        # then the questions written per page, pages that visitors' answers cite most first. With a daily limit, the
+        # most useful answers are prepared first and the rest wait for the next day.
+        tests = [c["q"] for c in json.loads(EVAL_FILE.read_text()) if not c.get("negative")]
+        qs: list[str] = []
         since = now() - timedelta(days=30)
         try:
             qs += [d["_id"] for d in self.questions.aggregate([
@@ -1717,8 +1754,11 @@ class Rag:
                    if 8 <= len(d["_id"] or "") <= 200]   # every answered visitor question becomes a ready answer
         except Exception:  # noqa: BLE001
             pass
+        qs += tests
         try:
-            qs += [q for d in self.prepared.find({}, {"qs": 1}) for q in d.get("qs") or []]
+            demand = self._page_demand()
+            docs = sorted(self.prepared.find({}, {"qs": 1, "url": 1}), key=lambda d: -demand.get(d.get("url") or "", 0))
+            qs += [q for d in docs for q in d.get("qs") or []]
         except Exception:  # noqa: BLE001
             pass
         blocked = self._ready_blocked()
@@ -1734,8 +1774,14 @@ class Rag:
         except Exception:  # noqa: BLE001
             pass
 
+        warm_openai = self._is_openai(WARM_MODEL or ANSWER_MODEL)
+        paused = {"v": False}
+
         def one(q):
-            if time.monotonic() - t0 > budget_s:
+            if time.monotonic() - t0 > budget_s or paused["v"]:
+                return None
+            if warm_openai and self.openai_daily()["bulk"]["left"] <= 0:
+                paused["v"] = True   # today's bulk limit is used up: the rest waits for tomorrow
                 return None
             self._local.warm = True
             try:
@@ -1754,7 +1800,49 @@ class Rag:
                         cached += bool(r); done += 1
                 except Exception:  # noqa: BLE001
                     errors += 1
-        return {"questions": len(qs), "prepared": done - cached, "already_ready": cached, "left": left, "errors": errors, "ms": _ms(t0)}
+        archived = self.ready_trim()
+        return {"questions": len(qs), "prepared": done - cached, "already_ready": cached, "left": left, "errors": errors,
+                "paused_for_today": paused["v"], "openai_today": self.openai_daily(), "archived": archived, "ms": _ms(t0)}
+
+    def _page_demand(self, days: int = 60) -> dict:
+        """How often each page was cited in answers to real visitors (last `days`)."""
+        out: dict = {}
+        for r in self.questions.find({"at": {"$gte": now() - timedelta(days=days)}}, {"urls": 1, "top_url": 1}).limit(20000):
+            for u in (r.get("urls") or ([r["top_url"]] if r.get("top_url") else [])):
+                out[u] = out.get(u, 0) + 1
+        return out
+
+    def ready_trim(self, keep: int | None = None) -> int:
+        """Keeps the best `keep` ready answers live and moves the rest to rag_answers_archive (nothing is deleted).
+        Best = asked by visitors most, then answers whose pages visitors' answers cite most."""
+        keep = READY_LIVE_MAX if keep is None else keep
+        try:
+            total = self.answers.count_documents({})
+            if total <= keep:
+                return 0
+            asked: dict = {}
+            for d in self.questions.aggregate([{"$group": {"_id": "$q", "n": {"$sum": 1}}}]):
+                asked[self._nq(d["_id"] or "")] = d["n"]
+            demand = self._page_demand()
+            rows = list(self.answers.find({}, {"q": 1, "sources": 1, "covered": 1}))
+            score = lambda d: (asked.get(self._nq(d.get("q") or ""), 0) * 1000  # noqa: E731
+                               + sum(demand.get(x.get("url"), 0) for x in d.get("sources") or []) + (1 if d.get("covered") else 0))
+            rows.sort(key=score, reverse=True)
+            arch = self.db["rag_answers_archive"]
+            moved = 0
+            for d in rows[keep:]:
+                full = self.answers.find_one({"_id": d["_id"]})
+                if full:
+                    arch.replace_one({"_id": full["_id"]}, {**full, "archived": now()}, upsert=True)
+                    self.answers.delete_one({"_id": full["_id"]})
+                    moved += 1
+            if moved:
+                with _ready_lock:
+                    _ready_cache.clear()   # the in-memory list is read again on the next question
+            return moved
+        except Exception as e:  # noqa: BLE001
+            log.warning("ready_trim: %s", str(e)[:200])
+            return 0
 
     def answer(self, question: str, k: int | None = None, sources=None, *, types=None, categories=None, language=None,
                allow_internal: bool = False, public: bool = False, fresh: bool = False, model: str | None = None) -> dict:
@@ -1885,6 +1973,12 @@ class Rag:
         if limit:  # quick check (e.g. a slow model): an even spread of question types
             step = max(1, len(cases) // limit)
             cases = cases[::step][:limit]
+        if model and self._is_openai(model):   # an OpenAI test needs one answer per question from today's test limit
+            left = self.openai_daily()["tests"]["left"]
+            if left < len(cases):
+                raise ApiError(f"daily OpenAI test limit: {left} answers left, the test needs {len(cases)}", 429,
+                               f"Today's test limit is used up ({OPENAI_DAILY['tests']} answers a day, {left} left; "
+                               f"this test needs {len(cases)}). Run it again tomorrow, or a quick test with fewer questions.")
         results, lat, first, search_lat, stage = [], [], [], [], {}
         pos = neg = passed = hit = with_exp = cited_ok = answered_ok = unsupported = 0
         rr_sum = 0.0

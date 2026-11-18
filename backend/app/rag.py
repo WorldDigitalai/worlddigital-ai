@@ -1891,10 +1891,16 @@ class Rag:
         def ask(c):
             self._local.tier, self._local.retrieval, self._local.claude_key = tier, retrieval, claude_key
             t0 = time.monotonic()
-            try:
-                return self.answer(c["q"], sources=c.get("sources") or ["ai"], fresh=True, model=model), _ms(t0)
-            except ApiError as e:
-                return e, _ms(t0)
+            for attempt in (1, 2):
+                try:
+                    return self.answer(c["q"], sources=c.get("sources") or ["ai"], fresh=True, model=model), _ms(t0)
+                except ApiError as e:
+                    return e, _ms(t0)
+                except Exception as e:  # noqa: BLE001  one dropped connection must not fail the whole test: retry once, then count it as failed
+                    log.warning("quality test call failed (%s)", type(e).__name__)
+                    if attempt == 2:
+                        return ApiError(f"transport {type(e).__name__}", 502, "Connection error. Please try again."), _ms(t0)
+                    time.sleep(1)
 
         # a handful of questions at a time keeps the whole test under a minute even with 100+ questions
         trial_fast = bool(model) and model.split(":")[0] in services.FAST_PROVIDERS   # free tiers allow few requests a minute

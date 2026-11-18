@@ -300,16 +300,16 @@ function kbPage(nonce, ed, st, qs, tenants, internal, ins = {}, live = null, win
   const lu = live ? live.usage || {} : us, la = live ? live.ai_usage || {} : au, li = live ? live.insights || {} : ins;
   const winLabel = win === 0 ? 'today' : win === 1 ? 'last 24 hours' : `last ${win} days`;
   const pctOf = (a, b) => (b ? `${Math.round((100 * (a || 0)) / b)}%` : '–');
-  const bulkN = lu.bulk_answers || 0, bulkC = lu.bulk_cached || 0, pubN = Math.max(0, (lu.public_answers || 0) - bulkN), instN = Math.max(0, (lu.cached_answers || 0) - bulkC), fbN = la.fallbacks || 0, ungN = lu.ungrounded_answers || 0;
+  const bulkN = lu.bulk_answers || 0, bulkC = lu.bulk_cached || 0, pubN = li.total != null ? (li.answered || 0) : Math.max(0, (lu.public_answers || 0) - bulkN), instN = li.total != null ? (li.instant || 0) : Math.max(0, (lu.cached_answers || 0) - bulkC), fbN = la.fallbacks || 0, ungN = lu.ungrounded_answers || 0;
   const mixTotal = Object.values(la.models || {}).reduce((a, c) => a + (c || 0), 0);
   const mixBars = Object.entries(la.models || {}).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([m, c]) => `<div style="display:flex;align-items:center;gap:10px;margin-top:6px;font-size:14px"><span style="width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.replace(/_/g, '.'))}</span><span style="flex:1;background:#EAF0F7;border-radius:6px;height:12px"><span style="display:block;height:12px;border-radius:6px;background:#1D6FDC;width:${mixTotal ? Math.max(2, Math.round((100 * c) / mixTotal)) : 0}%"></span></span><b style="width:90px;text-align:right">${n(c)} · ${pctOf(c, mixTotal)}</b></div>`).join('');
   const liveCard = `${grid([
-    stat('Visitor answers', n(pubN + instN), `${n(instN)} of them instant`), stat('Instant answers', pctOf(instN, pubN + instN), 'served from memory'),
-    stat('First words', ms(lu.avg_first_words_ms), 'average'), stat('Full answer', ms(lu.avg_public_answer_ms), 'average, public'),
-    stat('Tests & bulk preparation', n((lu.answers || 0) + bulkN + bulkC), 'not visitors: quality tests, admin and the nightly warm-up'), stat('Figures not in sources', n(ungN), 'prices or numbers to check'),
+    stat('Visitor answers', n(pubN), `${n(instN)} of them instant · from the visitor log`), stat('Instant answers', pctOf(instN, pubN), 'served from memory'),
+    stat('First words', ms(lu.avg_first_words_ms), 'average, all answers'), stat('Full answer', ms(lu.avg_public_answer_ms), 'average, all public answers'),
+    stat('Tests & bulk preparation', n((lu.answers || 0) + bulkN + bulkC), 'not visitors: quality tests, admin and the nightly warm-up (counted since 18 Nov)'), stat('Figures not in sources', n(ungN), 'prices or numbers to check'),
     stat('Visitor questions answered', li.total ? pctOf(li.answered, li.total) : '–', `${n(li.total)} asked${win === 0 ? ' (last 24 hours)' : ''}`), stat('Visitor ratings', `👍 ${n(li.up)} · 👎 ${n(li.down)}`)])}
 <h3 class="h" style="font-size:16px;margin-top:14px">Which models are answering</h3>${mixBars || '<p class="muted">No AI calls recorded yet.</p>'}`;
-  const aiTable = `<h3 class="h" style="font-size:17px;margin-top:16px">AI usage (OpenAI, last 30 days)</h3>${au.fallbacks ? `<p style="color:#B42318;font-weight:700">${n(au.fallbacks)} calls used a different model than the configured one (fallback): check the OpenAI project's model access.</p>` : ''}
+  const aiTable = `<h3 class="h" style="font-size:17px;margin-top:16px">AI usage (OpenAI, last 30 days)</h3>${au.fallbacks ? `<p style="color:#B42318;font-weight:700">${n(au.fallbacks)} calls used a backup model instead of the first choice (all traffic, including tests and bulk preparation). A few are normal; a lot means the first model is failing or out of credit.</p>` : ''}
 <div style="overflow-x:auto;border:1px solid #DCE5EF;border-radius:14px;margin-top:8px"><table class="list"><thead><tr><th>Feature</th><th>Calls</th><th>Input tokens</th><th>Output tokens</th><th>Images / characters</th></tr></thead><tbody>${aiRows || '<tr><td colspan="5">No AI calls recorded yet.</td></tr>'}</tbody></table></div>
 <p class="muted" style="font-size:13px;margin-top:6px">Models used: ${Object.entries(au.models || {}).map(([m, c]) => `${esc(m.replace(/_/g, '.'))} (${n(c)})`).join(', ') || '–'} · total ${n(au.tokens_in)} input and ${n(au.tokens_out)} output tokens</p>`;
   const table = (head, rows, empty, cols) => `<div style="overflow-x:auto;border:1px solid #DCE5EF;border-radius:14px;margin-top:10px"><table class="list"><thead><tr>${head.map((h) => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows || `<tr><td colspan="${cols}">${empty}</td></tr>`}</tbody></table></div>`;
@@ -360,8 +360,8 @@ ${removed ? `<details style="margin-top:8px"><summary>Pages removed in the last 
 <div class="card" id="live" style="margin-top:14px"><h2 class="h" style="font-size:20px">Live statistics <span class="muted" style="font-size:13px;font-weight:400">${winLabel} · updates every minute · <span id="livet"></span></span></h2>
 <p style="margin:0 0 10px">${[[0, 'Today'], [7, '7 days'], [30, '30 days']].map(([w, l]) => `<a class="btn" style="padding:6px 14px;${w === win ? 'font-weight:700;text-decoration:underline' : 'opacity:.75'}" href="?w=${w}#live">${l}</a>`).join(' ')}</p>${liveCard}</div>
 <div class="card" style="margin-top:14px"><h2 class="h" style="font-size:20px">Use (last 30 days)</h2>${grid([
-    stat('Searches', n(us.searches), `avg ${ms(us.avg_search_ms)}`), stat('Answers (admin and tests)', n(us.answers), `avg ${ms(us.avg_answer_ms)}`), stat('Public answers written', n(us.public_answers), 'search, API and quality tests'),
-    stat('Instant answers', n(us.cached_answers), 'served from memory'), stat('Chat questions', n(qs.total), `${n(qs.uncovered)} not covered`)])}
+    stat('Searches', n(us.searches), `avg ${ms(us.avg_search_ms)}`), stat('Visitor answers', n(ins.answered), 'from the visitor log'), stat('Instant answers', n(ins.instant), 'visitors, from ready or approved answers'),
+    stat('Answers by tests and admin', n(us.answers), `avg ${ms(us.avg_answer_ms)} · includes quality tests and bulk preparation`), stat('Chat questions', n(qs.total), `${n(qs.uncovered)} not covered`)])}
 ${aiTable}
 <p class="muted" style="font-size:13px;margin-top:10px">Search indexes: ${idx} · Model: ${esc(cf.embedding_model || '')} (${n(cf.embedding_dims)} dimensions) · Chunks: about ${n(cf.chunk_tokens)} tokens, ${n(cf.overlap_tokens)} overlap</p></div>
 <h2 class="h" style="font-size:22px;margin-top:28px">Ask the knowledge base</h2>

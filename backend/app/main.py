@@ -78,6 +78,12 @@ def _record_ai_usage(*, feature: str, model: str, tokens_in: int, tokens_out: in
     inc = {f"features.{k(feature)}.calls": 1, f"features.{k(feature)}.in": tokens_in, f"features.{k(feature)}.out": tokens_out,
            f"features.{k(feature)}.units": units, f"models.{k(model)}": 1, "fallbacks": 1 if fallback else 0}
     store().db["rag_meta"].update_one({"_id": f"ai:{day}"}, {"$inc": inc, "$setOnInsert": {"day": day}}, upsert=True)
+    m = str(model or "")
+    if str(feature or "").startswith("rag") and (m.startswith(("gpt-", "o1", "o3", "o4", "text-embedding")) or not m):
+        try:   # knowledge-base OpenAI spend, for the daily dollar limit
+            rag().openai_spent(m, tokens_in, tokens_out)
+        except Exception:  # noqa: BLE001  usage tracking must never break a request
+            pass
 
 
 services.set_usage_sink(_record_ai_usage)

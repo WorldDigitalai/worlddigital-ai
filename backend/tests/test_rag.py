@@ -1075,8 +1075,10 @@ def test_daily_openai_limits_bulk_tests_backup(env, monkeypatch):
     # bulk preparation stops at its limit and leaves the rest for tomorrow, with no errors
     out = r.warm(budget_s=60)
     assert out["paused_for_today"] is True and out["prepared"] == 3 and out["left"] > 0 and out["errors"] == 0
-    assert r.openai_daily() == {"bulk": {"used": 3, "limit": 3, "left": 0}, "tests": {"used": 2, "limit": 2, "left": 0},
-                                "backup": {"used": 1, "limit": 1, "left": 0}}
+    d = r.openai_daily()
+    assert {k: d[k] for k in ("bulk", "tests", "backup")} == {"bulk": {"used": 3, "limit": 3, "left": 0},
+                                                              "tests": {"used": 2, "limit": 2, "left": 0},
+                                                              "backup": {"used": 1, "limit": 1, "left": 0}}
 
 
 def test_warm_prepares_most_asked_first_and_trim_archives_the_rest(env, monkeypatch):
@@ -1100,3 +1102,29 @@ def test_warm_prepares_most_asked_first_and_trim_archives_the_rest(env, monkeypa
     assert moved == 2 and db()["rag_answers"].count_documents({}) == 1 and db()["rag_answers_archive"].count_documents({}) == 2
     assert db()["rag_answers"].find_one()["q"] == "Do you have a phone number I can call?"
     assert r.ready_trim(keep=1) == 0
+
+
+
+def test_daily_openai_dollar_limit(env, monkeypatch):
+    c, w = env
+    c.post("/api/admin/rag/index", headers=H, json={})
+    monkeypatch.setattr(rag_mod, "ANSWER_MODEL", ""); monkeypatch.setattr(rag_mod, "ANSWER_FALLBACKS", []); monkeypatch.setattr(rag_mod, "WARM_MODEL", "")
+    monkeypatch.setattr(rag_mod, "OPENAI_DAILY", {"bulk": 1000, "tests": 1000, "backup": 1000})
+    monkeypatch.setattr(rag_mod, "OPENAI_DAILY_USD", 0.01)
+    r = rag_mod.Rag(main.settings(), db())
+    # real token counts reported for knowledge-base OpenAI calls are priced and added up; other providers and features are not
+    services.record_usage("rag.answer", "gpt-5.4-mini", {"prompt_tokens": 2000, "completion_tokens": 200})
+    services.record_usage("rag.answer", "cerebras:qwen-3.8-27b", {"prompt_tokens": 9_000_000, "completion_tokens": 9_000_000})
+    services.record_usage("keywords.seeds", "gpt-5.4-mini", {"prompt_tokens": 9_000_000, "completion_tokens": 0})   # a paid tool: not counted
+    spent = r.openai_daily()["usd"]["spent"]
+    assert abs(spent - (2000 * 0.75 + 200 * 4.50) / 1e6) < 1e-6
+    assert r.answer("How much is keyword research?", public=True)["answer"]   # still room
+    services.record_usage("rag.prepare", "gpt-5.4-mini", {"prompt_tokens": 20000, "completion_tokens": 0})          # pushes past $0.01
+    with pytest.raises(services.ApiError) as e:
+        r.answer("Do you build Epic FHIR integrations?", public=True)
+    assert e.value.status == 429 and "budget" in str(e.value)
+    assert r.answer("keyword research, how much is?", public=True)["cached"]     # ready answers still work
+    out = r.warm(budget_s=60)
+    assert out["paused_for_today"] is True and out["prepared"] == 0 and out["errors"] == 0
+    with pytest.raises(services.ApiError):
+        r.evaluate("gpt-5.4-mini", limit=3)

@@ -362,20 +362,24 @@ Same form on `/blog-admin/kb` and `/blog-admin/kb/answers`; the saved record is 
 - **Source link**: searchable dropdown fed by `insights` action `pages` (`q`, `limit` up to 100): indexed pages of this site from `rag_pages` (`kind: page`), matched on title or address, one row per address, newest first, queried on every open/keystroke so new pages appear as soon as they are indexed. "Manual URL" accepts a full `https://` link (checked in the browser and again in `correction_set`); "No source link" leaves it empty. Editing an approved answer keeps its saved link.
 - Both actions are admin-only (same session and CSRF as the rest of the knowledge base page). Retrieval, embeddings and answer models are not touched.
 
-## Daily OpenAI limits (owner's limits)
+## Daily OpenAI limits (owner's limit: $1 a day)
 
-Every answer written by an OpenAI model is counted per UTC day in `rag_meta` (`openai:YYYY-MM-DD`), by kind:
+Every OpenAI call made for the knowledge base (answers, per-page questions, embeddings) is priced from its real token
+counts (`OPENAI_PRICES`, gpt-5.4-mini $0.75 in / $4.50 out per 1M) and added to today's total in `rag_meta`
+`openai:YYYY-MM-DD` (`usd`). When it reaches `RAG_OPENAI_DAILY_USD` (1), OpenAI answer writing and per-page questions
+stop for the rest of the UTC day (6 pm Chicago). Paid tools (keyword research, content, blog drafts, chat) are not
+counted and not stopped. Per-kind answer counts are a second guard:
 
 | Kind | Limit / day | What counts |
 |---|---|---|
-| bulk | 3000 (`RAG_OPENAI_BULK_PER_DAY`) | preparing ready answers (warm) |
-| tests | 500 (`RAG_OPENAI_TESTS_PER_DAY`) | quality tests and admin answers |
-| backup | 200 (`RAG_OPENAI_BACKUP_PER_DAY`) | live visitor answers that fell through to OpenAI |
+| bulk | 150 (`RAG_OPENAI_BULK_PER_DAY`) | preparing ready answers (warm) and per-page questions |
+| tests | 140 (`RAG_OPENAI_TESTS_PER_DAY`) | quality tests and admin answers (one full 138-question test) |
+| backup | 100 (`RAG_OPENAI_BACKUP_PER_DAY`) | live visitor answers that fell through to OpenAI |
 
 Past a limit: warm stops and reports `paused_for_today` (the rest waits for the next day); a quality test on an OpenAI
-model refuses to start when it would not fit (HTTP 429, with how many are left); a visitor answer that would need OpenAI
-gets "Answers are paused for today" (ready answers still work and cost nothing). Shown by the MCP `quality_and_speed`
-tool as `openai_today`. Embeddings are not counted (a few cents a day).
+model refuses to start when it would not fit (HTTP 429, with how many fit); a visitor answer that would need OpenAI
+gets "Answers are paused for today" (ready answers still work and cost nothing; Cerebras answers first anyway).
+Shown by the MCP `quality_and_speed` tool as `openai_today` (dollars spent, cap, left, and counts per kind).
 
 Warm order is best first: questions visitors asked (most asked first), then quality-test questions, then per-page
 questions with the pages visitors' answers cite most first. After each warm, `ready_trim` keeps the best

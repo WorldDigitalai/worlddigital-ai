@@ -65,11 +65,16 @@ FIX_MODEL = os.environ.get("RAG_FIX_MODEL", "claude-haiku-5-5")   # admin Fix Gr
 ANSWER_MODEL = os.environ.get("RAG_ANSWER_MODEL", "")
 # if the answer model fails, is rate-limited or does not start in time, these are tried in order, then the OpenAI model
 ANSWER_FALLBACKS = [m.strip() for m in os.environ.get("RAG_ANSWER_FALLBACK", "").split(",") if m.strip()]
-# Daily OpenAI answer limits per kind of work (owner's limits): bulk preparation of ready answers, tests and admin
-# answers, and live answers that had to fall back to OpenAI. Past a limit the work waits for the next day (UTC).
-OPENAI_DAILY = {"bulk": int(os.environ.get("RAG_OPENAI_BULK_PER_DAY", "3000")),
-                "tests": int(os.environ.get("RAG_OPENAI_TESTS_PER_DAY", "500")),
-                "backup": int(os.environ.get("RAG_OPENAI_BACKUP_PER_DAY", "200"))}
+# Daily OpenAI limits for the knowledge base (owner's limit: about $1 a day). Every OpenAI call made for the knowledge
+# base (answers, questions per page, embeddings) is priced from its real token counts and added to today's total;
+# answer writing and page questions stop when the day's dollars are used. Per-kind answer counts are a second guard.
+OPENAI_DAILY_USD = float(os.environ.get("RAG_OPENAI_DAILY_USD", "1") or 1)
+OPENAI_PRICES = {"gpt-5.4-mini": (0.75, 4.50), "text-embedding-3-small": (0.02, 0.0)}   # $ per 1M tokens in, out (checked 2026-11-18)
+OPENAI_PRICE_DEFAULT = (0.75, 4.50)
+OPENAI_EST_ANSWER_USD = 0.0026   # a typical answer: ~2,200 tokens in, ~200 out at gpt-5.4-mini prices (for planning a test)
+OPENAI_DAILY = {"bulk": int(os.environ.get("RAG_OPENAI_BULK_PER_DAY", "150")),
+                "tests": int(os.environ.get("RAG_OPENAI_TESTS_PER_DAY", "140")),
+                "backup": int(os.environ.get("RAG_OPENAI_BACKUP_PER_DAY", "100"))}
 READY_LIVE_MAX = int(os.environ.get("RAG_READY_LIVE_MAX", "3000"))   # best ready answers kept live; the rest go to rag_answers_archive
 WARM_MODEL = os.environ.get("RAG_WARM_MODEL", "")   # model that prepares ready answers in bulk (keeps a fast provider's allowance for visitors)
 FAST_STALL_S = float(os.environ.get("RAG_FAST_STALL_S", "1.2"))   # a fast provider that sends nothing for this long is dropped
@@ -548,20 +553,38 @@ class Rag:
         return "backup" if public else "tests"
 
     def openai_daily(self) -> dict:
-        """Today's OpenAI answer calls per kind against the daily limits (UTC day)."""
+        """Today's knowledge-base OpenAI spend against the daily dollar limit, and answer calls per kind (UTC day)."""
         d = self.meta.find_one({"_id": f"openai:{now():%Y-%m-%d}"}) or {}
-        return {k: {"used": int(d.get(k) or 0), "limit": lim, "left": max(lim - int(d.get(k) or 0), 0)} for k, lim in OPENAI_DAILY.items()}
+        usd = round(float(d.get("usd") or 0), 4)
+        out = {k: {"used": int(d.get(k) or 0), "limit": lim, "left": max(lim - int(d.get(k) or 0), 0)} for k, lim in OPENAI_DAILY.items()}
+        out["usd"] = {"spent": usd, "cap": OPENAI_DAILY_USD, "left": round(max(OPENAI_DAILY_USD - usd, 0), 4)}
+        return out
+
+    def _openai_usd_left(self) -> float:
+        return self.openai_daily()["usd"]["left"]
 
     def _openai_take(self, kind: str) -> None:
-        """Counts one OpenAI answer call of this kind, or refuses it when today's limit is used up."""
+        """Counts one OpenAI call of this kind, or refuses it when today's dollars or this kind's count are used up."""
         lim = OPENAI_DAILY.get(kind, 0)
         did = f"openai:{now():%Y-%m-%d}"
         self.meta.update_one({"_id": did}, {"$setOnInsert": {"day": now().strftime("%Y-%m-%d")}}, upsert=True)
+        if self._openai_usd_left() <= 0:
+            self._metric("openai_usd_limit", 0)
+            raise ApiError(f"daily OpenAI budget reached (${OPENAI_DAILY_USD:.2f})", 429,
+                           "Answers are paused for today. Please try again tomorrow or contact us.")
         got = self.meta.find_one_and_update({"_id": did, "$or": [{kind: {"$lt": lim}}, {kind: {"$exists": False}}]}, {"$inc": {kind: 1}})
         if lim <= 0 or got is None:
             self._metric(f"openai_{kind}_limit", 0)
             raise ApiError(f"daily OpenAI limit for {kind} reached ({lim})", 429,
                            "Answers are paused for today. Please try again tomorrow or contact us.")
+
+    def openai_spent(self, model: str, tokens_in: int, tokens_out: int) -> None:
+        """Adds one knowledge-base OpenAI call's real cost to today's total (called from the usage tracker)."""
+        p_in, p_out = OPENAI_PRICES.get(model, OPENAI_PRICE_DEFAULT)
+        usd = (tokens_in * p_in + tokens_out * p_out) / 1e6
+        day = now().strftime("%Y-%m-%d")
+        self.meta.update_one({"_id": f"openai:{day}"}, {"$inc": {"usd": usd, "in": tokens_in, "out": tokens_out},
+                                                        "$setOnInsert": {"day": day}}, upsert=True)
 
     def fast_spend(self, provider: str = "cerebras") -> dict:
         d = self.meta.find_one({"_id": f"spend:{provider}"}) or {}
@@ -1704,6 +1727,7 @@ class Rag:
                 self.prepared.replace_one({"_id": p["_id"]}, {"_id": p["_id"], "url": p["url"], "hash": p.get("hash"),
                                                              "n": PREPARED_PER_PAGE, "qs": [], "at": now()}, upsert=True)
                 return 0
+            self._openai_take("bulk")   # page questions come out of the same daily budget as bulk answers
             out = openai_json(self.s, feature="rag.prepare", max_tokens=1200, temperature=0.3, system=(
                 "You write the questions real website visitors type into a company's site search. Given one page from the "
                 f"WorldDigital.ai website, write {PREPARED_PER_PAGE} different questions that THIS page clearly and fully answers. "
@@ -1780,12 +1804,17 @@ class Rag:
         def one(q):
             if time.monotonic() - t0 > budget_s or paused["v"]:
                 return None
-            if warm_openai and self.openai_daily()["bulk"]["left"] <= 0:
+            if warm_openai and (self.openai_daily()["bulk"]["left"] <= 0 or self._openai_usd_left() <= 0):
                 paused["v"] = True   # today's bulk limit is used up: the rest waits for tomorrow
                 return None
             self._local.warm = True
             try:
                 a = self.answer(q, public=True)
+            except ApiError as e:
+                if e.status == 429:   # another worker used the last of today's budget: this one waits for tomorrow too
+                    paused["v"] = True
+                    return None
+                raise
             finally:
                 self._local.warm = False
             return a.get("cached", False)
@@ -1974,10 +2003,11 @@ class Rag:
             step = max(1, len(cases) // limit)
             cases = cases[::step][:limit]
         if model and self._is_openai(model):   # an OpenAI test needs one answer per question from today's test limit
-            left = self.openai_daily()["tests"]["left"]
+            daily = self.openai_daily()
+            left = min(daily["tests"]["left"], int(daily["usd"]["left"] / OPENAI_EST_ANSWER_USD))
             if left < len(cases):
                 raise ApiError(f"daily OpenAI test limit: {left} answers left, the test needs {len(cases)}", 429,
-                               f"Today's test limit is used up ({OPENAI_DAILY['tests']} answers a day, {left} left; "
+                               f"Today's test limit is used up (${OPENAI_DAILY_USD:.2f} a day, room for {left} answers; "
                                f"this test needs {len(cases)}). Run it again tomorrow, or a quick test with fewer questions.")
         results, lat, first, search_lat, stage = [], [], [], [], {}
         pos = neg = passed = hit = with_exp = cited_ok = answered_ok = unsupported = 0

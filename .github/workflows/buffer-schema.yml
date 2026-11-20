@@ -13,10 +13,27 @@ jobs:
         env:
           T: ${{ secrets.BUFFER_API_TOKEN }}
         run: |
-          q() { curl -s -X POST https://api.buffer.com -H "Authorization: Bearer $T" -H "Content-Type: application/json" -H "User-Agent: WorldDigitalBlog/1.0" -d "$1" --max-time 30; }
-          echo "== Query fields"
-          q '{"query":"{ __type(name:\"Query\") { fields { name args { name } } } }"}' | python3 -c "import sys,json; d=json.load(sys.stdin); print(json.dumps([(f['name'],[a['name'] for a in f['args']]) for f in d['data']['__type']['fields']])[:2500]) if d.get('data') else print(d)"
-          for t in Post PostMetric PostMetrics Metric Statistics PostStatistics PostInsights Insights Channel ChannelMetrics Organization; do
-            echo "== type $t"
-            q "{\"query\":\"{ __type(name:\\\"$t\\\") { fields { name type { name kind ofType { name } } } } }\"}" | python3 -c "import sys,json; d=json.load(sys.stdin); t=(d.get('data') or {}).get('__type'); print(json.dumps([f['name'] for f in t['fields']])[:1500] if t else 'no such type')"
-          done
+          python3 - <<'PY'
+          import json, os, urllib.request
+          def q(query):
+              r = urllib.request.Request("https://api.buffer.com", json.dumps({"query": query}).encode(), {"Authorization": "Bearer " + os.environ["T"], "Content-Type": "application/json", "User-Agent": "WorldDigitalBlog/1.0"})
+              return json.load(urllib.request.urlopen(r, timeout=30))
+          def tn(t):
+              while t and not t.get("name") and t.get("ofType"): t = t["ofType"]
+              return (t or {}).get("name")
+          def show(name, depth=1, seen=None):
+              seen = seen if seen is not None else set()
+              if not name or name in seen: return
+              seen.add(name)
+              d = (q('{ __type(name:"%s") { kind enumValues { name } fields { name type { name kind ofType { name kind ofType { name } } } } inputFields { name type { name kind ofType { name kind ofType { name } } } } } }' % name).get("data") or {}).get("__type")
+              if not d: print(name, "-> no such type"); return
+              if d.get("enumValues"): print(name, "enum", [e["name"] for e in d["enumValues"]]); return
+              fs = d.get("fields") or d.get("inputFields") or []
+              print(name, "->", [(f["name"], tn(f["type"])) for f in fs][:40])
+              if depth: [show(tn(f["type"]), depth - 1, seen) for f in fs if tn(f["type"]) and not tn(f["type"]) in ("String", "Int", "Float", "Boolean", "ID", "DateTime")]
+          qf = {f["name"]: f for f in q('{ __type(name:"Query") { fields { name args { name type { name kind ofType { name kind ofType { name } } } } type { name kind ofType { name kind ofType { name } } } } } }')["data"]["__type"]["fields"]}
+          for n in ("account", "posts", "aggregatedPostMetrics"):
+              f = qf[n]; print("== Query." + n, "args", [(a["name"], tn(a["type"])) for a in f["args"]], "returns", tn(f["type"]))
+              for a in f["args"]: show(tn(a["type"]), 1)
+              show(tn(f["type"]), 2)
+          PY

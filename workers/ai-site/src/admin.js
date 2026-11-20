@@ -273,7 +273,7 @@ if(!x.ok){m.textContent=err(x,'Could not fix the grammar right now.');return}
 if(!x.j.changed){m.textContent='No changes needed.';return}
 a.value=x.j.text;m.textContent='Fixed. Read it through, edit if needed, then save. ';var u=el('button','Undo','margin-left:4px');u.type='button';u.onclick=function(){a.value=before;m.textContent='Original restored.'};m.appendChild(u)})};`;
 
-function kbPage(nonce, ed, st, qs, tenants, internal, ins = {}, live = null, win = 30) {
+function kbPage(nonce, ed, st, qs, tenants, internal, ins = {}, live = null, win = 30, prov = null) {
   const n = (v) => (v == null ? '–' : Number(v).toLocaleString('en-US'));
   const ms = (v) => (v == null ? '–' : `${(v / 1000).toFixed(1)} s`);
   const ai = (st.sites || {}).ai || {};
@@ -357,6 +357,10 @@ ${removed ? `<details style="margin-top:8px"><summary>Pages removed in the last 
     stat('Right page cited', pc(em.citation_accuracy)), stat('Answer correct', pc(em.answer_accuracy)),
     stat('Made-up answers', pc(em.unsupported_answer_rate), 'to questions the site does not cover'), stat('First words shown', ms(em.first_words_ms), `slowest 5%: ${ms(em.first_words_p95_ms)}`), stat('Full answer written', ms(em.avg_ms), `slowest 5%: ${ms(em.p95_ms)}`)]) : '<p class="muted">Not run yet.</p>'}
 <p style="margin-top:12px"><button type="button" id="evalb">Run quality test</button> <span id="emsg" class="muted"></span></p><div id="evout"></div></div>
+<div class="card" id="providers" style="margin-top:14px"><h2 class="h" style="font-size:20px">AI providers</h2>
+<p class="muted" style="margin:0 0 8px">Turn a provider off and the site never calls it, however it is set up. The others answer instead. At least one of Cerebras, Claude and OpenAI must stay on. Changes apply within a few seconds.</p>
+${prov ? prov.map((x) => `<div style="display:flex;align-items:center;gap:14px;padding:10px 0;border-top:1px solid #EAF0F7"><button type="button" class="provsw" role="switch" aria-checked="${x.on}" data-prov="${esc(x.id)}" style="min-width:74px;padding:6px 14px;border-radius:999px;border:0;font-weight:700;cursor:pointer;color:#fff;background:${x.on ? '#12805C' : '#8A97A8'}">${x.on ? 'ON' : 'OFF'}</button><span><b>${{ cerebras: 'Cerebras', claude: 'Claude', openai: 'OpenAI', archive: 'Archiving' }[x.id] || esc(x.id)}</b> <span class="muted" style="font-size:13px">${{ cerebras: 'main fast answer model', claude: 'backup answers and Fix Grammar', openai: 'backup answers and bulk preparation. Search still uses OpenAI embeddings.', archive: 'ON keeps the best 3,000 ready answers in search and archives the rest. OFF stops archiving and brings every archived answer back into search.' }[x.id] || ''}</span></span></div>`).join('') : '<p class="muted">Could not load the switches.</p>'}
+<p id="provmsg" class="muted" style="margin:8px 0 0"></p></div>
 <div class="card" id="live" style="margin-top:14px"><h2 class="h" style="font-size:20px">Live statistics <span class="muted" style="font-size:13px;font-weight:400">${winLabel} · updates every minute · <span id="livet"></span></span></h2>
 <p style="margin:0 0 10px">${[[0, 'Today'], [7, '7 days'], [30, '30 days']].map(([w, l]) => `<a class="btn" style="padding:6px 14px;${w === win ? 'font-weight:700;text-decoration:underline' : 'opacity:.75'}" href="?w=${w}#live">${l}</a>`).join(' ')}</p>${liveCard}</div>
 <div class="card" style="margin-top:14px"><h2 class="h" style="font-size:20px">Use (last 30 days)</h2>${grid([
@@ -405,6 +409,7 @@ $('smsg').textContent='Done: '+d.updated+' updated, '+d.unchanged+' unchanged, '
 $('quick').onclick=function(){sync(false)};
 $('full').onclick=function(){if(confirm('Re-read and re-embed every page? It takes a few minutes and costs a few cents of OpenAI usage.'))sync(true)};
 (function(){var t=$('livet');function tick(){fetch(location.pathname+location.search,{credentials:'same-origin'}).then(function(r){return r.text()}).then(function(h){var d=new DOMParser().parseFromString(h,'text/html').getElementById('live');if(d&&$('live')){$('live').innerHTML=d.innerHTML;t=$('livet');}if(t)t.textContent='updated '+new Date().toLocaleTimeString();}).catch(function(){})}tick();setInterval(function(){if(!document.hidden)tick()},60000)})();
+document.querySelectorAll('.provsw').forEach(function(b){b.onclick=function(){var on=b.getAttribute('aria-checked')!=='true';if(!on&&!confirm(b.dataset.prov==='archive'?'Turn archiving off? Every archived answer goes back into live search.':'Turn '+b.dataset.prov+' off? The site will stop calling it.'))return;b.disabled=true;post('/blog-admin/kb/providers',{provider:b.dataset.prov,on:on}).then(function(x){b.disabled=false;if(!x.ok){$('provmsg').textContent=err(x,'Could not change it.');return}(x.j.providers||[]).forEach(function(p){var e=document.querySelector('[data-prov="'+p.id+'"]');if(e){e.setAttribute('aria-checked',p.on);e.textContent=p.on?'ON':'OFF';e.style.background=p.on?'#12805C':'#8A97A8'}});$('provmsg').textContent='Saved.'})}});
 $('evalb').onclick=function(){$('emsg').textContent='Testing answers… one to two minutes.';post('/blog-admin/kb/eval',{}).then(function(x){if(!x.ok){$('emsg').textContent=err(x,'Test failed.');return}$('emsg').textContent=x.j.passed+'/'+x.j.total+' passed ('+x.j.score+'%).';var o=$('evout');o.textContent='';(x.j.results||[]).filter(function(r){return !r.ok}).forEach(function(r){o.appendChild(el('div','✗ '+r.q+(r.why?' ('+r.why+')':r.missing&&r.missing.length?' (missing: '+r.missing.join(', ')+')':!r.source_ok?' (expected page not cited)':' (expected page not found)'),'font-size:14px;color:#B42318;margin-top:4px'))});setTimeout(function(){location.reload()},4000)})};
 function showAnswer(x){var o=$('aout');o.textContent='';$('askb').disabled=false;if(!x.ok){$('amsg').textContent=err(x,'Could not answer.');return}$('amsg').textContent=x.j.covered===false?'Not covered by the knowledge base.':'';
 o.appendChild(el('p',x.j.answer,'margin-top:12px;font-size:16.5px;line-height:1.6'));if(x.j.undocumented)o.appendChild(el('p','Not documented: '+x.j.undocumented,'font-size:14px;color:#92400E'));
@@ -620,11 +625,11 @@ export async function handleAdmin(req, env, url, store, ctx, { pingNow, prod }) 
   if (path === '/blog-admin/leads' && method === 'GET') return leadsPage(nonce, ed, await store.listLeads());
   if (path === '/blog-admin/kb' && method === 'GET') {
     const w = [0, 7, 30].includes(Number(url.searchParams.get('w'))) && url.searchParams.get('w') !== null ? Number(url.searchParams.get('w')) : 30;
-    const [st, qs, tn, it, ins, lv] = await Promise.all([backend(env, 'GET', '/api/admin/rag'), backend(env, 'GET', '/api/admin/rag/questions?days=30'),
+    const [st, qs, tn, it, ins, lv, pv] = await Promise.all([backend(env, 'GET', '/api/admin/rag'), backend(env, 'GET', '/api/admin/rag/questions?days=30'),
       backend(env, 'POST', '/api/admin/rag/tenants', { action: 'list' }), backend(env, 'POST', '/api/admin/rag/internal', { action: 'list' }),
-      backend(env, 'POST', '/api/admin/rag/insights', { action: 'report', source: 'ai', days: 30 }), backend(env, 'GET', `/api/admin/rag/live?days=${w}`)]);
+      backend(env, 'POST', '/api/admin/rag/insights', { action: 'report', source: 'ai', days: 30 }), backend(env, 'GET', `/api/admin/rag/live?days=${w}`), backend(env, 'GET', '/api/admin/rag/providers')]);
     return kbPage(nonce, ed, st.ok ? st.data : { error: st.data.error || 'Could not load the knowledge base.' }, qs.ok ? qs.data : {},
-      tn.ok ? tn.data.tenants : [], it.ok ? it.data.docs : [], ins.ok ? ins.data : {}, lv.ok ? lv.data : null, w);
+      tn.ok ? tn.data.tenants : [], it.ok ? it.data.docs : [], ins.ok ? ins.data : {}, lv.ok ? lv.data : null, w, pv.ok ? pv.data.providers : null);
   }
   if (path === '/blog-admin/mcp') {
     if (method === 'GET') {
@@ -640,7 +645,7 @@ export async function handleAdmin(req, env, url, store, ctx, { pingNow, prod }) 
     const r = await backend(env, 'POST', '/api/admin/rag/insights', { action: 'ready' }, 60000);
     return readyPage(nonce, ed, r.ok ? r.data : { error: r.data.error || 'Could not load the ready answers.' });
   }
-  const kb = /^\/blog-admin\/kb\/(index|ask|eval|tenants|internal|insights)$/.exec(path);
+  const kb = /^\/blog-admin\/kb\/(index|ask|eval|tenants|internal|insights|providers)$/.exec(path);
   if (kb && method === 'POST') {
     let b = {}; try { b = await req.json(); } catch {}
     if (!b || typeof b !== 'object' || JSON.stringify(b).length > 210000) return json({ error: 'Bad request.' }, 400);
@@ -649,6 +654,7 @@ export async function handleAdmin(req, env, url, store, ctx, { pingNow, prod }) 
       index: () => backend(env, 'POST', '/api/admin/rag/index', { source: 'ai', full: b.full === true, run: typeof b.run === 'string' ? b.run.slice(0, 40) : null,
         batch: Math.max(1, Math.min(Number(b.batch) || 15, 40)), trigger: 'admin' }, 280000),
       eval: () => backend(env, 'POST', '/api/admin/rag/eval', {}, 280000),
+      providers: () => backend(env, 'POST', '/api/admin/rag/providers', { provider: String(b.provider || '').slice(0, 20), on: b.on === true }, 20000),
       ask: () => backend(env, 'POST', '/api/admin/rag/ask', { q: String(b.q || '').slice(0, 500),
         sources: (Array.isArray(b.sources) ? b.sources : ['ai']).filter((x) => SCOPES.includes(x)), types: Array.isArray(b.types) ? b.types.slice(0, 3) : null }, 90000),
       internal: () => backend(env, 'POST', '/api/admin/rag/internal', { action: b.action, title: b.title, text: b.text, url: b.url }, 120000),

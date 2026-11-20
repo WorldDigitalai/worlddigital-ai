@@ -62,6 +62,9 @@ RERANK = os.environ.get("RAG_RERANK", "") == "1"   # rerank search results with 
 # Written answers skip the reranker by default: the model reads all top sources anyway, and it saves ~0.6 s
 RERANK_ANSWERS = os.environ.get("RAG_RERANK_ANSWERS", "") == "1"
 FIX_MODEL = os.environ.get("RAG_FIX_MODEL", "claude-haiku-5-5")   # admin Fix Grammar button only; visitor answers are not affected
+_SW_CACHE: list = [None]   # (time, switches), shared by every Rag object on this server
+AI_PROVIDERS = ("cerebras", "claude", "openai")   # answer writers: at least one must stay on
+SWITCHABLE = AI_PROVIDERS + ("archive",)   # everything with an admin on/off switch; "archive" = move extra ready answers out of live search
 ANSWER_MODEL = os.environ.get("RAG_ANSWER_MODEL", "")
 # if the answer model fails, is rate-limited or does not start in time, these are tried in order, then the OpenAI model
 ANSWER_FALLBACKS = [m.strip() for m in os.environ.get("RAG_ANSWER_FALLBACK", "").split(",") if m.strip()]
@@ -585,6 +588,52 @@ class Rag:
         day = now().strftime("%Y-%m-%d")
         self.meta.update_one({"_id": f"openai:{day}"}, {"$inc": {"usd": usd, "in": tokens_in, "out": tokens_out},
                                                         "$setOnInsert": {"day": day}}, upsert=True)
+
+    # --- on/off switches for the paid answer providers (admin page): off means never called, whatever the deploy config says ---
+    @staticmethod
+    def provider_of(model: str | None) -> str | None:
+        """cerebras | groq | claude | openai for a model name; None for the free Workers AI models (never switched)."""
+        if model and model.startswith("@cf/"):
+            return None
+        if model and model.split(":")[0] in services.FAST_PROVIDERS:
+            return model.split(":")[0]
+        if model and model.startswith("claude-"):
+            return "claude"
+        return "openai"
+
+    def provider_switches(self) -> dict:
+        """{"cerebras": True, "claude": True, "openai": True}; all on until someone turns one off. Read at most every 5 s."""
+        c = _SW_CACHE[0]
+        if c and time.monotonic() - c[0] < 5:
+            return c[1]
+        try:
+            d = self.meta.find_one({"_id": "provider_switches"}) or {}
+        except Exception:  # noqa: BLE001  cannot read the setting: keep everything on rather than stop answering
+            d = {}
+        sw = {p: bool((d.get("on") or {}).get(p, True)) for p in SWITCHABLE}
+        _SW_CACHE[0] = (time.monotonic(), sw)
+        return sw
+
+    def provider_set(self, provider: str, on: bool) -> dict:
+        if provider not in SWITCHABLE:
+            raise ApiError("bad provider", 400, "Unknown provider.")
+        sw = dict(self.provider_switches())
+        sw[provider] = bool(on)
+        if not any(sw[p] for p in AI_PROVIDERS):
+            raise ApiError("last provider", 400, "At least one provider has to stay on, or the site cannot write answers.")
+        self.meta.update_one({"_id": "provider_switches"}, {"$set": {"on": sw, "at": now()}}, upsert=True)
+        _SW_CACHE[0] = None
+        if provider == "archive" and not on:
+            self.ready_restore()
+        return self.provider_state()
+
+    def provider_state(self) -> dict:
+        sw = self.provider_switches()
+        return {"providers": [{"id": p, "on": sw[p]} for p in SWITCHABLE]}
+
+    def _provider_on(self, model: str | None) -> bool:
+        p = self.provider_of(model)
+        return p is None or p not in SWITCHABLE or self.provider_switches()[p]
 
     def fast_spend(self, provider: str = "cerebras") -> dict:
         d = self.meta.find_one({"_id": f"spend:{provider}"}) or {}
@@ -1330,6 +1379,8 @@ class Rag:
         trial_key = getattr(self._local, "claude_key", None)
 
         def write_with(m: str | None):
+            if not self._provider_on(m):
+                raise ApiError(f"{self.provider_of(m)} is switched off", 503, "That AI provider is switched off in the admin page.")
             if m and m.startswith("@cf/"):
                 return workers_stream(self.s, system=system, user=user, model=m, max_tokens=self.ANSWER_TOKENS)
             if m and m.split(":")[0] in services.FAST_PROVIDERS:
@@ -1350,7 +1401,9 @@ class Rag:
             writer = write_with(model)
         else:
             first_choice = (WARM_MODEL if getattr(self._local, "warm", False) else "") or ANSWER_MODEL
-            chain = list(dict.fromkeys([m for m in [first_choice, *ANSWER_FALLBACKS] if m] + [""]))   # "" = the OpenAI model
+            chain = [m for m in dict.fromkeys([m for m in [first_choice, *ANSWER_FALLBACKS] if m] + [""]) if self._provider_on(m)]   # "" = the OpenAI model
+            if not chain:
+                raise ApiError("all providers off", 503, "Every AI provider is switched off in the admin page.")
 
             def chained():
                 for i, m in enumerate(chain):
@@ -1625,6 +1678,8 @@ class Rag:
             raise ApiError("empty", 400, "Write the answer first.")
         if len(text) > 1500:
             raise ApiError("too long", 400, "The answer must be at most 1500 characters.")
+        if not self._provider_on(FIX_MODEL):
+            raise ApiError("claude is switched off", 503, "Claude is switched off in the admin page.")
         system = ("You are a careful copy editor. Correct spelling, grammar, punctuation and minor sentence structure of the text. "
                   "Keep the meaning, facts, names, numbers, prices, URLs and tone exactly as written. Do not add, remove or invent information. "
                   "Do not add greetings, notes or quotation marks. Reply with the corrected text only.")
@@ -1804,6 +1859,9 @@ class Rag:
         def one(q):
             if time.monotonic() - t0 > budget_s or paused["v"]:
                 return None
+            if not self._provider_on(WARM_MODEL or ANSWER_MODEL):
+                paused["v"] = True   # its provider is switched off in the admin page: no bulk preparation
+                return None
             if warm_openai and (self.openai_daily()["bulk"]["left"] <= 0 or self._openai_usd_left() <= 0):
                 paused["v"] = True   # today's bulk limit is used up: the rest waits for tomorrow
                 return None
@@ -1841,10 +1899,28 @@ class Rag:
                 out[u] = out.get(u, 0) + 1
         return out
 
+    def ready_restore(self) -> int:
+        """Moves every archived ready answer back into live search (used when archiving is switched off)."""
+        arch, moved = self.db["rag_answers_archive"], 0
+        try:
+            for d in list(arch.find({})):
+                d.pop("archived", None)
+                self.answers.replace_one({"_id": d["_id"]}, d, upsert=True)
+                arch.delete_one({"_id": d["_id"]})
+                moved += 1
+            if moved:
+                with _ready_lock:
+                    _ready_cache.clear()
+        except Exception as e:  # noqa: BLE001
+            log.warning("ready_restore: %s", str(e)[:200])
+        return moved
+
     def ready_trim(self, keep: int | None = None) -> int:
         """Keeps the best `keep` ready answers live and moves the rest to rag_answers_archive (nothing is deleted).
         Best = asked by visitors most, then answers whose pages visitors' answers cite most."""
         keep = READY_LIVE_MAX if keep is None else keep
+        if not self.provider_switches()["archive"]:
+            return 0   # archiving is switched off in the admin page: every ready answer stays live
         try:
             total = self.answers.count_documents({})
             if total <= keep:

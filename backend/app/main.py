@@ -533,6 +533,18 @@ async def rag_live(days: int = 30):
     return json_ok(await run_in_threadpool(_rag_call, run))
 
 
+@app.get("/api/admin/rag/providers", dependencies=[Depends(guard)])
+async def rag_providers():
+    """On/off switches for the answer providers (cerebras, claude, openai)."""
+    return json_ok(await run_in_threadpool(_rag_call, lambda: rag().provider_state()))
+
+
+@app.post("/api/admin/rag/providers", dependencies=[Depends(guard)])
+async def rag_providers_set(request: Request):
+    b = await body_of(request)
+    return json_ok(await run_in_threadpool(_rag_call, lambda: rag().provider_set(str(b.get("provider") or ""), b.get("on") is True)))
+
+
 @app.get("/api/admin/rag/history", dependencies=[Depends(guard)])
 async def rag_history(limit: int = 30):
     return json_ok({"runs": await run_in_threadpool(_rag_call, lambda: rag().sync_history(max(1, min(int(limit), 100))))})

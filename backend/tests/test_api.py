@@ -402,3 +402,25 @@ def test_blog_video_retries_shorter_script(env):
         r = c.post("/api/admin/blog/video", json={"title": "Local SEO guide", "excerpt": "x", "body": "y"})
     assert r.status_code == 200, r.text
     assert r.json()["duration"] <= 7.0 and r.json()["script"]["voice"][-1] == "More at worlddigital.ai."
+
+
+def test_provider_switches(monkeypatch):
+    import mongomock
+    from app import rag as rag_mod, services
+    rag_mod._SW_CACHE[0] = None
+    r = rag_mod.Rag.__new__(rag_mod.Rag)
+    r.meta = mongomock.MongoClient().db.rag_meta
+    assert all(p["on"] for p in r.provider_state()["providers"])
+    r.provider_set("cerebras", False)
+    assert not r._provider_on("cerebras:qwen-3.8-27b") and r._provider_on("claude-haiku-5-5") and r._provider_on("@cf/x")
+    r.db = mongomock.MongoClient().db
+    r.answers = r.db["rag_answers"]
+    r.db["rag_answers_archive"].insert_one({"_id": "a", "q": "x", "archived": 1})
+    r.provider_set("archive", False)
+    assert r.answers.find_one({"_id": "a"}) and "archived" not in r.answers.find_one({"_id": "a"}) and r.ready_trim(0) == 0
+    r.provider_set("claude", False)
+    import pytest
+    with pytest.raises(rag_mod.ApiError):
+        r.provider_set("openai", False)   # would leave no answer writer
+    r.provider_set("cerebras", True)
+    rag_mod._SW_CACHE[0] = None

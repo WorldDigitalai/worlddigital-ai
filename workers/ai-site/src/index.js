@@ -22,6 +22,32 @@ const RAW = new WeakSet(); // app responses we must not touch
 let seeded = false;
 const store = (env) => env.STORE.get(env.STORE.idFromName('site'));
 
+// The blog's original posts ship inside the Worker. When the database is unavailable (for example Cloudflare's free daily read allowance is
+// used up) these are served instead of an error page. Marked X-Fallback so they are never cached over a better copy.
+const isDbDown = (e) => /Exceeded allowed rows|free tier|Durable Object/i.test(String(e && e.message));
+let fallbackList = null;
+function fallbackPosts() {
+  if (!fallbackList) fallbackList = seedPosts().map((p) => ({ ...p, seo_title: null, cover_id: null, cover_alt: null, status: 'published', publish_at: null, updated_at: p.published_at, created_at: p.published_at,
+    author: 'WorldDigital.ai Team', chars: p.body.length, body_head: p.body.slice(0, 4000), live: true })).sort((a, b) => b.published_at.localeCompare(a.published_at));
+  return fallbackList;
+}
+const asFallback = (res) => { const h = new Headers(res.headers); h.set('X-Fallback', '1'); h.set('Cache-Control', 'no-store'); return new Response(res.body, { status: res.status, headers: h }); };
+
+async function blogFromPosts(path, url, posts, prod) {
+  if (path === '/sitemap.xml') return text(sitemap(posts), 'application/xml; charset=utf-8');
+  if (path === '/sitemap.txt') return text([...sitemap(posts).matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]).filter((u) => !u.includes('/media/')).join('\n') + '\n', 'text/plain; charset=utf-8');
+  if (path === '/llms.txt') return text(llms(posts, false), 'text/plain; charset=utf-8');
+  if (path === '/llms-full.txt') return text(llms(posts, true), 'text/plain; charset=utf-8');
+  if (path === '/blog/feed.xml') return text(feed(posts), 'application/rss+xml; charset=utf-8');
+  if (path === '/blog') {
+    const topic = (url.searchParams.get('topic') || '').toLowerCase().replace(/[^a-z0-9-]/g, '');
+    return html(blogIndex(posts, { category: topic || null, prod }), 200, 'no-store');
+  }
+  const slug = decodeURIComponent(path.slice(6)).toLowerCase();
+  const p = /^[a-z0-9-]+$/.test(slug) ? posts.find((x) => x.slug === slug) : null;
+  return p ? html(blogPost(p, posts, { prod }), 200, 'no-store') : null;   // a post that is not bundled: honest 503, never a cached redirect
+}
+
 const staleKey = (u) => u + (u.includes('?') ? '&' : '?') + '__stale=1';
 
 async function ensureSeed(st) {
@@ -254,9 +280,14 @@ ${key ? `<script src="/ask.js" data-key="${key}" async></script>` : ''}`;
     // Merged blog topic: the old "AI & Marketing" topic page moves to "AI Marketing".
     if (path === '/blog' && url.searchParams.get('topic') === 'ai-and-marketing') return redirect('/blog?topic=ai-marketing');
     if (['/sitemap.xml', '/sitemap.txt', '/llms.txt', '/llms-full.txt', '/blog', '/blog/feed.xml'].includes(path) || path.startsWith('/blog/')) {
-      const st = store(env);
-      await ensureSeed(st);
-      const posts = await st.listPosts();
+      let st, posts, fb = false;
+      try { st = store(env); await ensureSeed(st); posts = await st.listPosts(); }
+      catch (e) { if (!isDbDown(e)) throw e; console.log('database unavailable, serving the bundled posts:', String(e.message).slice(0, 120)); fb = true; posts = fallbackPosts(); }
+      if (fb) {
+        const r = await blogFromPosts(path, url, posts, prod);
+        if (r) return asFallback(r);
+        throw new Error('database unavailable and this page is not bundled: Exceeded allowed rows read');   // the catch below tries the spare cached copy, then answers 503
+      }
       if (path === '/sitemap.xml') return text(sitemap(posts), 'application/xml; charset=utf-8');
       if (path === '/sitemap.txt') return text([...sitemap(posts).matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]).filter((u) => !u.includes('/media/')).join('\n') + '\n', 'text/plain; charset=utf-8');
       if (path === '/llms.txt') return text(llms(posts, false), 'text/plain; charset=utf-8');
@@ -333,18 +364,23 @@ export default {
         out = withHeaders(new Response(md, { headers: { 'Content-Type': 'text/markdown; charset=utf-8', 'Cache-Control': 'public, max-age=0, s-maxage=300', Vary: 'Accept' } }), prod);
         return out;
       }
-      if (cacheable && out.status === 200) ctx.waitUntil(cache.put(req.url, out.clone()));
-      if (cacheable && out.status === 200) {   // a day-long spare copy, used only if the database is down (see the catch below)
+      const isFb = out.headers.get('X-Fallback') === '1';
+      if (cacheable && out.status === 200 && !isFb) ctx.waitUntil(cache.put(req.url, out.clone()));
+      if (cacheable && out.status === 200 && !isFb) {   // a day-long spare copy, used only if the database is down (see the catch below)
         const c = out.clone(), h = new Headers(c.headers); h.set('Cache-Control', 'public, max-age=86400'); h.delete('Set-Cookie');
         ctx.waitUntil(cache.put(staleKey(req.url), new Response(c.body, { status: 200, headers: h })));
       }
-      if (prod) trackHit(req, env, ctx, url, out, store);
+      if (prod && !isFb) trackHit(req, env, ctx, url, out, store);
       return out;
     } catch (e) {
       console.log('error', e.stack || e.message);
       if (cacheable) {   // visitors still get the last good copy of the page while the database is unavailable
         const old = await cache.match(staleKey(req.url));
         if (old) { const h = new Headers(old.headers); h.set('X-Served-Stale', '1'); h.set('Cache-Control', 'no-store'); return new Response(old.body, { status: 200, headers: h }); }
+      }
+      if (isDbDown(e)) {   // the database is over its allowance: say so honestly, and tell crawlers to come back
+        const r = withHeaders(html('<!doctype html><title>Back soon</title><p style="font-family:sans-serif;padding:40px">This page is temporarily unavailable. Please try again in a few minutes, or email support@worlddigital.ai.</p>', 503, 'no-store'), prod);
+        r.headers.set('Retry-After', '300'); return r;
       }
       return withHeaders(html('<!doctype html><title>Error</title><p style="font-family:sans-serif;padding:40px">Something went wrong. Please try again in a moment, or email support@worlddigital.ai.</p>', 500, 'no-store'), prod);
     }

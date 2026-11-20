@@ -106,15 +106,24 @@ test('hits are written in batches: the first at once, a burst together, never on
   assert.equal(batches.length, 1, 'only the first hit is written at once'); assert.equal(batches[0], 1);
 });
 
-test('database down: a cacheable page is served from the last good copy instead of a 500', async () => {
+test('database down: pages come back from the last good copy, or from the bundled posts, instead of a 500', async () => {
   const worker = (await import('../src/index.js')).default;
   const mem = new Map();
   globalThis.caches = { default: { match: async (k) => { const r = mem.get(k); return r ? r.clone() : undefined; }, put: async (k, r) => { mem.set(k, r); } } };
-  const stale = 'https://worlddigital.ai/blog?__stale=1';
-  mem.set(stale, new Response('<html>last good blog</html>', { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } }));
-  const env = { STORE: { idFromName: () => 'x', get: () => { throw new Error('Exceeded allowed rows read in Durable Objects free tier.'); } } };
-  const res = await worker.fetch(new Request('https://worlddigital.ai/blog'), env, { waitUntil() {} });
-  assert.equal(res.status, 200); assert.equal(res.headers.get('X-Served-Stale'), '1'); assert.match(await res.text(), /last good blog/);
-  const none = await worker.fetch(new Request('https://worlddigital.ai/blog/some-uncached-post'), env, { waitUntil() {} });
-  assert.equal(none.status, 500, 'a page with no spare copy still answers with the error page');
+  const env = { STORE: { idFromName: () => 'x', get: () => new Proxy({}, { get: () => async () => { throw new Error('Exceeded allowed rows read in Durable Objects free tier.'); } }) } };
+  const go = (path) => worker.fetch(new Request('https://worlddigital.ai' + path), env, { waitUntil() {} });
+  // 1. nothing cached: the bundled posts answer, uncached, marked as a fallback
+  const idx = await go('/blog');
+  assert.equal(idx.status, 200); assert.equal(idx.headers.get('X-Fallback'), '1'); assert.equal(idx.headers.get('Cache-Control'), 'no-store');
+  assert.match(await idx.text(), /<h1|<title>/i);
+  const map = await go('/sitemap.xml'); assert.equal(map.status, 200);
+  const slug = [...(await map.text()).matchAll(/<loc>https:\/\/worlddigital\.ai\/blog\/([a-z0-9-]+)<\/loc>/g)][0][1];
+  const post = await go('/blog/' + slug); assert.equal(post.status, 200); assert.equal(post.headers.get('X-Fallback'), '1');
+  const missing = await go('/blog/a-post-written-after-the-bundle'); assert.equal(missing.status, 503); assert.equal(missing.headers.get('Retry-After'), '300');
+  assert.equal(mem.size, 0, 'fallback pages are never cached over a good copy');
+  // 2. a spare good copy exists: it is preferred
+  mem.set('https://worlddigital.ai/blog/some-cached-post?__stale=1', new Response('<html>last good post</html>', { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } }));
+  const old = await go('/blog/some-cached-post'); assert.equal(old.status, 200); assert.match(await old.text(), /last good post/);
+  // 3. pages that need the database for real (admin) still answer with the error page
+  const adm = await go('/blog-admin/login'); assert.equal(adm.status, 503); assert.equal(adm.headers.get('Retry-After'), '300');
 });

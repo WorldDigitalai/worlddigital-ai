@@ -494,6 +494,7 @@ export function analyticsPage(nonce, ed) {
 .an .chart{position:relative}.an svg text{font-size:12px;fill:var(--muted)}.an .tip{position:absolute;pointer-events:none;background:#fff;border:1px solid #CBD5E1;border-radius:10px;padding:8px 10px;font-size:13px;box-shadow:0 4px 14px rgba(14,26,43,.12);min-width:150px;z-index:5}
 .an .tip b{font-size:15px;color:var(--ink);font-variant-numeric:tabular-nums}.an .tip .k{color:var(--ink2)}.an .key{display:inline-block;width:14px;height:0;border-top:3px solid var(--s1);vertical-align:middle;margin-right:6px}.an .key.p{border-top:2px dashed var(--muted)}
 .an .legend{font-size:13px;color:var(--ink2);margin:0 0 6px}.an .feed{display:grid;gap:6px;font-size:13.5px;max-height:260px;overflow:auto}.an .feed div{display:flex;gap:8px;justify-content:space-between}
+.an .svc{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:8px}@media(max-width:900px){.an .svc{grid-template-columns:1fr}}.an .chip{display:inline-block;font-size:12px;font-weight:700;padding:2px 9px;border-radius:99px;background:#EEF2F7;color:var(--ink2)}.an .chip.ok{background:#DCFCE7;color:#14532D}.an .chip.bad{background:#FEE4E2;color:#912018}.an .gh{margin:18px 0 0;font-size:14px;color:var(--ink2);text-transform:uppercase;letter-spacing:.04em}.an .mt{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 16px;margin-top:10px}.an .mt .v{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--ink)}
 .an table{width:100%;border-collapse:collapse;font-size:13.5px}.an th,.an td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--grid)}.an details{margin-top:8px;color:var(--ink2)}
 .an.stale{opacity:.6;transition:opacity .2s}.an .empty{color:var(--ink2);font-size:14px;padding:6px 0}
 </style>`;
@@ -508,6 +509,9 @@ export function analyticsPage(nonce, ed) {
 <div class="card" style="margin-top:14px"><div class="legend" id="legend"></div><div class="chart" id="main"></div><details><summary>Table view</summary><div id="maint" style="max-height:300px;overflow:auto"></div></details></div>
 <div class="row r2"><div class="card"><h2>Pages <span class="sub" style="font-weight:400">views · visitors</span></h2><div class="lst" id="pages"></div></div><div class="card"><h2>How people found you <span class="sub" style="font-weight:400">views · visitors</span></h2><div class="lst" id="channels"></div><h2 style="margin-top:14px">Sites sending visitors <span class="sub" style="font-weight:400">views · visitors</span></h2><div class="lst" id="referrers"></div></div></div>
 <div class="row r3"><div class="card"><h2>Countries <span class="sub" style="font-weight:400">views · visitors</span></h2><div class="lst" id="countries"></div></div><div class="card"><h2>Devices <span class="sub" style="font-weight:400">views · visitors</span></h2><div class="lst" id="devices"></div></div><div class="card"><h2>Browsers <span class="sub" style="font-weight:400">views · visitors</span></h2><div class="lst" id="browsers"></div></div></div>
+<h2 style="margin:26px 0 4px;font-size:20px;color:var(--ink)">Connected services</h2>
+<p class="muted" id="svcnote" style="margin:0 0 10px">Numbers pulled from each provider every 15 minutes. <button type="button" id="collectnow" style="margin-left:8px">Collect now</button> <span id="collectmsg"></span></p>
+<div id="svc"></div>
 <p class="muted" style="margin-top:16px;font-size:13px">Counted by the site itself: no cookies, no IP addresses stored. A visitor is one person per day. Bots, prefetches and your own signed-in visits are left out, so numbers differ from Google Analytics. Times are US Central.</p></main>`;
   return new Response(shell('Analytics', css + body, nonce, analyticsClient), { headers: headers(nonce) });
 }
@@ -683,6 +687,16 @@ export async function handleAdmin(req, env, url, store, ctx, { pingNow, prod }) 
   if (path === '/blog-admin' && method === 'GET') return dashboard(nonce, ed, await store.listPosts({ all: true }), url.searchParams.get('m') || '');
   if (path === '/blog-admin/leads' && method === 'GET') return leadsPage(nonce, ed, await store.listLeads());
   if (path === '/blog-admin/analytics' && method === 'GET') return analyticsPage(nonce, ed);
+  if (path === '/blog-admin/analytics/providers' && method === 'GET') {
+    const d = Math.min(90, Math.max(7, Number(url.searchParams.get('days')) || 30));
+    const r = await backend(env, 'GET', `/api/admin/collect/summary?days=${d}`, null, 30000);
+    return json(r.ok ? r.data : { error: (r.data && r.data.error) || 'Could not load the connected services.' }, r.ok ? 200 : 502);
+  }
+  if (path === '/blog-admin/analytics/collect' && method === 'POST') {
+    let b = {}; try { b = await req.json(); } catch {}
+    const r = await backend(env, 'POST', '/api/admin/collect', /^[a-z_]{1,30}$/.test(String(b.provider || '')) ? { provider: b.provider } : {}, 120000);
+    return json(r.ok ? r.data : { error: (r.data && r.data.error) || 'Could not collect right now.' }, r.ok ? 200 : 502);
+  }
   if (path === '/blog-admin/analytics/data' && method === 'GET') {
     const r = url.searchParams.get('range');
     return json(await store.analytics(['today', '7d', '30d', '90d'].includes(r) ? r : '7d'));

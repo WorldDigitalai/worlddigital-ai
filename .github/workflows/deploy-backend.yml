@@ -85,6 +85,12 @@ jobs:
             TOOLS_API_TOKEN=${{ secrets.TOOLS_API_TOKEN }}
             GH_RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}
             STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }}
+            # optional: switch on more cards on the admin Analytics page (empty = that card says what it needs)
+            OPENAI_ADMIN_KEY=${{ secrets.OPENAI_ADMIN_KEY }}
+            ANTHROPIC_ADMIN_KEY=${{ secrets.ANTHROPIC_ADMIN_KEY }}
+            MERCURY_API_TOKEN=${{ secrets.MERCURY_API_TOKEN }}
+            CLOUDFLARE_API_TOKEN=${{ secrets.CLOUDFLARE_API_TOKEN }}
+            CLOUDFLARE_ZONE_ID=${{ secrets.CLOUDFLARE_ZONE_ID }}
           secrets: |
             MONGODB_URI=MONGODB_URI:5
             INTERNAL_TOKEN=INTERNAL_TOKEN:latest

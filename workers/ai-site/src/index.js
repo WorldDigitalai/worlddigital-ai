@@ -8,7 +8,7 @@ import { handleAdmin, sendEmail, sha256 } from './admin.js';
 import { ROBOTS, LLMS, LLMS_FULL, UPDATED } from './crawl-text.js';
 import { SOCIAL_UPDATED } from './social.js';
 import { INDEXNOW_KEY, PROD_HOSTS, isAppPath } from './routing.js';
-import { toolsProxy, ragAnswer, ragAnswerStream, ragFeedback, ragHandoff, askEmbed, stripeWebhook } from './tools-proxy.js';
+import { backend, toolsProxy, ragAnswer, ragAnswerStream, ragFeedback, ragHandoff, askEmbed, stripeWebhook } from './tools-proxy.js';
 import { ASK_WIDGET } from './ask-widget.js';
 import { withTool } from './tools-widget.js';
 import { humanOk } from './human.js';
@@ -340,6 +340,10 @@ export default {
     }
   },
   async scheduled(event, env, ctx) {
+    if (event.cron === '*/15 * * * *') {   // only the collector runs on this schedule
+      ctx.waitUntil(backend(env, 'POST', '/api/admin/collect', {}, 120000).then((r) => { if (!r.ok) console.log('collect', r.status); }).catch((e) => console.log('collect', e.message)));
+      return;
+    }
     if (env.PING_SEARCH === '1') ctx.waitUntil(pingNew(env));
     ctx.waitUntil(Promise.resolve(store(env).pruneHits()).catch((e) => console.log('prune hits', e.message)));
     ctx.waitUntil(store(env).autopilotTick().catch((e) => console.log('autopilot tick', e.message)));

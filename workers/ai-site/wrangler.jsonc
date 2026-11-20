@@ -30,7 +30,8 @@
     "BUFFER_CHANNELS": "{\"6acc2f87778b240e2fdfccfb\":\"linkedin\",\"6acc2ffb778b240e2fdfcf19\":\"facebook\",\"6acc2fdf778b240e2fdfcea3\":\"instagram\",\"6ad042d2778b240e2f128689\":\"twitter\",\"6ad04365778b240e2f1299e1\":\"googlebusiness\",\"6ad04526778b240e2f12ad54\":\"tiktok\",\"6ad04301778b240e2f128cef\":\"youtube\"}"
   },
   // Secret (set by the deploy workflow from the GitHub secret of the same name): RESEND_API_KEY
-  "triggers": { "crons": ["23 * * * *"] },
+  // hourly: autopilot + search ping; every 15 minutes: collect the numbers of every connected service (backend collectors.py)
+  "triggers": { "crons": ["23 * * * *", "*/15 * * * *"] },
   "routes": [
     { "pattern": "worlddigital.ai/*", "zone_name": "worlddigital.ai" }
   ],

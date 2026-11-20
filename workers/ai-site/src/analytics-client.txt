@@ -130,9 +130,63 @@
       .then(function (d) { D = d; render(); }).catch(function (e) { $('upd').textContent = 'could not refresh (' + e.message + ')'; })
       .then(function () { busy = false; document.querySelector('.an').classList.remove('stale'); });
   }
-  document.querySelectorAll('.filters button[data-r]').forEach(function (b) { b.onclick = function () { range = b.dataset.r; history.replaceState(null, '', '?r=' + range); load(); }; });
+  // ---- Connected services: one card per provider, small bars per metric ----
+  var SV = null;
+  function money(v) { return '$' + (v || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  function fmtV(v, unit) { return v == null ? '–' : unit === 'usd' ? money(v) : num(Math.round(v * 100) / 100); }
+  function miniBars(host, series, unit, label) {
+    var W = 150, H = 38, mx = Math.max.apply(null, series.map(function (x) { return x.v; }).concat([0.0001])), bw = W / series.length;
+    var s = sv('svg', { viewBox: '0 0 ' + W + ' ' + H, width: '100%', height: H, role: 'img', 'aria-label': label + ' per day' }), tp = tooltip(host);
+    series.forEach(function (x, i) {
+      var h = x.v ? Math.max(2, (H - 2) * x.v / mx) : 0;
+      if (h) s.appendChild(sv('rect', { x: i * bw + 0.5, y: H - h, width: Math.max(1, bw - 1), height: h, rx: 1, fill: 'var(--s1)' }));
+      var hit = sv('rect', { x: i * bw, y: 0, width: bw, height: H, fill: 'transparent' });
+      var say = function () { tp.show((i + .5) * (host.clientWidth / series.length), 10, new Date(x.day + 'T12:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' }), [{ label: label.toLowerCase(), value: fmtV(x.v, unit) }]); };
+      hit.addEventListener('pointermove', say); hit.addEventListener('pointerleave', tp.hide); s.appendChild(hit);
+    });
+    s.setAttribute('preserveAspectRatio', 'none'); host.insertBefore(s, host.firstChild);
+  }
+  function services() {
+    var h = clear($('svc')); if (!SV) return;
+    var groups = []; SV.providers.forEach(function (p) { if (groups.indexOf(p.group) < 0) groups.push(p.group); });
+    groups.forEach(function (g) {
+      h.appendChild(el('h3', 'gh', g)); var grid = el('div', 'svc');
+      SV.providers.filter(function (p) { return p.group === g; }).forEach(function (p) {
+        var c = el('div', 'card'), top = el('div'); top.style.cssText = 'display:flex;justify-content:space-between;gap:8px;align-items:center';
+        top.appendChild(el('b', null, p.name));
+        var ok = p.state === 'ok', chip = el('span', 'chip ' + (ok ? 'ok' : p.state === 'error' ? 'bad' : ''), ok ? 'Connected' : p.state === 'error' ? 'Error' : p.state === 'needs_key' ? 'Needs a key' : p.state === 'not_connected' ? 'Not connected' : 'Waiting');
+        top.appendChild(chip); c.appendChild(top);
+        c.appendChild(el('div', 'sub', ok ? 'Updated ' + (p.at ? ago(p.at * 1000) : 'just now') : (p.message || 'Waiting for the first collection (runs every 15 minutes).')));
+        if (p.metrics.length && ok) {
+          var mt = el('div', 'mt');
+          p.metrics.forEach(function (m) {
+            var b = el('div'); b.appendChild(el('div', 'sub', m.label + (m.how === 'latest' ? ' (now)' : '')));
+            b.appendChild(el('div', 'v', m.has_data ? fmtV(m.value, m.unit) : '–'));
+            var ch = el('div', 'chart'); b.appendChild(ch); mt.appendChild(b); if (m.has_data) miniBars(ch, m.series, m.unit, m.label);
+          });
+          c.appendChild(mt);
+        }
+        grid.appendChild(c);
+      });
+      h.appendChild(grid);
+    });
+  }
+  function loadServices() {
+    var d = { today: 7, '7d': 7, '30d': 30, '90d': 90 }[range] || 30;
+    fetch('/blog-admin/analytics/providers?days=' + d, { credentials: 'same-origin' }).then(function (r) { return r.json(); })
+      .then(function (x) { if (x.error) throw new Error(x.error); SV = x; services(); }).catch(function (e) { $('svcnote').textContent = 'Could not load the connected services: ' + e.message; });
+  }
+  $('collectnow').onclick = function () {
+    var b = $('collectnow'); b.disabled = true; $('collectmsg').textContent = 'Collecting from every provider…';
+    fetch('/blog-admin/analytics/collect', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+      .then(function (r) { return r.json(); }).then(function (x) { $('collectmsg').textContent = x.error || 'Done.'; loadServices(); })
+      .catch(function () { $('collectmsg').textContent = 'Could not collect right now.'; }).then(function () { b.disabled = false; });
+  };
+  setInterval(function () { if (!document.hidden) loadServices(); }, 60000);
+
+  document.querySelectorAll('.filters button[data-r]').forEach(function (b) { b.onclick = function () { range = b.dataset.r; history.replaceState(null, '', '?r=' + range); load(); loadServices(); }; });
   window.addEventListener('resize', function () { if (D) render(); });
   setInterval(function () { if (!document.hidden) load(); }, 15000);
   document.addEventListener('visibilitychange', function () { if (!document.hidden) load(); });
-  load();
+  load(); loadServices();
 })();

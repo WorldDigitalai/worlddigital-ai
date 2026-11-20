@@ -38,7 +38,7 @@ from fastapi.responses import JSONResponse, Response, StreamingResponse
 from starlette.concurrency import run_in_threadpool
 from pymongo import MongoClient
 
-from . import blog_ai, blog_video, chat, services
+from . import blog_ai, blog_video, chat, collectors, services
 from .rag import Rag
 from .config import Settings
 from .exports import FORMATS, build_file
@@ -76,7 +76,8 @@ def _record_ai_usage(*, feature: str, model: str, tokens_in: int, tokens_out: in
     k = lambda v: str(v or "unknown").replace(".", "_").replace("$", "_")[:60]  # noqa: E731  (no dots in field names)
     day = now().strftime("%Y-%m-%d")
     inc = {f"features.{k(feature)}.calls": 1, f"features.{k(feature)}.in": tokens_in, f"features.{k(feature)}.out": tokens_out,
-           f"features.{k(feature)}.units": units, f"models.{k(model)}": 1, "fallbacks": 1 if fallback else 0}
+           f"features.{k(feature)}.units": units, f"models.{k(model)}": 1, "fallbacks": 1 if fallback else 0,
+           f"by_model.{k(model)}.calls": 1, f"by_model.{k(model)}.in": tokens_in, f"by_model.{k(model)}.out": tokens_out}   # per model: the Analytics page prices it
     store().db["rag_meta"].update_one({"_id": f"ai:{day}"}, {"$inc": inc, "$setOnInsert": {"day": day}}, upsert=True)
     m = str(model or "")
     if str(feature or "").startswith("rag") and (m.startswith(("gpt-", "o1", "o3", "o4", "text-embedding")) or not m):
@@ -554,6 +555,22 @@ async def rag_providers_set(request: Request):
             return r.provider_order(b.get("order") if isinstance(b.get("order"), list) else [])
         return r.provider_set(str(b.get("provider") or ""), b.get("on") is True)
     return json_ok(await run_in_threadpool(_rag_call, run))
+
+
+@app.post("/api/admin/collect", dependencies=[Depends(guard)])
+async def collect_now(request: Request):
+    """Collects the numbers of every connected service (all, or {"provider": id}); the site worker calls it every 15 minutes."""
+    b = await body_of(request) if (await request.body()).strip() else {}
+    only = str(b.get("provider") or "") or None
+    if only and only not in {p["id"] for p in collectors.REGISTRY}:
+        raise ApiError("unknown provider", 400, "Unknown service.")
+    done = await run_in_threadpool(lambda: collectors.run(settings(), store().db, only))
+    return json_ok({"collected": done})
+
+
+@app.get("/api/admin/collect/summary", dependencies=[Depends(guard)])
+async def collect_summary(days: int = 30):
+    return json_ok(await run_in_threadpool(lambda: collectors.summary(store().db, days)))
 
 
 @app.get("/api/admin/rag/history", dependencies=[Depends(guard)])

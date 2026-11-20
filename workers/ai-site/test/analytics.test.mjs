@@ -52,6 +52,6 @@ test('the analytics page loads its script and never trusts data inline', async (
   const res = analyticsPage('nonce123', { email: 'a@b.c', csrf: 'x' });
   const h = await res.text();
   assert.match(res.headers.get('Content-Security-Policy'), /script-src 'nonce-nonce123'/);
-  for (const id of ['rtnum', 'rtbars', 'tiles', 'main', 'pages', 'channels', 'countries', 'devices', 'browsers']) assert.ok(h.includes(`id="${id}"`), id);
-  assert.ok(h.includes('<script nonce="nonce123">') && h.includes('/blog-admin/analytics/data') && h.includes('Last 30 days'));
+  for (const id of ['rtnum', 'rtbars', 'tiles', 'main', 'pages', 'channels', 'countries', 'devices', 'browsers', 'svc', 'collectnow']) assert.ok(h.includes(`id="${id}"`), id);
+  assert.ok(h.includes('<script nonce="nonce123">') && h.includes('/blog-admin/analytics/data') && h.includes('Last 30 days') && h.includes('/blog-admin/analytics/providers') && h.includes('Connected services'));
 });

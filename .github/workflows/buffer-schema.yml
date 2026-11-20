@@ -31,6 +31,11 @@ jobs:
               fs = d.get("fields") or d.get("inputFields") or []
               print(name, "->", [(f["name"], tn(f["type"])) for f in fs][:40])
               if depth: [show(tn(f["type"]), depth - 1, seen) for f in fs if tn(f["type"]) and not tn(f["type"]) in ("String", "Int", "Float", "Boolean", "ID", "DateTime")]
+          from datetime import datetime, timedelta, timezone
+          acct = q("{ account { organizations { id } } }")["data"]["account"]["organizations"][0]["id"]
+          e = datetime.now(timezone.utc); st = e - timedelta(days=30)
+          r = q('{ aggregatedPostMetrics(input: {organizationId: "%s", startDateTime: "%s", endDateTime: "%s"}) { metrics { name type unit } } }' % (acct, st.strftime("%Y-%m-%dT%H:%M:%SZ"), e.strftime("%Y-%m-%dT%H:%M:%SZ")))
+          print("== aggregated metric names (no values):", json.dumps(((r.get("data") or {}).get("aggregatedPostMetrics") or {}).get("metrics") or r.get("errors")))
           qf = {f["name"]: f for f in q('{ __type(name:"Query") { fields { name args { name type { name kind ofType { name kind ofType { name } } } } type { name kind ofType { name kind ofType { name } } } } } }')["data"]["__type"]["fields"]}
           for n in ("account", "posts", "aggregatedPostMetrics"):
               f = qf[n]; print("== Query." + n, "args", [(a["name"], tn(a["type"])) for a in f["args"]], "returns", tn(f["type"]))

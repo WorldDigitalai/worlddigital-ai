@@ -97,6 +97,17 @@ test('the Analytics page cannot use up the database allowance: history is cached
   const d = await analyticsData(store, '7d', t0); assert.equal(d.range, '7d'); assert.ok('rt' in d && 'cached_s' in d);
 });
 
+test('Refresh now: skips the cache once, then is throttled for 15 s', async () => {
+  let reports = 0, lives = 0;
+  const store = { report: async () => ({ n: ++reports }), realtime: async () => ({ users30: ++lives }) };
+  const t0 = Date.now() + 50 * 3600e3;
+  await analyticsData(store, '7d', t0);
+  const a = await analyticsData(store, '7d', t0 + 1000, true); assert.equal(reports, 2); assert.equal(a.throttled, false);   // fresh: history read again
+  const b = await analyticsData(store, '7d', t0 + 4000, true); assert.equal(reports, 2); assert.equal(b.throttled, true);     // spam-clicking costs nothing
+  const c = await analyticsData(store, '7d', t0 + 17000, true); assert.equal(reports, 3); assert.equal(c.throttled, false);
+  const h = await analyticsPage('n', { email: 'a@b.c', csrf: 'x' }).text(); assert.ok(h.includes('id="refresh"') && h.includes('Refresh now'));
+});
+
 test('hits are written in batches: the first at once, a burst together, never one database call per page view', async () => {
   const batches = [], store = () => ({ recordHits: async (b) => { batches.push(b.length); } });
   const jobs = [], ctx = { waitUntil: (p) => jobs.push(p) };

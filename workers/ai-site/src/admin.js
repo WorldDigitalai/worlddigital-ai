@@ -477,12 +477,17 @@ function leadsPage(nonce, ed, leads) {
 // The report (history) changes slowly, so it is computed at most once per TTL per range; the live strip (last 30 minutes) is small and
 // refreshed every 10 s. This keeps an open Analytics tab from using up the free plan's daily database-read allowance.
 const REPORT_TTL = { today: 120e3, '7d': 900e3, '30d': 1800e3, '90d': 3600e3 };
-const rtCache = { t: 0, v: null }, repCache = new Map();
-export async function analyticsData(store, range, now = Date.now()) {
+const rtCache = { t: 0, v: null }, repCache = new Map(), freshAt = new Map();
+// fresh = the Refresh button: skip the cache, but at most once per 15 s per range so it cannot be used to burn the database allowance.
+export async function analyticsData(store, range, now = Date.now(), fresh = false) {
+  let throttled = false;
+  if (fresh) {
+    if (now - (freshAt.get(range) || 0) >= 15e3) { freshAt.set(range, now); repCache.delete(range); rtCache.v = null; } else throttled = true;
+  }
   if (!rtCache.v || now - rtCache.t > 10e3) { rtCache.v = await store.realtime(); rtCache.t = now; }
   let c = repCache.get(range);
   if (!c || now - c.t > REPORT_TTL[range]) { c = { t: now, v: await store.report(range) }; repCache.set(range, c); }
-  return { ...c.v, rt: rtCache.v, cached_s: Math.round((now - c.t) / 1000) };
+  return { ...c.v, rt: rtCache.v, cached_s: Math.round((now - c.t) / 1000), throttled };
 }
 
 // Live visitor analytics (counted by src/analytics.js, shaped by Store.analytics, drawn by analytics-client.txt).
@@ -512,7 +517,7 @@ export function analyticsPage(nonce, ed) {
   const body = `${topbar(ed.email, ed.csrf)}<main class="wrap an" style="padding-top:30px;padding-bottom:60px"><h1 class="h" style="font-size:30px;margin:0">Analytics</h1>
 <p class="muted" id="since" style="margin:6px 0 0">Loading…</p>
 <div class="filters" role="group" aria-label="Date range"><button type="button" data-r="today">Today</button><button type="button" data-r="7d">Last 7 days</button><button type="button" data-r="30d">Last 30 days</button><button type="button" data-r="90d">Last 90 days</button>
-<span class="live" aria-live="polite"><span class="dot"></span><span id="upd">live</span></span></div>
+<button type="button" id="refresh" style="font-weight:700">⟳ Refresh now</button><span class="live" aria-live="polite"><span class="dot"></span><span id="upd">live</span></span></div>
 <div class="row rt"><div class="card"><h2>Users in the last 30 minutes</h2><div class="big" id="rtnum">–</div><div class="sub"><span id="rt5">–</span> in the last 5 minutes · users per minute</div><div class="chart" id="rtbars"></div></div>
 <div class="card"><h2>Top pages right now</h2><div class="lst" id="rtpages"></div><h2 style="margin-top:14px">Where from (30 min)</h2><div class="lst" id="rtch"></div></div>
 <div class="card"><h2>Latest views</h2><div class="feed" id="rtlatest"></div></div></div>
@@ -710,7 +715,7 @@ export async function handleAdmin(req, env, url, store, ctx, { pingNow, prod }) 
   }
   if (path === '/blog-admin/analytics/data' && method === 'GET') {
     const r = ['today', '7d', '30d', '90d'].includes(url.searchParams.get('range')) ? url.searchParams.get('range') : '7d';
-    return json(await analyticsData(store, r));
+    return json(await analyticsData(store, r, Date.now(), url.searchParams.get('fresh') === '1'));
   }
   if (path === '/blog-admin/kb' && method === 'GET') {
     const w = [0, 7, 30].includes(Number(url.searchParams.get('w'))) && url.searchParams.get('w') !== null ? Number(url.searchParams.get('w')) : 30;

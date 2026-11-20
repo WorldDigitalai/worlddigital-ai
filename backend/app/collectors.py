@@ -226,13 +226,13 @@ def buffer(s: Settings, db) -> dict:
     days = [datetime.now(timezone.utc).date() - timedelta(days=i) for i in range(30)]
     names = {"postcount": "buffer_posts", "reactions": "buffer_reactions", "comments": "buffer_comments", "impressions": "buffer_impressions", "reach": "buffer_reach"}
     q = ("query($o: OrganizationId!, $s: DateTime!, $e: DateTime!) { aggregatedPostMetrics(input: {organizationId: $o, startDateTime: $s, endDateTime: $e}) "
-         "{ metrics { name value } metricsUpdatedAt } }")
+         "{ metrics { name type value } metricsUpdatedAt } }")
 
     def one(d):
         a = gql(q, {"o": org, "s": f"{d}T00:00:00Z", "e": f"{d}T23:59:59Z"}).get("aggregatedPostMetrics") or {}
         out = {}
         for m in a.get("metrics") or []:
-            k = names.get(str(m.get("name") or "").lower().replace("_", "").replace(" ", ""))
+            k = names.get(str(m.get("type") or m.get("name") or "").lower().replace("_", "").replace(" ", ""))   # "type" is stable ("postCount"); "name" is the display label ("Posts")
             if k and m.get("value") is not None:
                 out[k] = float(m["value"])
         return d.isoformat(), out

@@ -162,7 +162,7 @@ def test_buffer_collects_per_day_and_maps_metric_names(monkeypatch):
             return R({"data": {"account": {"organizations": [{"id": "org1"}]}}})
         day = json["variables"]["s"][:10]
         if day == C._today():
-            return R({"data": {"aggregatedPostMetrics": {"metrics": [{"name": "postCount", "value": 3}, {"name": "reactions", "value": 10}, {"name": "Impressions", "value": 400}, {"name": "weird", "value": 1}], "metricsUpdatedAt": "x"}}})
+            return R({"data": {"aggregatedPostMetrics": {"metrics": [{"name": "Posts", "type": "postCount", "value": 3}, {"name": "Reactions", "type": "reactions", "value": 10}, {"name": "Impressions", "type": "impressions", "value": 400}, {"name": "Weird", "type": "weird", "value": 1}], "metricsUpdatedAt": "x"}}})
         return R({"data": {"aggregatedPostMetrics": {"metrics": [], "metricsUpdatedAt": None}}})   # days without posts are skipped
     monkeypatch.setattr(C.httpx, "post", fake_post)
     out = C.buffer(_s(), None)

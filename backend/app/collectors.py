@@ -301,7 +301,7 @@ REGISTRY = [
     {"id": "search_console", "name": "Google Search Console", "group": "Website", "fn": search_console, "metrics": [("gsc_clicks", "Clicks from Google", "n", "sum"), ("gsc_impressions", "Impressions", "n", "sum"), ("gsc_position", "Average position", "n", "latest")], "needs": ["GOOGLE_SERVICE_ACCOUNT_B64", "SEARCH_CONSOLE_SITE"]},
     {"id": "google_ads", "name": "Google Ads", "group": "Not connected yet", "fn": None, "metrics": [], "needs": ["a Google Ads developer token and OAuth refresh token"]},
     {"id": "buffer", "name": "Buffer (social posts)", "group": "Marketing & social", "fn": buffer, "metrics": [("buffer_posts", "Posts sent", "n", "sum"), ("buffer_reactions", "Reactions", "n", "sum"), ("buffer_comments", "Comments", "n", "sum"), ("buffer_impressions", "Impressions", "n", "sum"), ("buffer_reach", "Reach", "n", "sum")], "needs": ["BUFFER_API_TOKEN"]},
-    {"id": "bird", "name": "Bird (SMS, WhatsApp, email)", "group": "Not connected yet", "fn": None, "metrics": [], "needs": ["BIRD_API_KEY"]},
+    {"id": "bird", "name": "Bird (WhatsApp, SMS, email)", "group": "Marketing & social", "fn": None, "metrics": [("bird_wa_sent", "WhatsApp sent", "n", "sum"), ("bird_wa_delivered", "WhatsApp delivered", "n", "sum"), ("bird_wa_read", "WhatsApp read", "n", "sum"), ("bird_sms_sent", "SMS sent", "n", "sum"), ("bird_email_sent", "Emails sent", "n", "sum")], "needs": ["BIRD_API_KEY"]},
     {"id": "tiktok", "name": "TikTok Ads", "group": "Not connected yet", "fn": None, "metrics": [], "needs": ["TikTok Business API access token"]},
 ]
 
@@ -310,6 +310,18 @@ def _have(s: Settings, p: dict) -> list[str]:
     """The variables a provider still needs (empty = ready). Keys held in Settings or the environment both count."""
     held = {"STRIPE_SECRET_KEY": s.stripe_secret_key, "RESEND_API_KEY": s.resend_api_key, "DATAFORSEO_LOGIN": s.dataforseo_login, "DATAFORSEO_PASSWORD": s.dataforseo_password}
     return [v for v in p["needs"] if not (held.get(v) if v in held else _env(v))]
+
+
+PUSH_FRESH_H = 48
+
+
+def _pushed(db, pid: str):
+    """A provider filled through the Claude connector (MCP) instead of a server key: {at} when fresh, else None."""
+    d = db["provider_push"].find_one({"_id": pid})
+    at = d.get("at") if d else None
+    if isinstance(at, datetime) and (datetime.now(timezone.utc) - at.replace(tzinfo=timezone.utc)).total_seconds() < PUSH_FRESH_H * 3600:
+        return at
+    return None
 
 
 def run(s: Settings, db, only: str | None = None) -> dict:
@@ -321,7 +333,10 @@ def run(s: Settings, db, only: str | None = None) -> dict:
             continue
         status = {"state": "ok", "message": "", "at": datetime.now(timezone.utc)}
         try:
-            if not p["fn"]:
+            pushed = _pushed(db, p["id"]) if (not p["fn"] or _have(s, p)) else None
+            if pushed:
+                status.update(state="ok", message="Filled through the Claude connector, last update " + pushed.strftime("%Y-%m-%d %H:%M UTC") + " (no server key)")
+            elif not p["fn"]:
                 status.update(state="not_connected", message="Needs " + "; ".join(p["needs"]))
             elif _have(s, p):
                 status.update(state="needs_key", message="Add " + ", ".join(_have(s, p)) + " to switch this on")

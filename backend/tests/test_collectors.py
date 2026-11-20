@@ -183,3 +183,13 @@ def test_get_waits_and_retries_on_429(monkeypatch):
     monkeypatch.setattr(C.httpx, "get", lambda url, **kw: R(next(seq)))
     monkeypatch.setattr(C.time, "sleep", lambda s: slept.append(s))
     assert C._get("https://api.example.com/x") == {"ok": True} and slept == [1.0, 1.0]
+
+
+def test_connector_filled_provider_stays_connected_and_expires():
+    from datetime import datetime, timedelta, timezone
+    db = mongomock.MongoClient().db
+    s = _s()
+    db["provider_push"].insert_one({"_id": "bird", "at": datetime.now(timezone.utc)})
+    assert C.run(s, db, only="bird")["bird"] == "ok"
+    db["provider_push"].replace_one({"_id": "bird"}, {"_id": "bird", "at": datetime.now(timezone.utc) - timedelta(hours=60)})
+    assert C.run(s, db, only="bird")["bird"] == "not_connected"

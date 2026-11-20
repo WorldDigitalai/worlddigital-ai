@@ -62,6 +62,18 @@ export function windowOf(now, range, off) {
   return { hourly, bucket, n, firstB, from, to, pFrom: from - n * bucket, off };
 }
 
+// Visitors per source split by device: shows which channel is desktop-heavy (a visitor counts once per day, like every other number here).
+function deviceByChannel(list, dayKey, lim = 8) {
+  const m = new Map();
+  for (const r of list) {
+    if (!r.channel) continue;
+    const g = m.get(r.channel) || { k: r.channel, sets: { desktop: new Set(), mobile: new Set(), tablet: new Set() }, all: new Set() };
+    (g.sets[r.device] || g.sets.desktop).add(dayKey(r)); g.all.add(dayKey(r)); m.set(r.channel, g);
+  }
+  return [...m.values()].sort((a, b) => b.all.size - a.all.size).slice(0, lim)
+    .map((g) => ({ k: g.k, v: g.all.size, desktop: g.sets.desktop.size, mobile: g.sets.mobile.size, tablet: g.sets.tablet.size }));
+}
+
 export function buildReport(rows, w, now = Date.now()) {
   const DAY = 864e5, { off, bucket, n, firstB, from, to } = w;
   const dayKey = (r) => `${r.vid}:${Math.floor((r.ts + off) / DAY)}`;
@@ -82,6 +94,7 @@ export function buildReport(rows, w, now = Date.now()) {
     series: series(cur, firstB), prev: series(prev, firstB - n), totals: total(cur), prevTotals: total(prev),
     pages: top(cur, (r) => r.path), channels: top(cur, (r) => r.channel, 8), referrers: top(cur, (r) => r.ref), countries: top(cur, (r) => r.country),
     devices: top(cur, (r) => r.device, 4), browsers: top(cur, (r) => r.browser, 6),
+    deviceByChannel: deviceByChannel(cur, dayKey),
   };
 }
 

@@ -138,3 +138,14 @@ test('database down: pages come back from the last good copy, or from the bundle
   // 3. pages that need the database for real (admin) still answer with the error page
   const adm = await go('/blog-admin/login'); assert.equal(adm.status, 503); assert.equal(adm.headers.get('Retry-After'), '300');
 });
+
+test('devices by source: each visitor counted once per day under its source and device', () => {
+  const now = Date.UTC(2026, 10, 20, 18, 0, 0), w = windowOf(now, '7d', OFF);
+  const rows = [
+    row(now - 1000, { vid: 'a', channel: 'search', device: 'desktop' }), row(now - 2000, { vid: 'a', channel: 'search', device: 'desktop' }),
+    row(now - 3000, { vid: 'b', channel: 'search', device: 'mobile' }), row(now - 4000, { vid: 'c', channel: 'social', device: 'mobile' }),
+  ];
+  const d = buildReport(rows, w, now).deviceByChannel;
+  assert.deepEqual(d[0], { k: 'search', v: 2, desktop: 1, mobile: 1, tablet: 0 });
+  assert.deepEqual(d[1], { k: 'social', v: 1, desktop: 0, mobile: 1, tablet: 0 });
+});

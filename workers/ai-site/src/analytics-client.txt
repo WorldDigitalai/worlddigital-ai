@@ -95,6 +95,16 @@
       var b = el('div', 'b'); var i = el('i'); i.style.width = Math.max(2, Math.round(100 * r.pv / max)) + '%'; b.appendChild(i); d.appendChild(b); h.appendChild(d);
     });
   }
+  function devch(rows) {
+    var h = clear($('devch'));
+    if (!rows || !rows.length) { h.appendChild(el('div', 'empty', 'Nothing yet.')); return; }
+    var pct = function (a, n) { return n ? Math.round(100 * a / n) + '%' : '0%'; };
+    rows.forEach(function (r) {
+      var d = el('div', 'li'); var k = el('span', 'k', CH[r.k] || r.k); d.appendChild(k);
+      d.appendChild(el('span', 'n', 'Desktop ' + pct(r.desktop, r.v) + ' · Mobile ' + pct(r.mobile, r.v) + ' · Tablet ' + pct(r.tablet, r.v) + '  (' + num(r.v) + ' visitors)'));
+      var b = el('div', 'b'); var i = el('i'); i.style.width = Math.max(2, Math.round(100 * r.mobile / Math.max(r.v, 1))) + '%'; b.appendChild(i); d.appendChild(b); h.appendChild(d);
+    });
+  }
   function delta(cur, prev) { if (!prev) return cur ? 'new' : '–'; var p = Math.round(100 * (cur - prev) / prev); return (p > 0 ? '▲ ' : p < 0 ? '▼ ' : '') + Math.abs(p) + '% vs previous'; }
   function tiles() {
     var h = clear($('tiles')), T = D.totals, P = D.prevTotals;
@@ -121,7 +131,7 @@
     line($('main'), hourly ? D.series.filter(function (p) { return p.t <= D.now; }) : D.series, D.prev, metric, hourly, name); table($('maint'), D.series, hourly);
     list('pages', D.pages, function (r) { return r.k; }, true);
     list('channels', D.channels, function (r) { return CH[r.k] || r.k; }, true); list('referrers', D.referrers, function (r) { return r.k; }, true);
-    list('countries', D.countries, function (r) { return flag(r.k) + country(r.k); }, true); list('devices', D.devices, function (r) { return DEV[r.k] || r.k; }, true); list('browsers', D.browsers, function (r) { return r.k; }, true);
+    list('countries', D.countries, function (r) { return flag(r.k) + country(r.k); }, true); list('devices', D.devices, function (r) { return DEV[r.k] || r.k; }, true); list('browsers', D.browsers, function (r) { return r.k; }, true); devch(D.deviceByChannel);
     $('upd').textContent = 'live · updated ' + new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' });
   }
   function load(fresh) {

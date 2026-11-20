@@ -22,6 +22,8 @@ const RAW = new WeakSet(); // app responses we must not touch
 let seeded = false;
 const store = (env) => env.STORE.get(env.STORE.idFromName('site'));
 
+const staleKey = (u) => u + (u.includes('?') ? '&' : '?') + '__stale=1';
+
 async function ensureSeed(st) {
   if (seeded) return;
   await st.seed(seedPosts());
@@ -332,10 +334,18 @@ export default {
         return out;
       }
       if (cacheable && out.status === 200) ctx.waitUntil(cache.put(req.url, out.clone()));
+      if (cacheable && out.status === 200) {   // a day-long spare copy, used only if the database is down (see the catch below)
+        const c = out.clone(), h = new Headers(c.headers); h.set('Cache-Control', 'public, max-age=86400'); h.delete('Set-Cookie');
+        ctx.waitUntil(cache.put(staleKey(req.url), new Response(c.body, { status: 200, headers: h })));
+      }
       if (prod) trackHit(req, env, ctx, url, out, store);
       return out;
     } catch (e) {
       console.log('error', e.stack || e.message);
+      if (cacheable) {   // visitors still get the last good copy of the page while the database is unavailable
+        const old = await cache.match(staleKey(req.url));
+        if (old) { const h = new Headers(old.headers); h.set('X-Served-Stale', '1'); h.set('Cache-Control', 'no-store'); return new Response(old.body, { status: 200, headers: h }); }
+      }
       return withHeaders(html('<!doctype html><title>Error</title><p style="font-family:sans-serif;padding:40px">Something went wrong. Please try again in a moment, or email support@worlddigital.ai.</p>', 500, 'no-store'), prod);
     }
   },

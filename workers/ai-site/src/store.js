@@ -3,6 +3,7 @@ import { DurableObject } from 'cloudflare:workers';
 import { AUTOPILOT_DEFAULTS, callAi, cleanAutopilot, nextLocalHour, runAutopilot, savePost as saveAiPost } from './autopilot.js';
 import { sendEmail, validate } from './admin.js';
 import { shareToBuffer } from './buffer.js';
+import { buildRealtime, buildReport, windowOf } from './analytics.js';
 
 // 2026-11-14 price fix for posts already in the store (see the ads_price_proposal_v1 step below)
 import EPIC_POST_BODY from '../content/fixes/epic-ehr-api-partner.md';
@@ -319,40 +320,21 @@ export class Store extends DurableObject {
       Math.floor(h.ts), h.path, h.ref || '', h.channel || 'direct', h.country || 'XX', h.device || 'desktop', h.browser || 'Other', h.vid);
   }
   pruneHits() { this.sql.exec(`DELETE FROM hits WHERE ts < ?`, Date.now() - 120 * 864e5); }
-  // range: today (hourly, local day) | 7d | 30d | 90d (daily). Times are US Central. Visitors = distinct people per day.
-  analytics(range) {
-    const now = Date.now(), DAY = 864e5, H = 36e5;
-    const tz = (t) => {
-      const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' }).formatToParts(new Date(t)).map((x) => [x.type, x.value]));
-      return Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second) - Math.floor(t / 1000) * 1000;
-    };
-    const off = Math.round(tz(now));
-    const hourly = range === 'today', bucket = hourly ? H : DAY, n = hourly ? 24 : range === '30d' ? 30 : range === '90d' ? 90 : 7;
-    const firstB = hourly ? Math.floor((now + off) / DAY) * 24 : Math.floor((now + off) / DAY) - (n - 1);
-    const from = firstB * bucket - off, to = from + n * bucket, pFrom = from - n * bucket;
-    const DV = `vid || ':' || CAST((ts + ${off}) / 86400000 AS INTEGER)`;
-    const series = (a, b) => {
-      const got = new Map(rows(this.sql.exec(`SELECT CAST((ts + ${off}) / ${bucket} AS INTEGER) AS b, COUNT(*) AS pv, COUNT(DISTINCT vid) AS v FROM hits WHERE ts >= ? AND ts < ? GROUP BY b`, a, b)).map((r) => [r.b, r]));
-      return Array.from({ length: n }, (_, i) => { const r = got.get(firstB + i - (a === pFrom ? n : 0)) || {}; return { t: a + i * bucket, pv: r.pv || 0, v: r.v || 0 }; });
-    };
-    const total = (a, b) => one(this.sql.exec(`SELECT COUNT(*) AS pv, COUNT(DISTINCT ${DV}) AS v FROM hits WHERE ts >= ? AND ts < ?`, a, b)) || { pv: 0, v: 0 };
-    const top = (col, a, b, lim = 10) => rows(this.sql.exec(`SELECT ${col} AS k, COUNT(*) AS pv, COUNT(DISTINCT ${DV}) AS v FROM hits WHERE ts >= ? AND ts < ? GROUP BY ${col} ORDER BY pv DESC, v DESC LIMIT ${lim}`, a, b));
-    const rtFrom = now - 30 * 60e3;
-    const mins = new Map(rows(this.sql.exec(`SELECT CAST(ts / 60000 AS INTEGER) AS m, COUNT(DISTINCT vid) AS u, COUNT(*) AS pv FROM hits WHERE ts >= ? GROUP BY m`, rtFrom)).map((r) => [r.m, r]));
-    const m0 = Math.floor(now / 60000);
-    const rt = {
-      minutes: Array.from({ length: 30 }, (_, i) => { const r = mins.get(m0 - 29 + i) || {}; return { t: (m0 - 29 + i) * 60000, u: r.u || 0, pv: r.pv || 0 }; }),
-      users30: (one(this.sql.exec(`SELECT COUNT(DISTINCT vid) AS u FROM hits WHERE ts >= ?`, rtFrom)) || {}).u || 0,
-      users5: (one(this.sql.exec(`SELECT COUNT(DISTINCT vid) AS u FROM hits WHERE ts >= ?`, now - 5 * 60e3)) || {}).u || 0,
-      pages: top('path', rtFrom, now + 1, 8), countries: top('country', rtFrom, now + 1, 8), channels: top('channel', rtFrom, now + 1, 6),
-      latest: rows(this.sql.exec(`SELECT ts, path, country, channel, device FROM hits ORDER BY ts DESC LIMIT 10`)),
-    };
-    return {
-      now, range, tz: 'America/Chicago', from, to, bucket, n, since: (one(this.sql.exec(`SELECT MIN(ts) AS t FROM hits`)) || {}).t || null,
-      series: series(from, to), prev: series(pFrom, from), totals: total(from, to), prevTotals: total(pFrom, from),
-      pages: top('path', from, to), channels: top('channel', from, to, 8), referrers: top("CASE WHEN ref = '' THEN NULL ELSE ref END", from, to).filter((r) => r.k),
-      countries: top('country', from, to), devices: top('device', from, to, 4), browsers: top('browser', from, to, 6), rt,
-    };
+  recordHits(list) { for (const h of list) this.recordHit(h); }
+  // Times are US Central. One query reads the rows of this and the previous period; buildReport() does the rest in memory.
+  report(range) {
+    const now = Date.now();
+    const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' }).formatToParts(new Date(now)).map((x) => [x.type, x.value]));
+    const off = Math.round(Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second) - Math.floor(now / 1000) * 1000);
+    const w = windowOf(now, range, off);
+    const list = rows(this.sql.exec(`SELECT ts,path,ref,channel,country,device,browser,vid FROM hits WHERE ts >= ? AND ts < ?`, w.pFrom, w.to));
+    return { ...buildReport(list, w, now), since: (one(this.sql.exec(`SELECT MIN(ts) AS t FROM hits`)) || {}).t || null };
+  }
+  // The last 30 minutes only: small, so it can refresh every few seconds.
+  realtime() {
+    const now = Date.now();
+    const list = rows(this.sql.exec(`SELECT ts,path,country,channel,vid FROM hits WHERE ts >= ?`, now - 30 * 60e3));
+    return buildRealtime(list, rows(this.sql.exec(`SELECT ts, path, country, channel, device FROM hits ORDER BY ts DESC LIMIT 10`)), now);
   }
   listLeads() { return rows(this.sql.exec(`SELECT id,kind,data,created_at FROM leads ORDER BY id DESC LIMIT 200`)); }
 

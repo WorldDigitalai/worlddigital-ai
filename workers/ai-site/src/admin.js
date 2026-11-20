@@ -474,6 +474,17 @@ function leadsPage(nonce, ed, leads) {
   return new Response(shell('Form entries', body, nonce), { headers: headers(nonce) });
 }
 
+// The report (history) changes slowly, so it is computed at most once per TTL per range; the live strip (last 30 minutes) is small and
+// refreshed every 10 s. This keeps an open Analytics tab from using up the free plan's daily database-read allowance.
+const REPORT_TTL = { today: 120e3, '7d': 900e3, '30d': 1800e3, '90d': 3600e3 };
+const rtCache = { t: 0, v: null }, repCache = new Map();
+export async function analyticsData(store, range, now = Date.now()) {
+  if (!rtCache.v || now - rtCache.t > 10e3) { rtCache.v = await store.realtime(); rtCache.t = now; }
+  let c = repCache.get(range);
+  if (!c || now - c.t > REPORT_TTL[range]) { c = { t: now, v: await store.report(range) }; repCache.set(range, c); }
+  return { ...c.v, rt: rtCache.v, cached_s: Math.round((now - c.t) / 1000) };
+}
+
 // Live visitor analytics (counted by src/analytics.js, shaped by Store.analytics, drawn by analytics-client.txt).
 export function analyticsPage(nonce, ed) {
   const css = `<style>
@@ -698,8 +709,8 @@ export async function handleAdmin(req, env, url, store, ctx, { pingNow, prod }) 
     return json(r.ok ? r.data : { error: (r.data && r.data.error) || 'Could not collect right now.' }, r.ok ? 200 : 502);
   }
   if (path === '/blog-admin/analytics/data' && method === 'GET') {
-    const r = url.searchParams.get('range');
-    return json(await store.analytics(['today', '7d', '30d', '90d'].includes(r) ? r : '7d'));
+    const r = ['today', '7d', '30d', '90d'].includes(url.searchParams.get('range')) ? url.searchParams.get('range') : '7d';
+    return json(await analyticsData(store, r));
   }
   if (path === '/blog-admin/kb' && method === 'GET') {
     const w = [0, 7, 30].includes(Number(url.searchParams.get('w'))) && url.searchParams.get('w') !== null ? Number(url.searchParams.get('w')) : 30;

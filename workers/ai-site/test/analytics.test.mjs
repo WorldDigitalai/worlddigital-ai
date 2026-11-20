@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { classify, deviceOf, browserOf, visitFrom } from '../src/analytics.js';
-import { analyticsPage } from '../src/admin.js';
+import { classify, deviceOf, browserOf, visitFrom, windowOf, buildReport, buildRealtime, trackHit } from '../src/analytics.js';
+import { analyticsPage, analyticsData } from '../src/admin.js';
 
 const CHROME = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
 const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
@@ -54,4 +54,67 @@ test('the analytics page loads its script and never trusts data inline', async (
   assert.match(res.headers.get('Content-Security-Policy'), /script-src 'nonce-nonce123'/);
   for (const id of ['rtnum', 'rtbars', 'tiles', 'main', 'pages', 'channels', 'countries', 'devices', 'browsers', 'svc', 'collectnow']) assert.ok(h.includes(`id="${id}"`), id);
   assert.ok(h.includes('<script nonce="nonce123">') && h.includes('/blog-admin/analytics/data') && h.includes('Last 30 days') && h.includes('/blog-admin/analytics/providers') && h.includes('Connected services'));
+});
+
+
+const DAY = 864e5, OFF = -6 * 36e5;   // US Central in winter
+const row = (ts, o = {}) => ({ ts, path: '/', ref: '', channel: 'direct', country: 'US', device: 'desktop', browser: 'Chrome', vid: 'a', ...o });
+
+test('report: totals, per-day visitors, previous period and top lists from rows read once', () => {
+  const now = Date.UTC(2026, 10, 20, 18, 0, 0);                     // 12:00 Central, Nov 20
+  const w = windowOf(now, '7d', OFF);
+  assert.equal(w.n, 7); assert.equal(w.to - w.from, 7 * DAY); assert.equal(w.pFrom, w.from - 7 * DAY);
+  const rows = [
+    row(now - 1000, { vid: 'a', path: '/' }), row(now - 2000, { vid: 'a', path: '/blog' }), row(now - 3000, { vid: 'b', path: '/', channel: 'ai', ref: 'chatgpt.com' }),
+    row(now - 2 * DAY, { vid: 'a', path: '/' }),                      // same person, another day: counts as a visitor again
+    row(now - 8 * DAY, { vid: 'z', path: '/old' }),                   // previous period
+  ];
+  const r = buildReport(rows, w, now);
+  assert.deepEqual(r.totals, { pv: 4, v: 3 }); assert.deepEqual(r.prevTotals, { pv: 1, v: 1 });
+  assert.equal(r.series.length, 7); assert.equal(r.series.reduce((a, x) => a + x.pv, 0), 4); assert.equal(r.series[6].pv, 3); assert.equal(r.series[6].v, 2);
+  assert.equal(r.prev.reduce((a, x) => a + x.pv, 0), 1);
+  assert.deepEqual(r.pages[0], { k: '/', pv: 3, v: 3 }); assert.deepEqual(r.channels.find((c) => c.k === 'ai'), { k: 'ai', pv: 1, v: 1 });
+  assert.deepEqual(r.referrers, [{ k: 'chatgpt.com', pv: 1, v: 1 }]);   // empty referrers (direct visits) are left out
+  assert.equal(windowOf(now, 'today', OFF).n, 24); assert.equal(windowOf(now, '90d', OFF).n, 90);
+});
+
+test('realtime: users per minute over 30 minutes, 5-minute users, top pages', () => {
+  const now = Date.UTC(2026, 10, 20, 18, 0, 30);
+  const rows = [row(now - 20e3, { vid: 'a', path: '/x' }), row(now - 40e3, { vid: 'a', path: '/x' }), row(now - 3 * 60e3, { vid: 'b', path: '/y' }), row(now - 20 * 60e3, { vid: 'c', path: '/x' })];
+  const r = buildRealtime(rows, [], now);
+  assert.equal(r.minutes.length, 30); assert.equal(r.users30, 3); assert.equal(r.users5, 2);
+  assert.equal(r.minutes[29].u, 1); assert.equal(r.minutes.reduce((a, m) => a + m.pv, 0), 4); assert.equal(r.pages[0].k, '/x'); assert.equal(r.pages[0].pv, 3);
+});
+
+test('the Analytics page cannot use up the database allowance: history is cached, the live strip is read at most every 10 s', async () => {
+  let reports = 0, lives = 0;
+  const store = { report: async (r) => ({ range: r, n: ++reports }), realtime: async () => ({ users30: ++lives }) };
+  const t0 = Date.now() + 10 * 3600e3;                              // a fresh moment, so earlier tests' cache does not interfere
+  for (let i = 0; i < 40; i++) await analyticsData(store, '30d', t0 + i * 1000);   // one open tab polling every second for 40 s
+  assert.equal(reports, 1, 'history is read once, not on every refresh'); assert.ok(lives <= 4, `live strip read ${lives} times in 40 s`);
+  await analyticsData(store, '30d', t0 + 31 * 60e3);                // history older than 30 minutes is read again
+  assert.equal(reports, 2);
+  const d = await analyticsData(store, '7d', t0); assert.equal(d.range, '7d'); assert.ok('rt' in d && 'cached_s' in d);
+});
+
+test('hits are written in batches: the first at once, a burst together, never one database call per page view', async () => {
+  const batches = [], store = () => ({ recordHits: async (b) => { batches.push(b.length); } });
+  const jobs = [], ctx = { waitUntil: (p) => jobs.push(p) };
+  const mk = () => { const r = req('/p'); return [r, new URL(r.url), html()]; };
+  for (let i = 0; i < 12; i++) { const [r, u, res] = mk(); trackHit(r, {}, ctx, u, res, store); }
+  await Promise.all(jobs);
+  assert.equal(batches.length, 1, 'only the first hit is written at once'); assert.equal(batches[0], 1);
+});
+
+test('database down: a cacheable page is served from the last good copy instead of a 500', async () => {
+  const worker = (await import('../src/index.js')).default;
+  const mem = new Map();
+  globalThis.caches = { default: { match: async (k) => { const r = mem.get(k); return r ? r.clone() : undefined; }, put: async (k, r) => { mem.set(k, r); } } };
+  const stale = 'https://worlddigital.ai/blog?__stale=1';
+  mem.set(stale, new Response('<html>last good blog</html>', { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } }));
+  const env = { STORE: { idFromName: () => 'x', get: () => { throw new Error('Exceeded allowed rows read in Durable Objects free tier.'); } } };
+  const res = await worker.fetch(new Request('https://worlddigital.ai/blog'), env, { waitUntil() {} });
+  assert.equal(res.status, 200); assert.equal(res.headers.get('X-Served-Stale'), '1'); assert.match(await res.text(), /last good blog/);
+  const none = await worker.fetch(new Request('https://worlddigital.ai/blog/some-uncached-post'), env, { waitUntil() {} });
+  assert.equal(none.status, 500, 'a page with no spare copy still answers with the error page');
 });

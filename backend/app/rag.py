@@ -62,9 +62,17 @@ RERANK = os.environ.get("RAG_RERANK", "") == "1"   # rerank search results with 
 # Written answers skip the reranker by default: the model reads all top sources anyway, and it saves ~0.6 s
 RERANK_ANSWERS = os.environ.get("RAG_RERANK_ANSWERS", "") == "1"
 FIX_MODEL = os.environ.get("RAG_FIX_MODEL", "claude-haiku-5-5")   # admin Fix Grammar button only; visitor answers are not affected
-_SW_CACHE: list = [None]   # (time, switches), shared by every Rag object on this server
+_SW_CACHE: list = [None]   # (time, settings), shared by every Rag object on this server
+_FAILS: dict = {}           # provider -> failures in a row on this server
+TRIP_AFTER, TRIP_S = 3, 600
 AI_PROVIDERS = ("cerebras", "claude", "openai")   # answer writers: at least one must stay on
-SWITCHABLE = AI_PROVIDERS + ("archive",)   # everything with an admin on/off switch; "archive" = move extra ready answers out of live search
+SWITCHABLE = AI_PROVIDERS + ("groq", "bulk", "live", "archive")   # admin on/off switches: groq = trials only, bulk = nightly answer preparation, live = AI answers for visitors, archive = move extra ready answers out of search
+SWITCH_DEFAULTS = {"cerebras": True, "claude": True, "openai": True, "groq": False, "bulk": True, "live": True, "archive": True}
+
+
+def _quiet(e: Exception) -> Exception:
+    e.quiet = True   # a cap or a switch refused this call: not a provider failure
+    return e
 ANSWER_MODEL = os.environ.get("RAG_ANSWER_MODEL", "")
 # if the answer model fails, is rate-limited or does not start in time, these are tried in order, then the OpenAI model
 ANSWER_FALLBACKS = [m.strip() for m in os.environ.get("RAG_ANSWER_FALLBACK", "").split(",") if m.strip()]
@@ -560,7 +568,7 @@ class Rag:
         d = self.meta.find_one({"_id": f"openai:{now():%Y-%m-%d}"}) or {}
         usd = round(float(d.get("usd") or 0), 4)
         out = {k: {"used": int(d.get(k) or 0), "limit": lim, "left": max(lim - int(d.get(k) or 0), 0)} for k, lim in OPENAI_DAILY.items()}
-        out["usd"] = {"spent": usd, "cap": OPENAI_DAILY_USD, "left": round(max(OPENAI_DAILY_USD - usd, 0), 4)}
+        out["usd"] = {"spent": usd, "cap": self.cap("openai"), "left": round(max(self.cap("openai") - usd, 0), 4)}
         return out
 
     def _openai_usd_left(self) -> float:
@@ -573,13 +581,13 @@ class Rag:
         self.meta.update_one({"_id": did}, {"$setOnInsert": {"day": now().strftime("%Y-%m-%d")}}, upsert=True)
         if self._openai_usd_left() <= 0:
             self._metric("openai_usd_limit", 0)
-            raise ApiError(f"daily OpenAI budget reached (${OPENAI_DAILY_USD:.2f})", 429,
-                           "Answers are paused for today. Please try again tomorrow or contact us.")
+            raise _quiet(ApiError(f"daily OpenAI budget reached (${self.cap('openai'):.2f})", 429,
+                                  "Answers are paused for today. Please try again tomorrow or contact us."))
         got = self.meta.find_one_and_update({"_id": did, "$or": [{kind: {"$lt": lim}}, {kind: {"$exists": False}}]}, {"$inc": {kind: 1}})
         if lim <= 0 or got is None:
             self._metric(f"openai_{kind}_limit", 0)
-            raise ApiError(f"daily OpenAI limit for {kind} reached ({lim})", 429,
-                           "Answers are paused for today. Please try again tomorrow or contact us.")
+            raise _quiet(ApiError(f"daily OpenAI limit for {kind} reached ({lim})", 429,
+                                  "Answers are paused for today. Please try again tomorrow or contact us."))
 
     def openai_spent(self, model: str, tokens_in: int, tokens_out: int) -> None:
         """Adds one knowledge-base OpenAI call's real cost to today's total (called from the usage tracker)."""
@@ -589,7 +597,7 @@ class Rag:
         self.meta.update_one({"_id": f"openai:{day}"}, {"$inc": {"usd": usd, "in": tokens_in, "out": tokens_out},
                                                         "$setOnInsert": {"day": day}}, upsert=True)
 
-    # --- on/off switches for the paid answer providers (admin page): off means never called, whatever the deploy config says ---
+    # --- admin on/off switches, spending caps, answer order and automatic pauses (kb admin page, "AI providers") ---
     @staticmethod
     def provider_of(model: str | None) -> str | None:
         """cerebras | groq | claude | openai for a model name; None for the free Workers AI models (never switched)."""
@@ -601,43 +609,126 @@ class Rag:
             return "claude"
         return "openai"
 
-    def provider_switches(self) -> dict:
-        """{"cerebras": True, "claude": True, "openai": True}; all on until someone turns one off. Read at most every 5 s."""
+    def _settings(self) -> dict:
+        """Switches, caps/order and automatic pauses from rag_meta, read at most every 5 s (shared by all Rag objects)."""
         c = _SW_CACHE[0]
         if c and time.monotonic() - c[0] < 5:
             return c[1]
         try:
-            d = self.meta.find_one({"_id": "provider_switches"}) or {}
-        except Exception:  # noqa: BLE001  cannot read the setting: keep everything on rather than stop answering
-            d = {}
-        sw = {p: bool((d.get("on") or {}).get(p, True)) for p in SWITCHABLE}
-        _SW_CACHE[0] = (time.monotonic(), sw)
-        return sw
+            docs = {d["_id"]: d for d in self.meta.find({"_id": {"$in": ["provider_switches", "provider_config", "provider_trips"]}})}
+        except Exception:  # noqa: BLE001  cannot read the settings: defaults (everything on) rather than stop answering
+            docs = {}
+        on = (docs.get("provider_switches") or {}).get("on") or {}
+        st = {"on": {p: bool(on.get(p, SWITCH_DEFAULTS[p])) for p in SWITCHABLE}, "cfg": docs.get("provider_config") or {},
+              "trips": {k: v for k, v in (docs.get("provider_trips") or {}).items() if k != "_id"}}
+        _SW_CACHE[0] = (time.monotonic(), st)
+        return st
+
+    def provider_switches(self) -> dict:
+        return self._settings()["on"]
+
+    def cap(self, name: str) -> float:
+        """Spending cap in US dollars: cerebras/groq in total, openai per day. The admin page value wins over the deploy setting."""
+        default = {"cerebras": FAST_BUDGET_USD["cerebras"], "groq": FAST_BUDGET_USD["groq"], "openai": OPENAI_DAILY_USD}.get(name, 0.0)
+        try:
+            v = (self._settings()["cfg"].get("caps") or {}).get(name)
+            return float(v) if v is not None else default
+        except (TypeError, ValueError):
+            return default
+
+    def answer_order(self) -> list[str]:
+        o = [p for p in (self._settings()["cfg"].get("order") or []) if p in AI_PROVIDERS]
+        return o + [p for p in AI_PROVIDERS if p not in o]
+
+    def _tripped(self, p: str) -> float:
+        try:
+            u = float(self._settings()["trips"].get(p) or 0)
+        except (TypeError, ValueError):
+            return 0.0
+        return u if u > time.time() else 0.0
 
     def provider_set(self, provider: str, on: bool) -> dict:
         if provider not in SWITCHABLE:
-            raise ApiError("bad provider", 400, "Unknown provider.")
+            raise ApiError("bad provider", 400, "Unknown switch.")
         sw = dict(self.provider_switches())
         sw[provider] = bool(on)
         if not any(sw[p] for p in AI_PROVIDERS):
-            raise ApiError("last provider", 400, "At least one provider has to stay on, or the site cannot write answers.")
+            raise ApiError("last provider", 400, "At least one of Cerebras, Claude and OpenAI has to stay on, or the site cannot write answers.")
         self.meta.update_one({"_id": "provider_switches"}, {"$set": {"on": sw, "at": now()}}, upsert=True)
+        if on:   # turning a provider on by hand also ends an automatic pause
+            self.meta.update_one({"_id": "provider_trips"}, {"$unset": {provider: ""}})
         _SW_CACHE[0] = None
         if provider == "archive" and not on:
             self.ready_restore()
         return self.provider_state()
 
-    def provider_state(self) -> dict:
-        sw = self.provider_switches()
-        return {"providers": [{"id": p, "on": sw[p]} for p in SWITCHABLE]}
+    def provider_caps(self, caps: dict) -> dict:
+        sets = {}
+        for k in ("cerebras", "openai", "groq"):
+            if k in caps:
+                try:
+                    v = float(caps[k])
+                except (TypeError, ValueError) as e:
+                    raise ApiError("bad cap", 400, "A spending cap must be a number of dollars.") from e
+                if not 0 <= v <= 1000:
+                    raise ApiError("bad cap", 400, "A spending cap must be between $0 and $1000.")
+                sets[f"caps.{k}"] = round(v, 2)
+        if sets:
+            self.meta.update_one({"_id": "provider_config"}, {"$set": sets}, upsert=True)
+            _SW_CACHE[0] = None
+        return self.provider_state()
 
-    def _provider_on(self, model: str | None) -> bool:
+    def provider_order(self, order: list) -> dict:
+        if sorted(order or []) != sorted(AI_PROVIDERS):
+            raise ApiError("bad order", 400, "The order must list Cerebras, Claude and OpenAI once each.")
+        self.meta.update_one({"_id": "provider_config"}, {"$set": {"order": list(order)}}, upsert=True)
+        _SW_CACHE[0] = None
+        return self.provider_state()
+
+    def provider_state(self) -> dict:
+        sw, out = self.provider_switches(), []
+        for p in SWITCHABLE:
+            row = {"id": p, "on": sw[p]}
+            if p in AI_PROVIDERS or p == "groq":
+                row["tripped_until"] = self._tripped(p) or None
+            if p in ("cerebras", "groq"):
+                f = self.fast_spend(p)
+                row.update(spent=f["spent_usd"], cap=f["cap_usd"], left=f["left_usd"], unit="total")
+            elif p == "openai":
+                u = self.openai_daily()["usd"]
+                row.update(spent=u["spent"], cap=u["cap"], left=u["left"], unit="day")
+            out.append(row)
+        return {"providers": out, "order": self.answer_order(),
+                "caps": {k: self.cap(k) for k in ("cerebras", "openai", "groq")}}
+
+    def _provider_on(self, model: str | None, ignore_trips: bool = False) -> bool:
         p = self.provider_of(model)
-        return p is None or p not in SWITCHABLE or self.provider_switches()[p]
+        if p is None or p not in SWITCHABLE:
+            return True
+        return bool(self.provider_switches()[p]) and (ignore_trips or not self._tripped(p))
+
+    def _note_ok(self, model: str | None) -> None:
+        _FAILS.pop(self.provider_of(model) or "", None)
+
+    def _note_failure(self, model: str | None, e: Exception) -> None:
+        """Three failures in a row pause a provider for 10 minutes (everywhere); caps and switches do not count."""
+        p = self.provider_of(model)
+        if p not in SWITCHABLE or getattr(e, "quiet", False):
+            return
+        _FAILS[p] = _FAILS.get(p, 0) + 1
+        if _FAILS[p] >= TRIP_AFTER:
+            _FAILS[p] = 0
+            try:
+                self.meta.update_one({"_id": "provider_trips"}, {"$set": {p: time.time() + TRIP_S}}, upsert=True)
+                _SW_CACHE[0] = None
+                self._metric(f"{p}_paused", 0)
+                log.warning("%s failed %d times in a row: paused for %d minutes", p, TRIP_AFTER, TRIP_S // 60)
+            except Exception:  # noqa: BLE001
+                pass
 
     def fast_spend(self, provider: str = "cerebras") -> dict:
         d = self.meta.find_one({"_id": f"spend:{provider}"}) or {}
-        cap = FAST_BUDGET_USD.get(provider, 0.0)
+        cap = self.cap(provider)
         usd = round(float(d.get("usd") or 0), 4)
         return {"provider": provider, "spent_usd": usd, "cap_usd": cap, "left_usd": round(max(cap - usd, 0), 4),
                 "answers": int(d.get("answers") or 0), "input_tokens": int(d.get("in") or 0), "output_tokens": int(d.get("out") or 0),
@@ -648,8 +739,8 @@ class Rag:
         sp = self.fast_spend(p)
         if sp["spent_usd"] + FAST_RESERVE_USD >= sp["cap_usd"]:
             self._metric(f"{p}_cap_reached", 0)
-            raise ApiError(f"{p} spending cap reached: ${sp['spent_usd']:.2f} of ${sp['cap_usd']:.2f}", 503,
-                           "The fast answer model has reached its spending cap.")
+            raise _quiet(ApiError(f"{p} spending cap reached: ${sp['spent_usd']:.2f} of ${sp['cap_usd']:.2f}", 503,
+                                  "The fast answer model has reached its spending cap."))
 
     def _fast_spend(self, model: str, usage: dict) -> None:
         p = self._fast_provider(model)
@@ -1380,7 +1471,7 @@ class Rag:
 
         def write_with(m: str | None):
             if not self._provider_on(m):
-                raise ApiError(f"{self.provider_of(m)} is switched off", 503, "That AI provider is switched off in the admin page.")
+                raise _quiet(ApiError(f"{self.provider_of(m)} is switched off or paused", 503, "That AI provider is switched off in the admin page."))
             if m and m.startswith("@cf/"):
                 return workers_stream(self.s, system=system, user=user, model=m, max_tokens=self.ANSWER_TOKENS)
             if m and m.split(":")[0] in services.FAST_PROVIDERS:
@@ -1401,7 +1492,13 @@ class Rag:
             writer = write_with(model)
         else:
             first_choice = (WARM_MODEL if getattr(self._local, "warm", False) else "") or ANSWER_MODEL
-            chain = [m for m in dict.fromkeys([m for m in [first_choice, *ANSWER_FALLBACKS] if m] + [""]) if self._provider_on(m)]   # "" = the OpenAI model
+            if public and not getattr(self._local, "warm", False) and not self.provider_switches()["live"]:
+                raise ApiError("live ai answers paused", 503, "Live answers are paused right now. Please try again later or contact us.")
+            base = list(dict.fromkeys([m for m in [first_choice, *ANSWER_FALLBACKS] if m] + [""]))   # "" = the OpenAI model
+            if not getattr(self._local, "warm", False):   # the admin page answer order (Cerebras / Claude / OpenAI), stable for the rest
+                rank = {p: i for i, p in enumerate(self.answer_order())}
+                base.sort(key=lambda m: rank.get(self.provider_of(m), 99))
+            chain = [m for m in base if self._provider_on(m)] or [m for m in base if self._provider_on(m, ignore_trips=True)]
             if not chain:
                 raise ApiError("all providers off", 503, "Every AI provider is switched off in the admin page.")
 
@@ -1412,8 +1509,10 @@ class Rag:
                         for p in write_with(m):
                             wrote = True
                             yield p
+                        self._note_ok(m)
                         return
                     except (ApiError, httpx.HTTPError) as e:
+                        self._note_failure(m, e)
                         if wrote or i == len(chain) - 1:   # mid-answer, or nothing left to try
                             raise
                         log.warning("answer model %s failed, using %s instead: %s", m or "openai", chain[i + 1] or "openai", str(e)[:200])
@@ -1859,7 +1958,7 @@ class Rag:
         def one(q):
             if time.monotonic() - t0 > budget_s or paused["v"]:
                 return None
-            if not self._provider_on(WARM_MODEL or ANSWER_MODEL):
+            if not self.provider_switches()["bulk"] or not self._provider_on(WARM_MODEL or ANSWER_MODEL):
                 paused["v"] = True   # its provider is switched off in the admin page: no bulk preparation
                 return None
             if warm_openai and (self.openai_daily()["bulk"]["left"] <= 0 or self._openai_usd_left() <= 0):
@@ -2083,7 +2182,7 @@ class Rag:
             left = min(daily["tests"]["left"], int(daily["usd"]["left"] / OPENAI_EST_ANSWER_USD))
             if left < len(cases):
                 raise ApiError(f"daily OpenAI test limit: {left} answers left, the test needs {len(cases)}", 429,
-                               f"Today's test limit is used up (${OPENAI_DAILY_USD:.2f} a day, room for {left} answers; "
+                               f"Today's test limit is used up (${self.cap("openai"):.2f} a day, room for {left} answers; "
                                f"this test needs {len(cases)}). Run it again tomorrow, or a quick test with fewer questions.")
         results, lat, first, search_lat, stage = [], [], [], [], {}
         pos = neg = passed = hit = with_exp = cited_ok = answered_ok = unsupported = 0

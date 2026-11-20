@@ -541,8 +541,19 @@ async def rag_providers():
 
 @app.post("/api/admin/rag/providers", dependencies=[Depends(guard)])
 async def rag_providers_set(request: Request):
+    """{provider, on} switches one thing on or off; {action: "caps", caps: {cerebras, openai, groq}} sets spending caps in dollars;
+    {action: "order", order: [...]} sets which AI provider answers first."""
     b = await body_of(request)
-    return json_ok(await run_in_threadpool(_rag_call, lambda: rag().provider_set(str(b.get("provider") or ""), b.get("on") is True)))
+    a = str(b.get("action") or "switch")
+
+    def run():
+        r = rag()
+        if a == "caps":
+            return r.provider_caps(b.get("caps") if isinstance(b.get("caps"), dict) else {})
+        if a == "order":
+            return r.provider_order(b.get("order") if isinstance(b.get("order"), list) else [])
+        return r.provider_set(str(b.get("provider") or ""), b.get("on") is True)
+    return json_ok(await run_in_threadpool(_rag_call, run))
 
 
 @app.get("/api/admin/rag/history", dependencies=[Depends(guard)])

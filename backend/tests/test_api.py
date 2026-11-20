@@ -404,23 +404,55 @@ def test_blog_video_retries_shorter_script(env):
     assert r.json()["duration"] <= 7.0 and r.json()["script"]["voice"][-1] == "More at worlddigital.ai."
 
 
-def test_provider_switches(monkeypatch):
+def _rag_with_meta():
     import mongomock
-    from app import rag as rag_mod, services
+    from app import rag as rag_mod
     rag_mod._SW_CACHE[0] = None
+    rag_mod._FAILS.clear()
     r = rag_mod.Rag.__new__(rag_mod.Rag)
-    r.meta = mongomock.MongoClient().db.rag_meta
-    assert all(p["on"] for p in r.provider_state()["providers"])
+    r.db = mongomock.MongoClient().db
+    r.meta, r.answers = r.db["rag_meta"], r.db["rag_answers"]
+    return rag_mod, r
+
+
+def test_provider_switches():
+    import pytest
+    rag_mod, r = _rag_with_meta()
+    on = {p["id"]: p["on"] for p in r.provider_state()["providers"]}
+    assert on["cerebras"] and on["claude"] and on["openai"] and on["archive"] and on["bulk"] and on["live"] and not on["groq"]
     r.provider_set("cerebras", False)
     assert not r._provider_on("cerebras:qwen-3.8-27b") and r._provider_on("claude-haiku-5-5") and r._provider_on("@cf/x")
-    r.db = mongomock.MongoClient().db
-    r.answers = r.db["rag_answers"]
+    r.provider_set("claude", False)
+    with pytest.raises(rag_mod.ApiError):
+        r.provider_set("openai", False)   # would leave no answer writer
     r.db["rag_answers_archive"].insert_one({"_id": "a", "q": "x", "archived": 1})
     r.provider_set("archive", False)
     assert r.answers.find_one({"_id": "a"}) and "archived" not in r.answers.find_one({"_id": "a"}) and r.ready_trim(0) == 0
-    r.provider_set("claude", False)
-    import pytest
-    with pytest.raises(rag_mod.ApiError):
-        r.provider_set("openai", False)   # would leave no answer writer
     r.provider_set("cerebras", True)
-    rag_mod._SW_CACHE[0] = None
+
+
+def test_caps_order_and_auto_pause():
+    import pytest
+    rag_mod, r = _rag_with_meta()
+    assert r.cap("openai") == rag_mod.OPENAI_DAILY_USD
+    r.provider_caps({"openai": 2.5, "cerebras": 20})
+    assert r.cap("openai") == 2.5 and r.fast_spend("cerebras")["cap_usd"] == 20 and r.openai_daily()["usd"]["cap"] == 2.5
+    for bad in ({"openai": "x"}, {"openai": -1}, {"openai": 5000}):
+        with pytest.raises(rag_mod.ApiError):
+            r.provider_caps(bad)
+    assert r.answer_order() == ["cerebras", "claude", "openai"]
+    r.provider_order(["claude", "cerebras", "openai"])
+    assert r.answer_order() == ["claude", "cerebras", "openai"]
+    with pytest.raises(rag_mod.ApiError):
+        r.provider_order(["claude", "claude", "openai"])
+    # three real failures in a row pause a provider; a cap or switch refusal does not count
+    err = rag_mod.ApiError("boom", 502)
+    for _ in range(2):
+        r._note_failure("cerebras:qwen-3.8-27b", err)
+    r._note_failure("cerebras:qwen-3.8-27b", rag_mod._quiet(rag_mod.ApiError("cap", 503)))
+    assert r._provider_on("cerebras:qwen-3.8-27b")
+    r._note_failure("cerebras:qwen-3.8-27b", err)
+    assert not r._provider_on("cerebras:qwen-3.8-27b") and r._provider_on("cerebras:qwen-3.8-27b", ignore_trips=True)
+    assert [p for p in r.provider_state()["providers"] if p["id"] == "cerebras"][0]["tripped_until"]
+    r.provider_set("cerebras", True)   # turning it on by hand ends the pause
+    assert r._provider_on("cerebras:qwen-3.8-27b")

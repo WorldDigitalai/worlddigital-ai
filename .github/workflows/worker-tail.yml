@@ -1,0 +1,37 @@
+name: Worker log tail (errors only)
+# Manual: listens to the live site Worker for ~45 s while requesting /blog a few times, and prints only the error messages
+# (never request headers, cookies or addresses). Use it to see why a page answers 500.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  tail:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-node@v5
+        with: { node-version: 22 }
+      - name: Tail and probe
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          (timeout 50 npx --yes wrangler@4.149.0 tail worlddigital-ai-site --format json > tail.jsonl 2> tail.err || true) &
+          sleep 14
+          for i in 1 2 3; do curl -s -o /dev/null -w "probe /blog -> %{http_code}\n" https://worlddigital.ai/blog; sleep 3; done
+          curl -s -o /dev/null -w "probe /sitemap.xml -> %{http_code}\n" https://worlddigital.ai/sitemap.xml
+          wait
+          echo "== tail stderr"; head -c 400 tail.err
+          echo "== lines captured: $(wc -l < tail.jsonl)"
+          python3 - <<'PY'
+          import json
+          seen = set()
+          for l in open("tail.jsonl"):
+              try: e = json.loads(l)
+              except Exception: continue
+              msgs = [str(x.get("message"))[:600] for x in e.get("exceptions") or []] + [" ".join(map(str, x.get("message") or []))[:600] for x in e.get("logs") or [] if x.get("level") in ("error", "warn") or "rror" in " ".join(map(str, x.get("message") or []))]
+              for m in msgs:
+                  if m not in seen:
+                      seen.add(m); print("OUTCOME", e.get("outcome"), "|", m)
+          print("distinct error lines:", len(seen))
+          PY

@@ -366,7 +366,7 @@ ${prov && prov.providers ? (() => {
       archive: 'ON keeps the best 3,000 ready answers in search and archives the rest. OFF stops archiving and brings every archived answer back into search.' };
     const money = (v) => '$' + Number(v || 0).toFixed(2);
     const stat = (x) => { const bits = []; if (x.tripped_until) bits.push('<span style="color:#B42318;font-weight:700">paused automatically until ' + new Date(x.tripped_until * 1000).toISOString().slice(11, 16) + ' UTC after repeated failures</span>');
-      if (x.cap != null) bits.push(x.cap > 0 ? money(x.spent) + ' of ' + money(x.cap) + (x.unit === 'day' ? ' today' : ' in total') + ' · ' + money(x.left) + ' left' + (x.left <= 0.01 ? ' · <b style="color:#B42318">cap reached, skipped</b>' : '') : 'cap $0: never used');
+      if (x.nocap) bits.push(money(x.spent) + ' spent so far · no cap set'); else if (x.cap != null) bits.push(x.cap > 0 ? money(x.spent) + ' of ' + money(x.cap) + (x.unit === 'day' ? ' today' : ' in total') + ' · ' + money(x.left) + ' left' + (x.left <= 0.01 ? ' · <b style="color:#B42318">cap reached, skipped</b>' : '') : 'cap $0: never used');
       return bits.join(' · '); };
     const row = (x) => `<div style="display:flex;align-items:center;gap:14px;padding:10px 0;border-top:1px solid #EAF0F7"><button type="button" class="provsw" role="switch" aria-checked="${x.on}" data-prov="${esc(x.id)}" style="min-width:74px;padding:6px 14px;border-radius:999px;border:0;font-weight:700;cursor:pointer;color:#fff;background:${x.on ? '#12805C' : '#8A97A8'}">${x.on ? 'ON' : 'OFF'}</button><span><b>${esc(NAME[x.id] || x.id)}</b> <span class="muted" style="font-size:13px">${esc(DESC[x.id] || '')}</span><span class="muted" style="display:block;font-size:13px">${stat(x)}</span></span></div>`;
     const by = Object.fromEntries(prov.providers.map((x) => [x.id, x]));
@@ -375,7 +375,7 @@ ${prov && prov.providers ? (() => {
     const cap = (id, label, hint) => `<label style="display:flex;align-items:center;gap:8px;margin:6px 0;flex-wrap:wrap"><span style="width:170px">${label}</span><input type="number" min="0" max="1000" step="0.5" data-cap="${id}" value="${Number(caps[id] || 0)}" style="width:90px"><span class="muted" style="font-size:13px">${hint}</span></label>`;
     return ['cerebras', 'claude', 'openai', 'groq'].map((id) => by[id] && row(by[id])).join('') +
       `<h3 class="h" style="font-size:16px;margin-top:16px">Which provider answers first</h3><p class="muted" style="margin:0 0 4px;font-size:13px">Falls through the list when one fails, is off or has used its cap.</p><div id="ordl">${ord}</div>
-<h3 class="h" style="font-size:16px;margin-top:16px">Spending caps (US dollars)</h3>${cap('cerebras', 'Cerebras, in total', 'stops when spent')}${cap('openai', 'OpenAI, per day', 'resets each UTC day')}${cap('groq', 'Groq, in total', 'trials only')}<p style="margin:6px 0 0"><button type="button" id="capsave">Save caps</button></p>
+<h3 class="h" style="font-size:16px;margin-top:16px">Spending caps (US dollars)</h3>${cap('cerebras', 'Cerebras, in total', 'stops when spent')}${cap('openai', 'OpenAI, per day', 'resets each UTC day')}${cap('claude', 'Claude, in total', '0 = no limit')}${cap('groq', 'Groq, in total', 'trials only')}<p style="margin:6px 0 0"><button type="button" id="capsave">Save caps</button></p>
 <h3 class="h" style="font-size:16px;margin-top:16px">Automatic work and answers</h3>` + ['bulk', 'live', 'archive'].map((id) => by[id] && row(by[id])).join('');
   })() : '<p class="muted">Could not load the switches.</p>'}
 <p id="provmsg" class="muted" style="margin:8px 0 0"></p></div>
@@ -675,7 +675,7 @@ export async function handleAdmin(req, env, url, store, ctx, { pingNow, prod }) 
         batch: Math.max(1, Math.min(Number(b.batch) || 15, 40)), trigger: 'admin' }, 280000),
       eval: () => backend(env, 'POST', '/api/admin/rag/eval', {}, 280000),
       providers: () => backend(env, 'POST', '/api/admin/rag/providers', { action: ['caps', 'order'].includes(b.action) ? b.action : 'switch', provider: String(b.provider || '').slice(0, 20), on: b.on === true,
-        caps: b.caps && typeof b.caps === 'object' ? Object.fromEntries(['cerebras', 'openai', 'groq'].filter((k) => k in b.caps).map((k) => [k, Number(b.caps[k])])) : {},
+        caps: b.caps && typeof b.caps === 'object' ? Object.fromEntries(['cerebras', 'openai', 'groq', 'claude'].filter((k) => k in b.caps).map((k) => [k, Number(b.caps[k])])) : {},
         order: Array.isArray(b.order) ? b.order.slice(0, 3).map((x) => String(x).slice(0, 20)) : [] }, 20000),
       ask: () => backend(env, 'POST', '/api/admin/rag/ask', { q: String(b.q || '').slice(0, 500),
         sources: (Array.isArray(b.sources) ? b.sources : ['ai']).filter((x) => SCOPES.includes(x)), types: Array.isArray(b.types) ? b.types.slice(0, 3) : null }, 90000),

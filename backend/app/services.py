@@ -186,7 +186,7 @@ def _fast_lines(r, usage: dict):
 
 
 def claude_stream(s: Settings, *, system: str, user: str, model: str, max_tokens: int = 500, key: str | None = None,
-                  timeout: float = 60, feature: str | None = None):
+                  timeout: float = 60, feature: str | None = None, on_usage=None):
     """Yields answer text from a Claude model (Anthropic Messages API, streamed). `key` is an API key from Claude Console
     (ANTHROPIC_API_KEY) or a short-lived access token (sk-ant-oat...), which is sent as a bearer token."""
     feature = feature or _caller()
@@ -224,6 +224,8 @@ def claude_stream(s: Settings, *, system: str, user: str, model: str, max_tokens
             elif t == "error":
                 raise ApiError(f"claude stream: {str(ev.get('error'))[:200]}", 502, "The answer model is busy. Please try again.")
     record_usage(feature, model, usage)
+    if on_usage:   # spend tracking for the admin spending cap (a missing usage report is estimated, never counted as free)
+        on_usage(model, usage if usage.get("prompt_tokens") else {"prompt_tokens": (len(system) + len(user)) // 3, "completion_tokens": max_tokens})
 
 
 def openai_json(s: Settings, *, system: str, user: str, max_tokens: int = 2500, temperature: float = 0.4,

@@ -456,3 +456,21 @@ def test_caps_order_and_auto_pause():
     assert [p for p in r.provider_state()["providers"] if p["id"] == "cerebras"][0]["tripped_until"]
     r.provider_set("cerebras", True)   # turning it on by hand ends the pause
     assert r._provider_on("cerebras:qwen-3.8-27b")
+
+
+def test_claude_spend_and_cap():
+    import pytest
+    rag_mod, r = _rag_with_meta()
+    row = [p for p in r.provider_state()["providers"] if p["id"] == "claude"][0]
+    assert row["nocap"] and row["spent"] == 0
+    r._claude_budget_check()   # no cap: never refuses
+    r._claude_spend("claude-haiku-5-5", {"prompt_tokens": 2_000_000, "completion_tokens": 1_000_000})   # $0.20 + $0.50
+    assert r.fast_spend("claude")["spent_usd"] == pytest.approx(0.70)
+    r.provider_caps({"claude": 0.5})
+    with pytest.raises(rag_mod.ApiError) as e:
+        r._claude_budget_check()
+    assert getattr(e.value, "quiet", False)   # a cap refusal is not a provider failure
+    r.provider_caps({"claude": 5})
+    r._claude_budget_check()
+    row = [p for p in r.provider_state()["providers"] if p["id"] == "claude"][0]
+    assert not row["nocap"] and row["left"] == pytest.approx(4.3)

@@ -95,6 +95,8 @@ FAST_BUDGET_USD = {"cerebras": float(os.environ.get("CEREBRAS_BUDGET_USD", "0") 
                    "groq": float(os.environ.get("GROQ_BUDGET_USD", "0") or 0)}
 FAST_PRICES = {"cerebras": (float(os.environ.get("CEREBRAS_PRICE_IN", "0.99")), float(os.environ.get("CEREBRAS_PRICE_OUT", "1.49"))),
                "groq": (float(os.environ.get("GROQ_PRICE_IN", "1")), float(os.environ.get("GROQ_PRICE_OUT", "1")))}
+# Claude Haiku 5.5: $0.10 in / $0.50 out per million tokens for prompts up to 100K (checked 2026-11-20); answer prompts are ~2K tokens
+CLAUDE_PRICES = (float(os.environ.get("CLAUDE_PRICE_IN", "0.10")), float(os.environ.get("CLAUDE_PRICE_OUT", "0.50")))
 FAST_RESERVE_USD = 0.01   # stop slightly early so answers already in flight cannot run past the cap
 PREPARED_PER_PAGE = int(os.environ.get("RAG_PREPARED_PER_PAGE", "15"))   # likely visitor questions written per page (0 = off)
 READY_CACHE_S, READY_MAX = 45, 4000        # in-memory copy of the ready answers' question vectors
@@ -628,8 +630,9 @@ class Rag:
         return self._settings()["on"]
 
     def cap(self, name: str) -> float:
-        """Spending cap in US dollars: cerebras/groq in total, openai per day. The admin page value wins over the deploy setting."""
-        default = {"cerebras": FAST_BUDGET_USD["cerebras"], "groq": FAST_BUDGET_USD["groq"], "openai": OPENAI_DAILY_USD}.get(name, 0.0)
+        """Spending cap in US dollars: cerebras/groq/claude in total (claude 0 = no limit), openai per day. The admin page value wins over the deploy setting."""
+        default = {"cerebras": FAST_BUDGET_USD["cerebras"], "groq": FAST_BUDGET_USD["groq"], "openai": OPENAI_DAILY_USD,
+                   "claude": float(os.environ.get("CLAUDE_BUDGET_USD", "0") or 0)}.get(name, 0.0)   # claude: 0 = no limit
         try:
             v = (self._settings()["cfg"].get("caps") or {}).get(name)
             return float(v) if v is not None else default
@@ -664,7 +667,7 @@ class Rag:
 
     def provider_caps(self, caps: dict) -> dict:
         sets = {}
-        for k in ("cerebras", "openai", "groq"):
+        for k in ("cerebras", "openai", "groq", "claude"):
             if k in caps:
                 try:
                     v = float(caps[k])
@@ -691,15 +694,15 @@ class Rag:
             row = {"id": p, "on": sw[p]}
             if p in AI_PROVIDERS or p == "groq":
                 row["tripped_until"] = self._tripped(p) or None
-            if p in ("cerebras", "groq"):
+            if p in ("cerebras", "groq", "claude"):
                 f = self.fast_spend(p)
-                row.update(spent=f["spent_usd"], cap=f["cap_usd"], left=f["left_usd"], unit="total")
+                row.update(spent=f["spent_usd"], cap=f["cap_usd"], left=f["left_usd"], unit="total", nocap=(p == "claude" and not f["cap_usd"]))
             elif p == "openai":
                 u = self.openai_daily()["usd"]
                 row.update(spent=u["spent"], cap=u["cap"], left=u["left"], unit="day")
             out.append(row)
         return {"providers": out, "order": self.answer_order(),
-                "caps": {k: self.cap(k) for k in ("cerebras", "openai", "groq")}}
+                "caps": {k: self.cap(k) for k in ("cerebras", "openai", "groq", "claude")}}
 
     def _provider_on(self, model: str | None, ignore_trips: bool = False) -> bool:
         p = self.provider_of(model)
@@ -732,7 +735,7 @@ class Rag:
         usd = round(float(d.get("usd") or 0), 4)
         return {"provider": provider, "spent_usd": usd, "cap_usd": cap, "left_usd": round(max(cap - usd, 0), 4),
                 "answers": int(d.get("answers") or 0), "input_tokens": int(d.get("in") or 0), "output_tokens": int(d.get("out") or 0),
-                "since": d.get("since"), "price_per_million": FAST_PRICES.get(provider)}
+                "since": d.get("since"), "price_per_million": CLAUDE_PRICES if provider == "claude" else FAST_PRICES.get(provider)}
 
     def _fast_budget_check(self, model: str) -> None:
         p = self._fast_provider(model)
@@ -749,6 +752,25 @@ class Rag:
         usd = (t_in * price_in + t_out * price_out) / 1e6
         self.meta.update_one({"_id": f"spend:{p}"}, {"$inc": {"usd": usd, "in": t_in, "out": t_out, "answers": 1},
                                                     "$setOnInsert": {"since": now()}}, upsert=True)
+
+    def _claude_spend(self, model: str, usage: dict) -> None:
+        t_in, t_out = int(usage.get("prompt_tokens") or 0), int(usage.get("completion_tokens") or 0)
+        usd = (t_in * CLAUDE_PRICES[0] + t_out * CLAUDE_PRICES[1]) / 1e6
+        try:
+            self.meta.update_one({"_id": "spend:claude"}, {"$inc": {"usd": usd, "in": t_in, "out": t_out, "answers": 1},
+                                                           "$setOnInsert": {"since": now()}}, upsert=True)
+        except Exception:  # noqa: BLE001  counting must never break an answer
+            pass
+
+    def _claude_budget_check(self) -> None:
+        """Refuses a Claude call once its total spend reaches the admin spending cap (cap 0 = no limit)."""
+        cap = self.cap("claude")
+        if cap > 0:
+            sp = self.fast_spend("claude")
+            if sp["spent_usd"] + FAST_RESERVE_USD >= cap:
+                self._metric("claude_cap_reached", 0)
+                raise _quiet(ApiError(f"claude spending cap reached: ${sp['spent_usd']:.2f} of ${cap:.2f}", 503,
+                                      "The Claude model has reached its spending cap."))
 
     def _metric(self, kind: str, ms: int | None = None) -> None:
         try:
@@ -1482,8 +1504,9 @@ class Rag:
                                             key=trial_key, retries=3 if model else 0, on_usage=self._fast_spend,
                                             timeout=60 if model else httpx.Timeout(10, connect=1.5, read=FAST_STALL_S))
             if m and m.startswith("claude-"):
+                self._claude_budget_check()
                 return services.claude_stream(self.s, system=system, user=user, model=m, max_tokens=self.ANSWER_TOKENS,
-                                              feature="rag.answer", key=trial_key)
+                                              feature="rag.answer", key=trial_key, on_usage=self._claude_spend)
             if self._is_openai(m):
                 self._openai_take(self._openai_kind(public))   # daily OpenAI limits: bulk 3000, tests 500, backup 200
             return openai_stream(self.s, system=system, user=user, max_tokens=self.ANSWER_TOKENS, feature="rag.answer", model=m or None, tier=tier)
@@ -1782,8 +1805,9 @@ class Rag:
         system = ("You are a careful copy editor. Correct spelling, grammar, punctuation and minor sentence structure of the text. "
                   "Keep the meaning, facts, names, numbers, prices, URLs and tone exactly as written. Do not add, remove or invent information. "
                   "Do not add greetings, notes or quotation marks. Reply with the corrected text only.")
+        self._claude_budget_check()
         out = "".join(services.claude_stream(self.s, system=system, user=text, model=FIX_MODEL, max_tokens=700, timeout=25,
-                                             feature="fix_grammar")).strip()
+                                             feature="fix_grammar", on_usage=self._claude_spend)).strip()
         if not out:
             raise ApiError("empty fix", 502, "Could not fix the grammar right now. Please try again.")
         if len(out) > 1500:

@@ -91,6 +91,10 @@ jobs:
             MERCURY_API_TOKEN=${{ secrets.MERCURY_API_TOKEN }}
             CLOUDFLARE_API_TOKEN=${{ secrets.CLOUDFLARE_API_TOKEN }}
             CLOUDFLARE_ZONE_ID=${{ secrets.CLOUDFLARE_ZONE_ID }}
+            GOOGLE_SERVICE_ACCOUNT_B64=${{ secrets.GOOGLE_SERVICE_ACCOUNT_B64 }}
+            GA4_PROPERTY_ID=${{ secrets.GA4_PROPERTY_ID }}
+            BUFFER_API_TOKEN=${{ secrets.BUFFER_API_TOKEN }}
+            SEARCH_CONSOLE_SITE=${{ secrets.SEARCH_CONSOLE_SITE }}
           secrets: |
             MONGODB_URI=MONGODB_URI:5
             INTERNAL_TOKEN=INTERNAL_TOKEN:latest

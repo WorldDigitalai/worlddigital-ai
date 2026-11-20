@@ -59,7 +59,7 @@ def test_run_isolates_failures_and_reports_missing_keys(monkeypatch):
     monkeypatch.setattr(C, "resend", lambda s, d: {C._today(): {"sent": 7, "delivered": 6}})
     for p in C.REGISTRY:   # the registry holds the functions: point it at the patched ones
         p["fn"] = {"stripe": C.stripe, "resend": C.resend}.get(p["id"], p["fn"])
-    for k in ("OPENAI_ADMIN_KEY", "ANTHROPIC_ADMIN_KEY", "MERCURY_API_TOKEN", "CLOUDFLARE_API_TOKEN"):
+    for k in ("OPENAI_ADMIN_KEY", "ANTHROPIC_ADMIN_KEY", "MERCURY_API_TOKEN", "CLOUDFLARE_API_TOKEN", "GOOGLE_SERVICE_ACCOUNT_B64"):
         monkeypatch.delenv(k, raising=False)
     monkeypatch.setattr(C, "dataforseo", lambda s, d: {C._today(): {"balance_usd": 50.0}})
     for p in C.REGISTRY:
@@ -67,7 +67,7 @@ def test_run_isolates_failures_and_reports_missing_keys(monkeypatch):
             p["fn"] = C.dataforseo
     done = C.run(_s(), db)
     assert done["stripe"] == "error" and done["resend"] == "ok" and done["dataforseo"] == "ok"   # stripe failing did not stop resend
-    assert done["openai_billing"] == "needs_key" and done["mercury"] == "needs_key" and done["google_analytics"] == "not_connected"
+    assert done["openai_billing"] == "needs_key" and done["mercury"] == "needs_key" and done["google_analytics"] == "needs_key" and done["tiktok"] == "not_connected"
     assert "OPENAI_ADMIN_KEY" in db["provider_status"].find_one({"_id": "openai_billing"})["message"]
     assert "401" in db["provider_status"].find_one({"_id": "stripe"})["message"]
     assert db["provider_metrics"].find_one({"_id": f"resend:{C._today()}"})["m"]["sent"] == 7
@@ -107,3 +107,64 @@ def test_ai_cards_round_trip_through_the_database():
     C.run(_s(), db, "openai")
     again = {p["id"]: p for p in C.summary(db, 7)["providers"]}
     assert next(m for m in again["openai"]["metrics"] if m["key"] == "openai_est_cost_usd")["value"] == pytest.approx(0.5)
+
+
+def test_google_collectors_parse_reports(monkeypatch):
+    monkeypatch.setenv("GA4_PROPERTY_ID", "properties/123456")
+    monkeypatch.setenv("SEARCH_CONSOLE_SITE", "sc-domain:worlddigital.ai")
+    seen = []
+
+    def fake(url, scope, body):
+        seen.append(url)
+        if "analyticsdata" in url:
+            return {"rows": [{"dimensionValues": [{"value": "20261119"}], "metricValues": [{"value": "12"}, {"value": "15"}, {"value": "40"}, {"value": "9"}]}]}
+        return {"rows": [{"keys": ["2026-11-18"], "clicks": 3, "impressions": 120, "position": 8.456}]}
+    monkeypatch.setattr(C, "_google_post", fake)
+    ga = C.google_analytics(_s(), None)
+    assert ga == {"2026-11-19": {"ga_users": 12.0, "ga_sessions": 15.0, "ga_views": 40.0, "ga_engaged": 9.0}} and "properties/123456:runReport" in seen[0]
+    gsc = C.search_console(_s(), None)
+    assert gsc == {"2026-11-18": {"gsc_clicks": 3, "gsc_impressions": 120, "gsc_position": 8.5}} and "sc-domain%3Aworlddigital.ai" in seen[1]
+
+
+def test_google_needs_the_key_and_names_the_email_when_refused(monkeypatch):
+    for k in ("GOOGLE_SERVICE_ACCOUNT_B64", "GA4_PROPERTY_ID"):
+        monkeypatch.delenv(k, raising=False)
+    gp = next(p for p in C.REGISTRY if p["id"] == "google_analytics")
+    assert C._have(_s(), gp) == ["GOOGLE_SERVICE_ACCOUNT_B64", "GA4_PROPERTY_ID"]
+    monkeypatch.setattr(C, "_google_token", lambda scope: ("tok", "viewer@proj.iam.gserviceaccount.com"))
+
+    class R:
+        status_code, text = 403, "no access"
+    monkeypatch.setattr(C.httpx, "post", lambda *a, **k: R())
+    with pytest.raises(RuntimeError) as e:
+        C._google_post("https://x", "scope", {})
+    assert "viewer@proj.iam.gserviceaccount.com" in str(e.value)
+
+
+def test_buffer_collects_per_day_and_maps_metric_names(monkeypatch):
+    monkeypatch.setenv("BUFFER_API_TOKEN", "tok")
+    calls = []
+
+    class R:
+        status_code = 200
+        headers = {"content-type": "application/json"}
+        text = ""
+
+        def __init__(self, d):
+            self._d = d
+
+        def json(self):
+            return self._d
+
+    def fake_post(url, json=None, **kw):
+        calls.append(json["variables"])
+        if "account" in json["query"]:
+            return R({"data": {"account": {"organizations": [{"id": "org1"}]}}})
+        day = json["variables"]["s"][:10]
+        if day == C._today():
+            return R({"data": {"aggregatedPostMetrics": {"metrics": [{"name": "postCount", "value": 3}, {"name": "reactions", "value": 10}, {"name": "Impressions", "value": 400}, {"name": "weird", "value": 1}], "metricsUpdatedAt": "x"}}})
+        return R({"data": {"aggregatedPostMetrics": {"metrics": [], "metricsUpdatedAt": None}}})   # days without posts are skipped
+    monkeypatch.setattr(C.httpx, "post", fake_post)
+    out = C.buffer(_s(), None)
+    assert out == {C._today(): {"buffer_posts": 3.0, "buffer_reactions": 10.0, "buffer_impressions": 400.0}}
+    assert len(calls) == 31 and all(c.get("o") in (None, "org1") for c in calls)

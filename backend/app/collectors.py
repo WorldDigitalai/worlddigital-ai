@@ -141,6 +141,105 @@ def cloudflare(s: Settings, db) -> dict:
                                       "gb": round(g["sum"]["bytes"] / 1e9, 3), "threats": g["sum"]["threats"]} for g in (zs[0]["httpRequests1dGroups"] if zs else [])}
 
 
+# ---- Google (Analytics 4 and Search Console) through a service account ------------------------------------------------
+# Needs GOOGLE_SERVICE_ACCOUNT_B64 (the service-account JSON key, base64 on one line), the service account added as a viewer of the
+# GA4 property / Search Console site, and the "Google Analytics Data API" / "Google Search Console API" enabled in its project.
+_gtok: dict = {}
+
+
+def _google_account() -> dict:
+    import base64
+    import json
+    raw = _env("GOOGLE_SERVICE_ACCOUNT_B64")
+    try:
+        return json.loads(base64.b64decode(raw).decode())
+    except Exception as e:  # noqa: BLE001
+        raise RuntimeError("GOOGLE_SERVICE_ACCOUNT_B64 is not a base64 service-account JSON key") from e
+
+
+def _google_token(scope: str) -> tuple[str, str]:
+    """(access token, service-account email); tokens are reused for 50 minutes."""
+    acct = _google_account()
+    hit = _gtok.get(scope)
+    if hit and hit[1] > time.time():
+        return hit[0], acct["client_email"]
+    import jwt   # PyJWT (installed with the MCP library)
+    now = int(time.time())
+    assertion = jwt.encode({"iss": acct["client_email"], "scope": scope, "aud": "https://oauth2.googleapis.com/token", "iat": now, "exp": now + 3000},
+                           acct["private_key"], algorithm="RS256")
+    r = httpx.post("https://oauth2.googleapis.com/token", data={"grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer", "assertion": assertion}, timeout=25)
+    if r.status_code >= 400:
+        raise RuntimeError(f"Google sign-in answered {r.status_code}: {r.text[:160]}")
+    _gtok[scope] = (r.json()["access_token"], now + 3000)
+    return _gtok[scope][0], acct["client_email"]
+
+
+def _google_post(url: str, scope: str, body: dict) -> dict:
+    tok, email = _google_token(scope)
+    r = httpx.post(url, headers={"Authorization": f"Bearer {tok}"}, json=body, timeout=30)
+    if r.status_code in (401, 403):
+        raise RuntimeError(f"Google refused ({r.status_code}). Add {email} as a viewer of this property/site, and enable the API in its Google Cloud project. {r.text[:140]}")
+    if r.status_code >= 400:
+        raise RuntimeError(f"Google answered {r.status_code}: {r.text[:200]}")
+    return r.json()
+
+
+def google_analytics(s: Settings, db) -> dict:
+    prop = _env("GA4_PROPERTY_ID").replace("properties/", "")
+    d = _google_post(f"https://analyticsdata.googleapis.com/v1beta/properties/{prop}:runReport", "https://www.googleapis.com/auth/analytics.readonly",
+                     {"dateRanges": [{"startDate": f"{WINDOW_DAYS - 1}daysAgo", "endDate": "today"}], "dimensions": [{"name": "date"}],
+                      "metrics": [{"name": "activeUsers"}, {"name": "sessions"}, {"name": "screenPageViews"}, {"name": "engagedSessions"}], "limit": 100})
+    out = {}
+    for r in d.get("rows") or []:
+        day = r["dimensionValues"][0]["value"]
+        v = [float(x["value"]) for x in r["metricValues"]]
+        out[f"{day[:4]}-{day[4:6]}-{day[6:]}"] = {"ga_users": v[0], "ga_sessions": v[1], "ga_views": v[2], "ga_engaged": v[3]}
+    return out
+
+
+def search_console(s: Settings, db) -> dict:
+    from urllib.parse import quote
+    site = _env("SEARCH_CONSOLE_SITE")
+    start = datetime.fromtimestamp(_start_ts(), timezone.utc).strftime("%Y-%m-%d")
+    d = _google_post(f"https://searchconsole.googleapis.com/webmasters/v3/sites/{quote(site, safe='')}/searchAnalytics/query", "https://www.googleapis.com/auth/webmasters.readonly",
+                     {"startDate": start, "endDate": _today(), "dimensions": ["date"], "rowLimit": 100})
+    return {r["keys"][0]: {"gsc_clicks": r.get("clicks", 0), "gsc_impressions": r.get("impressions", 0), "gsc_position": round(r.get("position", 0), 1)} for r in d.get("rows") or []}
+
+
+def buffer(s: Settings, db) -> dict:
+    """Social posts and their results per day (Buffer GraphQL API: aggregatedPostMetrics over one-day windows; free plans allow 31 days)."""
+    from concurrent.futures import ThreadPoolExecutor
+    key = _env("BUFFER_API_TOKEN")
+
+    def gql(query: str, variables: dict | None = None) -> dict:
+        r = httpx.post("https://api.buffer.com", json={"query": query, "variables": variables or {}}, timeout=30,
+                       headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json", "User-Agent": "WorldDigitalBlog/1.0"})
+        d = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
+        if r.status_code >= 400 or d.get("errors"):
+            raise RuntimeError(f"Buffer answered {r.status_code}: {str(d.get('errors') or r.text)[:200]}")
+        return d["data"]
+
+    orgs = (gql("{ account { organizations { id } } }").get("account") or {}).get("organizations") or []
+    if not orgs:
+        raise RuntimeError("Buffer returned no organization for this token")
+    org = orgs[0]["id"]
+    days = [datetime.now(timezone.utc).date() - timedelta(days=i) for i in range(30)]
+    names = {"postcount": "buffer_posts", "reactions": "buffer_reactions", "comments": "buffer_comments", "impressions": "buffer_impressions", "reach": "buffer_reach"}
+    q = ("query($o: OrganizationId!, $s: DateTime!, $e: DateTime!) { aggregatedPostMetrics(input: {organizationId: $o, startDateTime: $s, endDateTime: $e}) "
+         "{ metrics { name value } metricsUpdatedAt } }")
+
+    def one(d):
+        a = gql(q, {"o": org, "s": f"{d}T00:00:00Z", "e": f"{d}T23:59:59Z"}).get("aggregatedPostMetrics") or {}
+        out = {}
+        for m in a.get("metrics") or []:
+            k = names.get(str(m.get("name") or "").lower().replace("_", "").replace(" ", ""))
+            if k and m.get("value") is not None:
+                out[k] = float(m["value"])
+        return d.isoformat(), out
+    with ThreadPoolExecutor(5) as ex:
+        return {day: m for day, m in ex.map(one, days) if m and m.get("buffer_posts", 1)}
+
+
 def ai_usage(s: Settings, db) -> dict:
     """Calls, tokens and estimated dollars per AI provider and day, from the site's own counters (every feature, every call)."""
     from . import rag as R
@@ -188,10 +287,10 @@ REGISTRY = [
     {"id": "dataforseo", "name": "DataForSEO", "group": "SEO data", "fn": dataforseo, "metrics": [("balance_usd", "Account balance", "usd", "latest")], "needs": ["DATAFORSEO_LOGIN", "DATAFORSEO_PASSWORD"]},
     {"id": "cloudflare", "name": "Cloudflare traffic", "group": "Website", "fn": cloudflare, "metrics": [("requests", "Requests", "n", "sum"), ("page_views", "Page views", "n", "sum"), ("visitors", "Visitors", "n", "sum"), ("threats", "Threats blocked", "n", "sum")], "needs": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ZONE_ID"]},
     # Not collected yet: they need credentials this site does not hold (or a different kind of sign-in). Shown so nothing is hidden.
-    {"id": "google_analytics", "name": "Google Analytics 4", "group": "Not connected yet", "fn": None, "metrics": [], "needs": ["a Google service account with access to the GA4 property"]},
-    {"id": "search_console", "name": "Google Search Console", "group": "Not connected yet", "fn": None, "metrics": [], "needs": ["a Google service account added to the Search Console property"]},
+    {"id": "google_analytics", "name": "Google Analytics 4", "group": "Website", "fn": google_analytics, "metrics": [("ga_users", "Users", "n", "sum"), ("ga_sessions", "Sessions", "n", "sum"), ("ga_views", "Page views", "n", "sum"), ("ga_engaged", "Engaged sessions", "n", "sum")], "needs": ["GOOGLE_SERVICE_ACCOUNT_B64", "GA4_PROPERTY_ID"]},
+    {"id": "search_console", "name": "Google Search Console", "group": "Website", "fn": search_console, "metrics": [("gsc_clicks", "Clicks from Google", "n", "sum"), ("gsc_impressions", "Impressions", "n", "sum"), ("gsc_position", "Average position", "n", "latest")], "needs": ["GOOGLE_SERVICE_ACCOUNT_B64", "SEARCH_CONSOLE_SITE"]},
     {"id": "google_ads", "name": "Google Ads", "group": "Not connected yet", "fn": None, "metrics": [], "needs": ["a Google Ads developer token and OAuth refresh token"]},
-    {"id": "buffer", "name": "Buffer (social)", "group": "Not connected yet", "fn": None, "metrics": [], "needs": ["a collector for the Buffer API (the site already holds BUFFER_API_TOKEN)"]},
+    {"id": "buffer", "name": "Buffer (social posts)", "group": "Marketing & social", "fn": buffer, "metrics": [("buffer_posts", "Posts sent", "n", "sum"), ("buffer_reactions", "Reactions", "n", "sum"), ("buffer_comments", "Comments", "n", "sum"), ("buffer_impressions", "Impressions", "n", "sum"), ("buffer_reach", "Reach", "n", "sum")], "needs": ["BUFFER_API_TOKEN"]},
     {"id": "bird", "name": "Bird (SMS, WhatsApp, email)", "group": "Not connected yet", "fn": None, "metrics": [], "needs": ["BIRD_API_KEY"]},
     {"id": "tiktok", "name": "TikTok Ads", "group": "Not connected yet", "fn": None, "metrics": [], "needs": ["TikTok Business API access token"]},
 ]

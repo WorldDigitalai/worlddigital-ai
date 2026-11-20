@@ -27,13 +27,24 @@ jobs:
           echo "== lines captured: $(wc -l < tail.jsonl)"
           python3 - <<'PY'
           import json
-          seen = set()
+          seen, n = {}, 0
+          def text(v):
+              if isinstance(v, dict): return str(v.get("message") or v.get("name") or v)[:700]
+              if isinstance(v, list): return " ".join(text(x) for x in v)[:700]
+              return str(v)[:700]
           for l in open("tail.jsonl"):
               try: e = json.loads(l)
               except Exception: continue
-              msgs = [str(x.get("message"))[:600] for x in e.get("exceptions") or []] + [" ".join(map(str, x.get("message") or []))[:600] for x in e.get("logs") or [] if x.get("level") in ("error", "warn") or "rror" in " ".join(map(str, x.get("message") or []))]
+              if not isinstance(e, dict): continue
+              n += 1
+              msgs = [text(x) for x in e.get("exceptions") or []]
+              for x in e.get("logs") or []:
+                  t = text(x.get("message") if isinstance(x, dict) else x)
+                  if (isinstance(x, dict) and x.get("level") in ("error", "warn")) or "rror" in t or "xception" in t:
+                      msgs.append(t)
               for m in msgs:
-                  if m not in seen:
-                      seen.add(m); print("OUTCOME", e.get("outcome"), "|", m)
+                  seen[m] = seen.get(m, 0) + 1
+          print("events parsed:", n)
+          for m, c in sorted(seen.items(), key=lambda kv: -kv[1])[:12]: print(f"{c}x | {m}")
           print("distinct error lines:", len(seen))
           PY

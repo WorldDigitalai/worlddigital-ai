@@ -437,7 +437,7 @@ def test_caps_order_and_auto_pause():
     assert r.cap("openai") == rag_mod.OPENAI_DAILY_USD
     r.provider_caps({"openai": 2.5, "cerebras": 20})
     assert r.cap("openai") == 2.5 and r.fast_spend("cerebras")["cap_usd"] == 20 and r.openai_daily()["usd"]["cap"] == 2.5
-    for bad in ({"openai": "x"}, {"openai": -1}, {"openai": 5000}):
+    for bad in ({"openai": "x"}, {"openai": -1}, {"openai": 5000}, {"openai": 0}, {"cerebras": 0}):
         with pytest.raises(rag_mod.ApiError):
             r.provider_caps(bad)
     assert r.answer_order() == ["cerebras", "claude", "openai"]
@@ -474,3 +474,11 @@ def test_claude_spend_and_cap():
     r._claude_budget_check()
     row = [p for p in r.provider_state()["providers"] if p["id"] == "claude"][0]
     assert not row["nocap"] and row["left"] == pytest.approx(4.3)
+
+
+def test_zero_cap_never_turns_a_live_provider_off():
+    rag_mod, r = _rag_with_meta()
+    r.meta.insert_one({"_id": "provider_config", "caps": {"cerebras": 0, "openai": 0, "groq": 0}})   # as if a stale page had saved zeros
+    rag_mod._SW_CACHE[0] = None
+    assert r.cap("openai") == rag_mod.OPENAI_DAILY_USD and r.cap("openai") > 0
+    assert r.cap("groq") == 0   # groq is trials only: zero stays zero

@@ -635,9 +635,12 @@ class Rag:
                    "claude": float(os.environ.get("CLAUDE_BUDGET_USD", "0") or 0)}.get(name, 0.0)   # claude: 0 = no limit
         try:
             v = (self._settings()["cfg"].get("caps") or {}).get(name)
-            return float(v) if v is not None else default
+            v = float(v) if v is not None else None
         except (TypeError, ValueError):
             return default
+        if v is None or (v <= 0 and name in ("cerebras", "openai") and default > 0):
+            return default   # a $0 cap on a live provider is never honoured: the ON/OFF switch is how a provider is turned off
+        return v
 
     def answer_order(self) -> list[str]:
         o = [p for p in (self._settings()["cfg"].get("order") or []) if p in AI_PROVIDERS]
@@ -675,6 +678,8 @@ class Rag:
                     raise ApiError("bad cap", 400, "A spending cap must be a number of dollars.") from e
                 if not 0 <= v <= 1000:
                     raise ApiError("bad cap", 400, "A spending cap must be between $0 and $1000.")
+                if v == 0 and k in ("cerebras", "openai"):
+                    raise ApiError("zero cap", 400, "A cap of $0 would stop it completely. Use the ON/OFF switch to turn it off, or set a real amount.")
                 sets[f"caps.{k}"] = round(v, 2)
         if sets:
             self.meta.update_one({"_id": "provider_config"}, {"$set": sets}, upsert=True)

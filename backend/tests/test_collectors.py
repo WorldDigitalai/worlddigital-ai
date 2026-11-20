@@ -168,3 +168,18 @@ def test_buffer_collects_per_day_and_maps_metric_names(monkeypatch):
     out = C.buffer(_s(), None)
     assert out == {C._today(): {"buffer_posts": 3.0, "buffer_reactions": 10.0, "buffer_impressions": 400.0}}
     assert len(calls) == 31 and all(c.get("o") in (None, "org1") for c in calls)
+
+
+def test_get_waits_and_retries_on_429(monkeypatch):
+    seq = iter([429, 429, 200])
+    slept = []
+
+    class R:
+        def __init__(self, code):
+            self.status_code, self.headers, self.text = code, {"retry-after": "1"}, "slow down"
+
+        def json(self):
+            return {"ok": True}
+    monkeypatch.setattr(C.httpx, "get", lambda url, **kw: R(next(seq)))
+    monkeypatch.setattr(C.time, "sleep", lambda s: slept.append(s))
+    assert C._get("https://api.example.com/x") == {"ok": True} and slept == [1.0, 1.0]

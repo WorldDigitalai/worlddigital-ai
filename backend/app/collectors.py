@@ -35,7 +35,16 @@ def _start_ts(days: int = WINDOW_DAYS) -> int:
 
 
 def _get(url: str, **kw) -> dict:
-    r = httpx.get(url, timeout=kw.pop("timeout", 25), **kw)
+    """GET with the provider's own pacing: a 429 waits as told (Retry-After, at most 5 s) and tries again, up to 4 times."""
+    for attempt in range(4):
+        r = httpx.get(url, timeout=kw.get("timeout", 25), **{k: v for k, v in kw.items() if k != "timeout"})
+        if r.status_code != 429 or attempt == 3:
+            break
+        try:
+            wait = float(r.headers.get("retry-after") or 1)
+        except ValueError:
+            wait = 1.0
+        time.sleep(min(max(wait, 0.3), 5))
     if r.status_code >= 400:
         raise RuntimeError(f"{url.split('?')[0].split('//')[1][:60]} answered {r.status_code}: {r.text[:160]}")
     return r.json()
@@ -93,6 +102,7 @@ def resend(s: Settings, db) -> dict:
         if not data.get("has_more") or not rows or min(str(e.get("created_at") or "9") for e in rows) < _day(start):
             break
         after = rows[-1]["id"]
+        time.sleep(0.15)   # Resend allows 10 requests per second
     return out
 
 

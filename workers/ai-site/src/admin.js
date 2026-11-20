@@ -6,6 +6,7 @@ import { blogPost } from './blog.js';
 import { humanOk, widget } from './human.js';
 import { AI_CSS, aiPanelHtml, aiPanelClient, TYPES } from './ai-panel.js';
 
+import analyticsClient from './analytics-client.txt';
 const COOKIE = '__Host-wd_editor';
 const SESSION_MS = 7 * 86400e3;
 const LINK_MS = 20 * 60e3;
@@ -60,7 +61,7 @@ ${AI_CSS}
 
 function topbar(email, csrf) {
   return `<div class="ad-top"><div class="wrap"><a href="/blog-admin">WorldDigital.ai · Blog editor</a>
-<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><a href="/blog" target="_blank" rel="noopener">View blog ↗</a><a href="/blog-admin/leads">Form entries</a><a href="/blog-admin/kb">Knowledge base</a><span style="color:#C9D6E6;font-size:14px">${esc(email)}</span>
+<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><a href="/blog" target="_blank" rel="noopener">View blog ↗</a><a href="/blog-admin/analytics">Analytics</a><a href="/blog-admin/leads">Form entries</a><a href="/blog-admin/kb">Knowledge base</a><span style="color:#C9D6E6;font-size:14px">${esc(email)}</span>
 <form method="post" action="/blog-admin/logout" style="margin:0"><input type="hidden" name="csrf" value="${esc(csrf)}"><button type="submit">Sign out</button></form></div></div></div>`;
 }
 
@@ -473,6 +474,44 @@ function leadsPage(nonce, ed, leads) {
   return new Response(shell('Form entries', body, nonce), { headers: headers(nonce) });
 }
 
+// Live visitor analytics (counted by src/analytics.js, shaped by Store.analytics, drawn by analytics-client.txt).
+export function analyticsPage(nonce, ed) {
+  const css = `<style>
+.an{--surface:#fff;--ink:#0b0b0b;--ink2:#52514e;--muted:#7a7873;--grid:#e6e9ee;--s1:#2a78d6;--s1w:#e3eefb}
+.an h2{font-size:15px;margin:0 0 10px;color:var(--ink2);font-weight:700}.an .card{background:var(--surface);border:1px solid #DCE5EF;border-radius:14px;padding:16px 18px}
+.an .row{display:grid;gap:14px;margin-top:14px}.an .r2{grid-template-columns:repeat(2,minmax(0,1fr))}.an .r3{grid-template-columns:repeat(3,minmax(0,1fr))}.an .rt{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr)}
+@media(max-width:900px){.an .r2,.an .r3,.an .rt{grid-template-columns:1fr}}
+.an .filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:14px}.an .filters button{border:1px solid #B9C7D8;background:#fff;border-radius:999px;padding:7px 14px;font:inherit;font-weight:600;cursor:pointer;color:var(--ink)}
+.an .filters button[aria-pressed=true]{background:var(--s1);border-color:var(--s1);color:#fff}
+.an .live{display:inline-flex;align-items:center;gap:8px;color:var(--ink2);font-size:14px;margin-left:auto}.an .dot{width:9px;height:9px;border-radius:50%;background:#12805C;box-shadow:0 0 0 0 rgba(18,128,92,.5);animation:pulse 2s infinite}
+@keyframes pulse{70%{box-shadow:0 0 0 9px rgba(18,128,92,0)}100%{box-shadow:0 0 0 0 rgba(18,128,92,0)}}@media(prefers-reduced-motion:reduce){.an .dot{animation:none}}
+.an .big{font-size:44px;font-weight:800;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums}.an .sub{color:var(--ink2);font-size:13.5px}
+.an .tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:14px}@media(max-width:700px){.an .tiles{grid-template-columns:1fr}}
+.an .tile{text-align:left;font:inherit;cursor:pointer;background:var(--surface);border:1px solid #DCE5EF;border-radius:14px;padding:14px 18px;border-top:3px solid transparent}.an .tile[aria-pressed=true]{border-top-color:var(--s1);background:#fbfdff}.an .tile.static{cursor:default}
+.an .tile .v{font-size:30px;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums}.an .delta{font-size:13.5px;color:var(--ink2);font-weight:600}
+.an .lst{display:grid;gap:7px}.an .li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;font-size:14px}.an .li .k{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink)}.an .li .n{font-weight:700;font-variant-numeric:tabular-nums;color:var(--ink)}
+.an .li .b{grid-column:1/3;height:6px;background:var(--s1w);border-radius:3px}.an .li .b i{display:block;height:6px;background:var(--s1);border-radius:3px}
+.an .chart{position:relative}.an svg text{font-size:12px;fill:var(--muted)}.an .tip{position:absolute;pointer-events:none;background:#fff;border:1px solid #CBD5E1;border-radius:10px;padding:8px 10px;font-size:13px;box-shadow:0 4px 14px rgba(14,26,43,.12);min-width:150px;z-index:5}
+.an .tip b{font-size:15px;color:var(--ink);font-variant-numeric:tabular-nums}.an .tip .k{color:var(--ink2)}.an .key{display:inline-block;width:14px;height:0;border-top:3px solid var(--s1);vertical-align:middle;margin-right:6px}.an .key.p{border-top:2px dashed var(--muted)}
+.an .legend{font-size:13px;color:var(--ink2);margin:0 0 6px}.an .feed{display:grid;gap:6px;font-size:13.5px;max-height:260px;overflow:auto}.an .feed div{display:flex;gap:8px;justify-content:space-between}
+.an table{width:100%;border-collapse:collapse;font-size:13.5px}.an th,.an td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--grid)}.an details{margin-top:8px;color:var(--ink2)}
+.an.stale{opacity:.6;transition:opacity .2s}.an .empty{color:var(--ink2);font-size:14px;padding:6px 0}
+</style>`;
+  const body = `${topbar(ed.email, ed.csrf)}<main class="wrap an" style="padding-top:30px;padding-bottom:60px"><h1 class="h" style="font-size:30px;margin:0">Analytics</h1>
+<p class="muted" id="since" style="margin:6px 0 0">Loading…</p>
+<div class="filters" role="group" aria-label="Date range"><button type="button" data-r="today">Today</button><button type="button" data-r="7d">Last 7 days</button><button type="button" data-r="30d">Last 30 days</button><button type="button" data-r="90d">Last 90 days</button>
+<span class="live" aria-live="polite"><span class="dot"></span><span id="upd">live</span></span></div>
+<div class="row rt"><div class="card"><h2>Users in the last 30 minutes</h2><div class="big" id="rtnum">–</div><div class="sub"><span id="rt5">–</span> in the last 5 minutes · users per minute</div><div class="chart" id="rtbars"></div></div>
+<div class="card"><h2>Top pages right now</h2><div class="lst" id="rtpages"></div><h2 style="margin-top:14px">Where from (30 min)</h2><div class="lst" id="rtch"></div></div>
+<div class="card"><h2>Latest views</h2><div class="feed" id="rtlatest"></div></div></div>
+<div class="tiles" id="tiles"></div>
+<div class="card" style="margin-top:14px"><div class="legend" id="legend"></div><div class="chart" id="main"></div><details><summary>Table view</summary><div id="maint" style="max-height:300px;overflow:auto"></div></details></div>
+<div class="row r2"><div class="card"><h2>Pages <span class="sub" style="font-weight:400">views · visitors</span></h2><div class="lst" id="pages"></div></div><div class="card"><h2>How people found you <span class="sub" style="font-weight:400">views · visitors</span></h2><div class="lst" id="channels"></div><h2 style="margin-top:14px">Sites sending visitors <span class="sub" style="font-weight:400">views · visitors</span></h2><div class="lst" id="referrers"></div></div></div>
+<div class="row r3"><div class="card"><h2>Countries <span class="sub" style="font-weight:400">views · visitors</span></h2><div class="lst" id="countries"></div></div><div class="card"><h2>Devices <span class="sub" style="font-weight:400">views · visitors</span></h2><div class="lst" id="devices"></div></div><div class="card"><h2>Browsers <span class="sub" style="font-weight:400">views · visitors</span></h2><div class="lst" id="browsers"></div></div></div>
+<p class="muted" style="margin-top:16px;font-size:13px">Counted by the site itself: no cookies, no IP addresses stored. A visitor is one person per day. Bots, prefetches and your own signed-in visits are left out, so numbers differ from Google Analytics. Times are US Central.</p></main>`;
+  return new Response(shell('Analytics', css + body, nonce, analyticsClient), { headers: headers(nonce) });
+}
+
 // Consent page for the MCP server (backend app/mcp_server.py): an AI assistant asks for read-only access; a signed-in
 // admin allows or refuses. The answer goes to the backend, which returns where to send the browser.
 export function mcpConsentPage(nonce, ed, req, info) {
@@ -643,6 +682,11 @@ export async function handleAdmin(req, env, url, store, ctx, { pingNow, prod }) 
   }
   if (path === '/blog-admin' && method === 'GET') return dashboard(nonce, ed, await store.listPosts({ all: true }), url.searchParams.get('m') || '');
   if (path === '/blog-admin/leads' && method === 'GET') return leadsPage(nonce, ed, await store.listLeads());
+  if (path === '/blog-admin/analytics' && method === 'GET') return analyticsPage(nonce, ed);
+  if (path === '/blog-admin/analytics/data' && method === 'GET') {
+    const r = url.searchParams.get('range');
+    return json(await store.analytics(['today', '7d', '30d', '90d'].includes(r) ? r : '7d'));
+  }
   if (path === '/blog-admin/kb' && method === 'GET') {
     const w = [0, 7, 30].includes(Number(url.searchParams.get('w'))) && url.searchParams.get('w') !== null ? Number(url.searchParams.get('w')) : 30;
     const [st, qs, tn, it, ins, lv, pv] = await Promise.all([backend(env, 'GET', '/api/admin/rag'), backend(env, 'GET', '/api/admin/rag/questions?days=30'),

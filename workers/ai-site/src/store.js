@@ -48,6 +48,8 @@ CREATE TABLE IF NOT EXISTS login_tokens (hash TEXT PRIMARY KEY, email TEXT NOT N
 CREATE TABLE IF NOT EXISTS sessions (hash TEXT PRIMARY KEY, email TEXT NOT NULL, expires INTEGER NOT NULL, created INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS leads (id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL, data TEXT NOT NULL, ip_hash TEXT, created_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS hits (ts INTEGER NOT NULL, path TEXT NOT NULL, ref TEXT, channel TEXT, country TEXT, device TEXT, browser TEXT, vid TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS hits_ts ON hits(ts);
 CREATE TABLE IF NOT EXISTS ai_jobs (id TEXT PRIMARY KEY, kind TEXT NOT NULL, input TEXT NOT NULL, state TEXT NOT NULL, result TEXT, error TEXT, who TEXT, created INTEGER NOT NULL, updated INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS audit (id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT NOT NULL, who TEXT, action TEXT NOT NULL, detail TEXT);
 `;
@@ -310,6 +312,47 @@ export class Store extends DurableObject {
     if (c >= 5) return false;
     this.sql.exec(`INSERT INTO leads (kind,data,ip_hash,created_at) VALUES (?,?,?,?)`, kind, JSON.stringify(data), ipHash, nowIso());
     return true;
+  }
+  // --- visitor analytics (src/analytics.js counts, /blog-admin/analytics shows) ---
+  recordHit(h) {
+    this.sql.exec(`INSERT INTO hits (ts,path,ref,channel,country,device,browser,vid) VALUES (?,?,?,?,?,?,?,?)`,
+      Math.floor(h.ts), h.path, h.ref || '', h.channel || 'direct', h.country || 'XX', h.device || 'desktop', h.browser || 'Other', h.vid);
+  }
+  pruneHits() { this.sql.exec(`DELETE FROM hits WHERE ts < ?`, Date.now() - 120 * 864e5); }
+  // range: today (hourly, local day) | 7d | 30d | 90d (daily). Times are US Central. Visitors = distinct people per day.
+  analytics(range) {
+    const now = Date.now(), DAY = 864e5, H = 36e5;
+    const tz = (t) => {
+      const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' }).formatToParts(new Date(t)).map((x) => [x.type, x.value]));
+      return Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second) - Math.floor(t / 1000) * 1000;
+    };
+    const off = Math.round(tz(now));
+    const hourly = range === 'today', bucket = hourly ? H : DAY, n = hourly ? 24 : range === '30d' ? 30 : range === '90d' ? 90 : 7;
+    const firstB = hourly ? Math.floor((now + off) / DAY) * 24 : Math.floor((now + off) / DAY) - (n - 1);
+    const from = firstB * bucket - off, to = from + n * bucket, pFrom = from - n * bucket;
+    const DV = `vid || ':' || CAST((ts + ${off}) / 86400000 AS INTEGER)`;
+    const series = (a, b) => {
+      const got = new Map(rows(this.sql.exec(`SELECT CAST((ts + ${off}) / ${bucket} AS INTEGER) AS b, COUNT(*) AS pv, COUNT(DISTINCT vid) AS v FROM hits WHERE ts >= ? AND ts < ? GROUP BY b`, a, b)).map((r) => [r.b, r]));
+      return Array.from({ length: n }, (_, i) => { const r = got.get(firstB + i - (a === pFrom ? n : 0)) || {}; return { t: a + i * bucket, pv: r.pv || 0, v: r.v || 0 }; });
+    };
+    const total = (a, b) => one(this.sql.exec(`SELECT COUNT(*) AS pv, COUNT(DISTINCT ${DV}) AS v FROM hits WHERE ts >= ? AND ts < ?`, a, b)) || { pv: 0, v: 0 };
+    const top = (col, a, b, lim = 10) => rows(this.sql.exec(`SELECT ${col} AS k, COUNT(*) AS pv, COUNT(DISTINCT ${DV}) AS v FROM hits WHERE ts >= ? AND ts < ? GROUP BY ${col} ORDER BY pv DESC, v DESC LIMIT ${lim}`, a, b));
+    const rtFrom = now - 30 * 60e3;
+    const mins = new Map(rows(this.sql.exec(`SELECT CAST(ts / 60000 AS INTEGER) AS m, COUNT(DISTINCT vid) AS u, COUNT(*) AS pv FROM hits WHERE ts >= ? GROUP BY m`, rtFrom)).map((r) => [r.m, r]));
+    const m0 = Math.floor(now / 60000);
+    const rt = {
+      minutes: Array.from({ length: 30 }, (_, i) => { const r = mins.get(m0 - 29 + i) || {}; return { t: (m0 - 29 + i) * 60000, u: r.u || 0, pv: r.pv || 0 }; }),
+      users30: (one(this.sql.exec(`SELECT COUNT(DISTINCT vid) AS u FROM hits WHERE ts >= ?`, rtFrom)) || {}).u || 0,
+      users5: (one(this.sql.exec(`SELECT COUNT(DISTINCT vid) AS u FROM hits WHERE ts >= ?`, now - 5 * 60e3)) || {}).u || 0,
+      pages: top('path', rtFrom, now + 1, 8), countries: top('country', rtFrom, now + 1, 8), channels: top('channel', rtFrom, now + 1, 6),
+      latest: rows(this.sql.exec(`SELECT ts, path, country, channel, device FROM hits ORDER BY ts DESC LIMIT 10`)),
+    };
+    return {
+      now, range, tz: 'America/Chicago', from, to, bucket, n, since: (one(this.sql.exec(`SELECT MIN(ts) AS t FROM hits`)) || {}).t || null,
+      series: series(from, to), prev: series(pFrom, from), totals: total(from, to), prevTotals: total(pFrom, from),
+      pages: top('path', from, to), channels: top('channel', from, to, 8), referrers: top("CASE WHEN ref = '' THEN NULL ELSE ref END", from, to).filter((r) => r.k),
+      countries: top('country', from, to), devices: top('device', from, to, 4), browsers: top('browser', from, to, 6), rt,
+    };
   }
   listLeads() { return rows(this.sql.exec(`SELECT id,kind,data,created_at FROM leads ORDER BY id DESC LIMIT 200`)); }
 

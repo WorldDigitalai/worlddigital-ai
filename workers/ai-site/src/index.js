@@ -16,6 +16,7 @@ import { internalAi, internalLeads } from './ai.js';
 import { searchPage } from './search.js';
 import { htmlToMarkdown, wantsMarkdown } from './markdown.js';
 export { Store } from './store.js';
+import { trackHit } from './analytics.js';
 
 const RAW = new WeakSet(); // app responses we must not touch
 let seeded = false;
@@ -317,7 +318,7 @@ export default {
     const cache = caches.default;
     if (cacheable) {
       const hit = await cache.match(req.url);
-      if (hit) return hit;
+      if (hit) { if (prod) trackHit(req, env, ctx, url, hit, store); return hit; }
     }
     try {
       const res = await handle(req, env, ctx);
@@ -331,6 +332,7 @@ export default {
         return out;
       }
       if (cacheable && out.status === 200) ctx.waitUntil(cache.put(req.url, out.clone()));
+      if (prod) trackHit(req, env, ctx, url, out, store);
       return out;
     } catch (e) {
       console.log('error', e.stack || e.message);
@@ -339,6 +341,7 @@ export default {
   },
   async scheduled(event, env, ctx) {
     if (env.PING_SEARCH === '1') ctx.waitUntil(pingNew(env));
+    ctx.waitUntil(Promise.resolve(store(env).pruneHits()).catch((e) => console.log('prune hits', e.message)));
     ctx.waitUntil(store(env).autopilotTick().catch((e) => console.log('autopilot tick', e.message)));
   },
 };

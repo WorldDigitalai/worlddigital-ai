@@ -173,3 +173,12 @@ test('approved answer form: Fix Grammar button and searchable source dropdown on
     assert.ok(!h.includes('https://worlddigital.ai/tools"'));  // no hardcoded page list in the form
   }
 });
+
+test('caps boxes: only values the backend sent are shown, and only edited boxes are saved', async () => {
+  const ed = { email: 'a@b.c', csrf: 'x' };
+  const prov = { order: ['cerebras', 'claude', 'openai'], caps: { cerebras: 15, openai: 1 }, providers: [{ id: 'cerebras', on: true }, { id: 'claude', on: true }, { id: 'openai', on: true }] };
+  const html = await kbPage('n', ed, {}, {}, [], [], {}, null, 30, prov).text();
+  assert.ok(html.includes('data-cap="cerebras" data-orig="15" value="15"') && html.includes('data-cap="openai" data-orig="1" value="1"'));
+  assert.ok(!html.includes('data-cap="groq"') && !html.includes('data-cap="claude"'), 'a cap the backend did not send is not shown as 0');
+  assert.ok(html.includes("Number(i.value)===Number(i.dataset.orig)") && html.includes('stops '), 'unchanged boxes are skipped; a $0 cap asks first');
+});

@@ -157,7 +157,8 @@
         var ok = p.state === 'ok', chip = el('span', 'chip ' + (ok ? 'ok' : p.state === 'error' ? 'bad' : ''), ok ? 'Connected' : p.state === 'error' ? 'Error' : p.state === 'needs_key' ? 'Needs a key' : p.state === 'not_connected' ? 'Not connected' : 'Waiting');
         top.appendChild(chip); c.appendChild(top);
         c.appendChild(el('div', 'sub', ok ? 'Updated ' + (p.at ? ago(p.at * 1000) : 'just now') : (p.message || 'Waiting for the first collection (runs every 15 minutes).')));
-        if (p.metrics.length && ok) {
+        if (ok && p.metrics.length && !p.metrics.some(function (m) { return m.has_data; })) c.appendChild(el('div', 'sub', 'No activity recorded yet. Numbers appear here as soon as this provider is used.'));
+        else if (p.metrics.length && ok) {
           var mt = el('div', 'mt');
           p.metrics.forEach(function (m) {
             var b = el('div'); b.appendChild(el('div', 'sub', m.label + (m.how === 'latest' ? ' (now)' : '')));

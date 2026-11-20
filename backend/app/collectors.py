@@ -157,12 +157,12 @@ def ai_usage(s: Settings, db) -> dict:
             tin, tout, calls = int(v.get("in") or 0), int(v.get("out") or 0), int(v.get("calls") or 0)
             pin, pout = (R.CLAUDE_PRICES if p == "claude" else R.FAST_PRICES.get(p) or R.OPENAI_PRICES.get(model, R.OPENAI_PRICE_DEFAULT))
             m = out.setdefault(day, {})
-            for k, x in ((f"{p}.calls", calls), (f"{p}.tokens_in", tin), (f"{p}.tokens_out", tout), (f"{p}.est_cost_usd", (tin * pin + tout * pout) / 1e6)):
+            for k, x in ((f"{p}_calls", calls), (f"{p}_tokens_in", tin), (f"{p}_tokens_out", tout), (f"{p}_est_cost_usd", (tin * pin + tout * pout) / 1e6)):
                 m[k] = round(m.get(k, 0) + x, 4)
     for d in db["rag_meta"].find({"_id": {"$regex": "^openai:"}}):   # older days: the knowledge-base OpenAI spend counter
         day = d.get("day")
-        if day and day >= _day(_start_ts()) and "openai.est_cost_usd" not in out.get(day, {}):
-            out.setdefault(day, {})["openai.est_cost_usd"] = round(float(d.get("usd") or 0), 4)
+        if day and day >= _day(_start_ts()) and "openai_est_cost_usd" not in out.get(day, {}):
+            out.setdefault(day, {})["openai_est_cost_usd"] = round(float(d.get("usd") or 0), 4)
     return out
 
 
@@ -173,7 +173,7 @@ def _env(name: str) -> str:
 
 # ---- registry ------------------------------------------------------------------------------------------------------
 # metric: (key, label, unit, "sum" over the range | "latest" value). needs: variables that switch it on (all must be set).
-AI_METRICS = lambda p: [(f"{p}.est_cost_usd", "Estimated spend", "usd", "sum"), (f"{p}.calls", "Calls", "n", "sum"), (f"{p}.tokens_in", "Tokens in", "n", "sum"), (f"{p}.tokens_out", "Tokens out", "n", "sum")]  # noqa: E731
+AI_METRICS = lambda p: [(f"{p}_est_cost_usd", "Estimated spend", "usd", "sum"), (f"{p}_calls", "Calls", "n", "sum"), (f"{p}_tokens_in", "Tokens in", "n", "sum"), (f"{p}_tokens_out", "Tokens out", "n", "sum")]  # noqa: E731
 
 REGISTRY = [
     {"id": "openai", "name": "OpenAI", "group": "AI providers", "fn": ai_usage, "shared": "ai", "metrics": AI_METRICS("openai"), "needs": []},
@@ -222,6 +222,7 @@ def run(s: Settings, db, only: str | None = None) -> dict:
                     cache[key] = p["fn"](s, db)
                 rows = cache[key]
                 wanted = {m[0] for m in p["metrics"]}
+                assert not any("." in k for k in wanted), "metric names must not contain dots"
                 for day, mets in rows.items():
                     mets = {k: v for k, v in mets.items() if k in wanted}
                     if mets:

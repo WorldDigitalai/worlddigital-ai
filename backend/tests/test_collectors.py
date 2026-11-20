@@ -48,9 +48,9 @@ def test_ai_usage_prices_each_provider_per_day():
         "gpt-5_4-mini": {"calls": 2, "in": 1_000_000, "out": 100_000}, "claude-haiku-5-5": {"calls": 3, "in": 2_000_000, "out": 1_000_000},
         "cerebras:qwen-3_8-27b": {"calls": 4, "in": 1_000_000, "out": 1_000_000}}})
     m = C.ai_usage(_s(), db)[day]
-    assert m["openai.calls"] == 2 and m["openai.est_cost_usd"] == pytest.approx(0.75 + 0.45)
-    assert m["claude.est_cost_usd"] == pytest.approx(0.20 + 0.50) and m["claude.tokens_in"] == 2_000_000
-    assert m["cerebras.est_cost_usd"] == pytest.approx(0.99 + 1.49)
+    assert m["openai_calls"] == 2 and m["openai_est_cost_usd"] == pytest.approx(0.75 + 0.45)
+    assert m["claude_est_cost_usd"] == pytest.approx(0.20 + 0.50) and m["claude_tokens_in"] == 2_000_000
+    assert m["cerebras_est_cost_usd"] == pytest.approx(0.99 + 1.49)
 
 
 def test_run_isolates_failures_and_reports_missing_keys(monkeypatch):
@@ -86,3 +86,24 @@ def test_summary_zero_fills_days_and_sums_or_takes_latest():
     assert len(rev["series"]) == 7 and rev["series"][-1]["v"] == 100.0 and rev["series"][0]["v"] == 0 and rev["value"] == 100.0
     assert next(m for m in st["metrics"] if m["key"] == "balance_available_usd")["value"] == 42.0 and st["state"] == "ok" and st["at"]
     assert next(p for p in r["providers"] if p["id"] == "tiktok")["state"] == "waiting"
+
+
+def test_ai_cards_round_trip_through_the_database():
+    """Collect for real (no stubs) and read the summary back: every AI card must show the numbers that were collected."""
+    db = mongomock.MongoClient().db
+    day = C._today()
+    db["rag_meta"].insert_one({"_id": f"ai:{day}", "day": day, "by_model": {"gpt-5_4-mini": {"calls": 2, "in": 1_000_000, "out": 100_000},
+                                                                        "claude-haiku-5-5": {"calls": 3, "in": 2_000_000, "out": 1_000_000}}})
+    db["rag_meta"].insert_one({"_id": f"openai:{day}", "day": day, "usd": 0.5})
+    C.run(_s(), db, "openai"); C.run(_s(), db, "claude")
+    out = {p["id"]: p for p in C.summary(db, 7)["providers"]}
+    val = lambda pid, key: next(m for m in out[pid]["metrics"] if m["key"] == key)  # noqa: E731
+    assert val("openai", "openai_calls")["value"] == 2 and val("openai", "openai_calls")["has_data"]
+    assert val("openai", "openai_est_cost_usd")["value"] == pytest.approx(1.2)   # token pricing wins over the older spend counter
+    assert val("claude", "claude_calls")["value"] == 3 and val("claude", "claude_tokens_in")["value"] == 2_000_000
+    assert not val("cerebras", "cerebras_calls")["has_data"]   # nothing collected = honest empty, not zeros
+    # a day that only has the knowledge-base spend counter still shows OpenAI spend
+    db["rag_meta"].delete_one({"_id": f"ai:{day}"})
+    C.run(_s(), db, "openai")
+    again = {p["id"]: p for p in C.summary(db, 7)["providers"]}
+    assert next(m for m in again["openai"]["metrics"] if m["key"] == "openai_est_cost_usd")["value"] == pytest.approx(0.5)

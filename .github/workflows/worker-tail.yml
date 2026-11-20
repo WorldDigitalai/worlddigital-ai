@@ -32,11 +32,15 @@ jobs:
               if isinstance(v, dict): return str(v.get("message") or v.get("name") or v)[:700]
               if isinstance(v, list): return " ".join(text(x) for x in v)[:700]
               return str(v)[:700]
-          for l in open("tail.jsonl"):
-              try: e = json.loads(l)
-              except Exception: continue
+          buf = open("tail.jsonl").read(); dec = json.JSONDecoder(); i = 0; outcomes = {}
+          while i < len(buf):
+              while i < len(buf) and buf[i] in " \r\n\t": i += 1
+              if i >= len(buf): break
+              try: e, i = dec.raw_decode(buf, i)
+              except Exception: i += 1; continue
               if not isinstance(e, dict): continue
               n += 1
+              outcomes[str(e.get("outcome"))] = outcomes.get(str(e.get("outcome")), 0) + 1
               msgs = [text(x) for x in e.get("exceptions") or []]
               for x in e.get("logs") or []:
                   t = text(x.get("message") if isinstance(x, dict) else x)
@@ -44,6 +48,7 @@ jobs:
                       msgs.append(t)
               for m in msgs:
                   seen[m] = seen.get(m, 0) + 1
+          print("outcomes:", outcomes)
           print("events parsed:", n)
           for m, c in sorted(seen.items(), key=lambda kv: -kv[1])[:12]: print(f"{c}x | {m}")
           print("distinct error lines:", len(seen))

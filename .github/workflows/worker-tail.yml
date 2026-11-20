@@ -44,7 +44,7 @@ jobs:
               msgs = [text(x) for x in e.get("exceptions") or []]
               for x in e.get("logs") or []:
                   t = text(x.get("message") if isinstance(x, dict) else x)
-                  if (isinstance(x, dict) and x.get("level") in ("error", "warn")) or "rror" in t or "xception" in t:
+                  if (isinstance(x, dict) and x.get("level") in ("error", "warn")) or "rror" in t or "xception" in t or "xceeded" in t or "navailable" in t:
                       msgs.append(t)
               for m in msgs:
                   seen[m] = seen.get(m, 0) + 1

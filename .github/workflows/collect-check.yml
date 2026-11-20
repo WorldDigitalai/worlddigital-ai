@@ -1,0 +1,28 @@
+name: Collect check (connected services)
+# Manual: runs the collectors once against the live backend and prints each provider's state and message
+# (never the numbers: no revenue or balances in the log). Use it to see why a card on /blog-admin/analytics shows an error.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Collect and report
+        env:
+          TOKEN: ${{ secrets.TOOLS_API_TOKEN }}
+          API: https://worlddigital-ai-api-250920469327.us-central1.run.app
+        run: |
+          code=$(curl -s -o c.json -w "%{http_code}" -X POST "$API/api/admin/collect" -H "x-internal-token: $TOKEN" -H "content-type: application/json" -d '{}' --max-time 240)
+          echo "collect: HTTP $code $(head -c 600 c.json)"
+          code=$(curl -s -o s.json -w "%{http_code}" "$API/api/admin/collect/summary?days=7" -H "x-internal-token: $TOKEN" --max-time 60)
+          echo "summary: HTTP $code"
+          python3 - <<'PY'
+          import json
+          d = json.load(open("s.json"))
+          for p in d["providers"]:
+              got = [m["label"] for m in p["metrics"] if m["has_data"]]
+              print(f"{p['state']:14} {p['name']:42} {p['message'][:200]} | data: {', '.join(got) or '-'}")
+          PY

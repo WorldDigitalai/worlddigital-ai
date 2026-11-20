@@ -16,11 +16,13 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
-          (timeout 50 npx --yes wrangler@4.149.0 tail worlddigital-ai-site --format json > tail.jsonl 2> tail.err || true) &
-          sleep 14
-          for i in 1 2 3; do curl -s -o /dev/null -w "probe /blog -> %{http_code}\n" https://worlddigital.ai/blog; sleep 3; done
+          nohup npx --yes wrangler@4.149.0 tail worlddigital-ai-site --format json > tail.jsonl 2> tail.err &
+          sleep 18
+          for i in 1 2 3; do curl -s -o /dev/null -w "probe /blog -> %{http_code}\n" https://worlddigital.ai/blog; sleep 2; done
           curl -s -o /dev/null -w "probe /sitemap.xml -> %{http_code}\n" https://worlddigital.ai/sitemap.xml
-          wait
+          sleep 8
+          pkill -f wrangler || true
+          sleep 1
           echo "== tail stderr"; head -c 400 tail.err
           echo "== lines captured: $(wc -l < tail.jsonl)"
           python3 - <<'PY'

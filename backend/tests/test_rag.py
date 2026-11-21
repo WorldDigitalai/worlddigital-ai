@@ -119,6 +119,11 @@ def env(monkeypatch):
     main.settings.cache_clear()
     main.set_store(Store(mongomock.MongoClient()["t"]))
     rag_mod.Rag._QVEC.clear()
+    # module-level caches outlive the per-test store: a stale provider switch/pause (5 s cache), failure counters,
+    # ready-answer cache or curated-question set from an earlier test would make this one flaky
+    rag_mod._SW_CACHE[0] = None
+    rag_mod._FAILS.clear(); rag_mod._ready_cache.clear(); rag_mod._inflight.clear()
+    rag_mod.Rag._CURATED = None
     w = World()
     # customer sites are fetched through the SSRF-safe fetcher; stand it in for the mock customer
     monkeypatch.setattr(rag_mod, "_fetch_page", lambda url: httpx.Response(200, text=CUST.get(httpx.URL(url).path, ""), headers={"content-type": "text/html"})
@@ -395,8 +400,10 @@ def test_evaluation_metrics(env, monkeypatch, tmp_path):
     f.write_text(json.dumps([{"q": "keyword research 9.99", "expect": ["9.99"], "urls": ["/tools"]},
                              {"q": "Do you sell boats?", "negative": True}]))
     monkeypatch.setattr(rag_mod, "EVAL_FILE", f)
+    monkeypatch.setattr(rag_mod, "EVAL_WORKERS", 1)   # mongomock is not thread-safe: answer the questions one at a time
     r = c.post("/api/admin/rag/eval", headers=H).json()
     m = r["metrics"]
+    assert r["passed"] == 2, r["results"]   # show which question failed and why
     assert r["passed"] == 2 and m["retrieval_hit_rate"] == 100 and m["mrr"] > 0 and m["citation_accuracy"] == 100
     assert m["unsupported_answer_rate"] == 0 and m["avg_ms"] is not None
     assert c.get("/api/admin/rag", headers=H).json()["eval"]["metrics"]["answer_accuracy"] == 100
@@ -1090,8 +1097,8 @@ def test_warm_prepares_most_asked_first_and_trim_archives_the_rest(env, monkeypa
     for _ in range(3):   # a question visitors really asked, three times
         db()["rag_questions"].insert_one({"q": "Do you have a phone number I can call?", "at": rag_mod.now(), "channel": "search",
                                           "covered": True, "source": "ai", "urls": ["https://worlddigital.ai/contact"]})
-    out = r.warm(budget_s=60)
-    assert out["prepared"] == 1
+    out = r.warm(budget_s=60, workers=1)   # one worker: with several, which question gets the single bulk slot is a thread race
+    assert out["prepared"] == 1, out
     assert db()["rag_answers"].find_one({"q": "Do you have a phone number I can call?"})   # the most-asked one went first
     # more answers than the live limit: the best stay, the rest move to the archive (nothing deleted)
     for q in ("How much is keyword research?", "What does the free SEO report include?"):

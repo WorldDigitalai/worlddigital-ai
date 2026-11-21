@@ -190,8 +190,8 @@
   }
   $('collectnow').onclick = function () {
     var b = $('collectnow'); b.disabled = true; $('collectmsg').textContent = 'Collecting from every provider…';
-    fetch('/blog-admin/analytics/collect', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: '{}' })
-      .then(function (r) { return r.json(); }).then(function (x) { $('collectmsg').textContent = x.error || 'Done.'; loadServices(); })
+    fetch('/blog-admin/analytics/collect', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRF': CSRF }, body: '{}' })
+      .then(function (r) { return r.json().catch(function () { return {}; }); }).then(function (x) { $('collectmsg').textContent = x.error || (x.ok === false ? 'Could not collect.' : 'Done.'); loadServices(); })
       .catch(function () { $('collectmsg').textContent = 'Could not collect right now.'; }).then(function () { b.disabled = false; });
   };
   setInterval(function () { if (!document.hidden) loadServices(); }, 60000);

@@ -149,3 +149,9 @@ test('devices by source: each visitor counted once per day under its source and 
   assert.deepEqual(d[0], { k: 'search', v: 2, desktop: 1, mobile: 1, tablet: 0 });
   assert.deepEqual(d[1], { k: 'social', v: 1, desktop: 0, mobile: 1, tablet: 0 });
 });
+
+test('the page carries the security token and Collect now sends it (it was rejected with "Security check failed")', async () => {
+  const html = await analyticsPage('n0nce', { email: 'a@b.c', csrf: 'tok123' }).text();
+  assert.match(html, /var CSRF="tok123";/);
+  assert.match(html, /\/blog-admin\/analytics\/collect[^\n]*'X-CSRF': CSRF/);
+});

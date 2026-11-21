@@ -530,7 +530,7 @@ export function analyticsPage(nonce, ed) {
 <p class="muted" id="svcnote" style="margin:0 0 10px">Numbers pulled from each provider every 15 minutes. <button type="button" id="collectnow" style="margin-left:8px">Collect now</button> <span id="collectmsg"></span></p>
 <div id="svc"></div>
 <p class="muted" style="margin-top:16px;font-size:13px">Counted by the site itself: no cookies, no IP addresses stored. A visitor is one person per day. Bots, prefetches and your own signed-in visits are left out, so numbers differ from Google Analytics. Times are US Central.</p></main>`;
-  return new Response(shell('Analytics', css + body, nonce, analyticsClient), { headers: headers(nonce) });
+  return new Response(shell('Analytics', css + body, nonce, `var CSRF=${JSON.stringify(ed.csrf)};\n${analyticsClient}`), { headers: headers(nonce) });
 }
 
 // Consent page for the MCP server (backend app/mcp_server.py): an AI assistant asks for read-only access; a signed-in

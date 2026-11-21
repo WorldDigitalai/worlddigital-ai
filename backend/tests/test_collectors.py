@@ -55,21 +55,17 @@ def test_ai_usage_prices_each_provider_per_day():
 
 def test_run_isolates_failures_and_reports_missing_keys(monkeypatch):
     db = mongomock.MongoClient().db
-    monkeypatch.setattr(C, "stripe", lambda s, d: (_ for _ in ()).throw(RuntimeError("stripe answered 401: bad key")))
+    monkeypatch.setattr(C, "dataforseo", lambda s, d: (_ for _ in ()).throw(RuntimeError("dataforseo answered 401: bad key")))
     monkeypatch.setattr(C, "resend", lambda s, d: {C._today(): {"sent": 7, "delivered": 6}})
     for p in C.REGISTRY:   # the registry holds the functions: point it at the patched ones
-        p["fn"] = {"stripe": C.stripe, "resend": C.resend}.get(p["id"], p["fn"])
-    for k in ("OPENAI_ADMIN_KEY", "ANTHROPIC_ADMIN_KEY", "MERCURY_API_TOKEN", "CLOUDFLARE_API_TOKEN", "GOOGLE_SERVICE_ACCOUNT_B64"):
+        p["fn"] = {"dataforseo": C.dataforseo, "resend": C.resend}.get(p["id"], p["fn"])
+    for k in ("OPENAI_ADMIN_KEY", "ANTHROPIC_ADMIN_KEY", "CLOUDFLARE_API_TOKEN", "GOOGLE_SERVICE_ACCOUNT_B64"):
         monkeypatch.delenv(k, raising=False)
-    monkeypatch.setattr(C, "dataforseo", lambda s, d: {C._today(): {"balance_usd": 50.0}})
-    for p in C.REGISTRY:
-        if p["id"] == "dataforseo":
-            p["fn"] = C.dataforseo
     done = C.run(_s(), db)
-    assert done["stripe"] == "error" and done["resend"] == "ok" and done["dataforseo"] == "ok"   # stripe failing did not stop resend
-    assert done["openai_billing"] == "needs_key" and done["mercury"] == "needs_key" and done["google_analytics"] == "needs_key" and done["tiktok"] == "not_connected"
+    assert done["dataforseo"] == "error" and done["resend"] == "ok"   # one provider failing did not stop the next
+    assert done["openai_billing"] == "needs_key" and done["cloudflare"] == "needs_key" and done["google_analytics"] == "needs_key" and done["tiktok"] == "not_connected"
     assert "OPENAI_ADMIN_KEY" in db["provider_status"].find_one({"_id": "openai_billing"})["message"]
-    assert "401" in db["provider_status"].find_one({"_id": "stripe"})["message"]
+    assert "401" in db["provider_status"].find_one({"_id": "dataforseo"})["message"]
     assert db["provider_metrics"].find_one({"_id": f"resend:{C._today()}"})["m"]["sent"] == 7
     C.run(_s(), db, "resend")   # running twice overwrites the day, it does not add to it
     assert db["provider_metrics"].count_documents({"provider": "resend"}) == 1 and db["provider_metrics"].find_one({"provider": "resend"})["m"]["sent"] == 7
@@ -78,13 +74,15 @@ def test_run_isolates_failures_and_reports_missing_keys(monkeypatch):
 def test_summary_zero_fills_days_and_sums_or_takes_latest():
     db = mongomock.MongoClient().db
     today = C._today()
-    db["provider_metrics"].insert_one({"_id": f"stripe:{today}", "provider": "stripe", "day": today, "m": {"revenue_usd": 100.0, "balance_available_usd": 42.0}})
-    db["provider_status"].insert_one({"_id": "stripe", "state": "ok", "message": "", "at": datetime.now(timezone.utc)})
+    db["provider_metrics"].insert_one({"_id": f"resend:{today}", "provider": "resend", "day": today, "m": {"sent": 100, "delivered": 90}})
+    db["provider_metrics"].insert_one({"_id": f"dataforseo:{today}", "provider": "dataforseo", "day": today, "m": {"balance_usd": 42.0}})
+    db["provider_status"].insert_one({"_id": "resend", "state": "ok", "message": "", "at": datetime.now(timezone.utc)})
     r = C.summary(db, 7)
-    st = next(p for p in r["providers"] if p["id"] == "stripe")
-    rev = next(m for m in st["metrics"] if m["key"] == "revenue_usd")
-    assert len(rev["series"]) == 7 and rev["series"][-1]["v"] == 100.0 and rev["series"][0]["v"] == 0 and rev["value"] == 100.0
-    assert next(m for m in st["metrics"] if m["key"] == "balance_available_usd")["value"] == 42.0 and st["state"] == "ok" and st["at"]
+    st = next(p for p in r["providers"] if p["id"] == "resend")
+    sent = next(m for m in st["metrics"] if m["key"] == "sent")
+    assert len(sent["series"]) == 7 and sent["series"][-1]["v"] == 100 and sent["series"][0]["v"] == 0 and sent["value"] == 100
+    seo = next(p for p in r["providers"] if p["id"] == "dataforseo")
+    assert next(m for m in seo["metrics"] if m["key"] == "balance_usd")["value"] == 42.0 and st["state"] == "ok" and st["at"]
     assert next(p for p in r["providers"] if p["id"] == "tiktok")["state"] == "waiting"
 
 
@@ -193,3 +191,10 @@ def test_connector_filled_provider_stays_connected_and_expires():
     assert C.run(s, db, only="bird")["bird"] == "ok"
     db["provider_push"].replace_one({"_id": "bird"}, {"_id": "bird", "at": datetime.now(timezone.utc) - timedelta(hours=60)})
     assert C.run(s, db, only="bird")["bird"] == "not_connected"
+
+
+def test_hidden_providers_are_not_shown_or_collected():
+    db = mongomock.MongoClient().db
+    shown = {p["id"] for p in C.summary(db, 7)["providers"]}
+    assert not shown & {"stripe", "mercury", "buffer"} and "resend" in shown
+    assert "stripe" not in C.run(_s(), db)

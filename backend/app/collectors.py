@@ -291,8 +291,8 @@ REGISTRY = [
     {"id": "groq", "name": "Groq", "group": "AI providers", "fn": ai_usage, "shared": "ai", "metrics": AI_METRICS("groq"), "needs": []},
     {"id": "openai_billing", "name": "OpenAI billing (provider-reported)", "group": "AI providers", "fn": openai_billing, "metrics": [("billed_usd", "Billed", "usd", "sum")], "needs": ["OPENAI_ADMIN_KEY"]},
     {"id": "anthropic_billing", "name": "Anthropic billing (provider-reported)", "group": "AI providers", "fn": anthropic_billing, "metrics": [("billed_usd", "Billed", "usd", "sum")], "needs": ["ANTHROPIC_ADMIN_KEY"]},
-    {"id": "stripe", "name": "Stripe", "group": "Revenue", "fn": stripe, "metrics": [("revenue_usd", "Revenue", "usd", "sum"), ("payments", "Payments", "n", "sum"), ("refunded_usd", "Refunded", "usd", "sum"), ("balance_available_usd", "Available balance", "usd", "latest")], "needs": ["STRIPE_SECRET_KEY"]},
-    {"id": "mercury", "name": "Mercury", "group": "Revenue", "fn": mercury, "metrics": [("balance_usd", "Bank balance", "usd", "latest")], "needs": ["MERCURY_API_TOKEN"]},
+    {"id": "stripe", "hidden": True, "name": "Stripe", "group": "Revenue", "fn": stripe, "metrics": [("revenue_usd", "Revenue", "usd", "sum"), ("payments", "Payments", "n", "sum"), ("refunded_usd", "Refunded", "usd", "sum"), ("balance_available_usd", "Available balance", "usd", "latest")], "needs": ["STRIPE_SECRET_KEY"]},
+    {"id": "mercury", "hidden": True, "name": "Mercury", "group": "Revenue", "fn": mercury, "metrics": [("balance_usd", "Bank balance", "usd", "latest")], "needs": ["MERCURY_API_TOKEN"]},
     {"id": "resend", "name": "Resend (email)", "group": "Email", "fn": resend, "metrics": [("sent", "Sent", "n", "sum"), ("delivered", "Delivered", "n", "sum"), ("opened", "Opened", "n", "sum"), ("bounced", "Bounced", "n", "sum")], "needs": ["RESEND_API_KEY"]},
     {"id": "dataforseo", "name": "DataForSEO", "group": "SEO data", "fn": dataforseo, "metrics": [("balance_usd", "Account balance", "usd", "latest")], "needs": ["DATAFORSEO_LOGIN", "DATAFORSEO_PASSWORD"]},
     {"id": "cloudflare", "name": "Cloudflare traffic", "group": "Website", "fn": cloudflare, "metrics": [("requests", "Requests", "n", "sum"), ("page_views", "Page views", "n", "sum"), ("visitors", "Visitors", "n", "sum"), ("threats", "Threats blocked", "n", "sum")], "needs": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ZONE_ID"]},
@@ -300,7 +300,7 @@ REGISTRY = [
     {"id": "google_analytics", "name": "Google Analytics 4", "group": "Website", "fn": google_analytics, "metrics": [("ga_users", "Users", "n", "sum"), ("ga_sessions", "Sessions", "n", "sum"), ("ga_views", "Page views", "n", "sum"), ("ga_engaged", "Engaged sessions", "n", "sum")], "needs": ["GOOGLE_SERVICE_ACCOUNT_B64", "GA4_PROPERTY_ID"]},
     {"id": "search_console", "name": "Google Search Console", "group": "Website", "fn": search_console, "metrics": [("gsc_clicks", "Clicks from Google", "n", "sum"), ("gsc_impressions", "Impressions", "n", "sum"), ("gsc_position", "Average position", "n", "latest")], "needs": ["GOOGLE_SERVICE_ACCOUNT_B64", "SEARCH_CONSOLE_SITE"]},
     {"id": "google_ads", "name": "Google Ads", "group": "Not connected yet", "fn": None, "metrics": [], "needs": ["a Google Ads developer token and OAuth refresh token"]},
-    {"id": "buffer", "name": "Buffer (social posts)", "group": "Marketing & social", "fn": buffer, "metrics": [("buffer_posts", "Posts sent", "n", "sum"), ("buffer_reactions", "Reactions", "n", "sum"), ("buffer_comments", "Comments", "n", "sum"), ("buffer_impressions", "Impressions", "n", "sum"), ("buffer_reach", "Reach", "n", "sum")], "needs": ["BUFFER_API_TOKEN"]},
+    {"id": "buffer", "hidden": True, "name": "Buffer (social posts)", "group": "Marketing & social", "fn": buffer, "metrics": [("buffer_posts", "Posts sent", "n", "sum"), ("buffer_reactions", "Reactions", "n", "sum"), ("buffer_comments", "Comments", "n", "sum"), ("buffer_impressions", "Impressions", "n", "sum"), ("buffer_reach", "Reach", "n", "sum")], "needs": ["BUFFER_API_TOKEN"]},
     {"id": "bird", "name": "Bird (WhatsApp, SMS, email)", "group": "Marketing & social", "fn": None, "metrics": [("bird_wa_sent", "WhatsApp sent", "n", "sum"), ("bird_wa_delivered", "WhatsApp delivered", "n", "sum"), ("bird_wa_read", "WhatsApp read", "n", "sum"), ("bird_sms_sent", "SMS sent", "n", "sum"), ("bird_email_sent", "Emails sent", "n", "sum")], "needs": ["BIRD_API_KEY"]},
     {"id": "tiktok", "name": "TikTok Ads", "group": "Not connected yet", "fn": None, "metrics": [], "needs": ["TikTok Business API access token"]},
 ]
@@ -329,7 +329,7 @@ def run(s: Settings, db, only: str | None = None) -> dict:
     done: dict = {}
     cache: dict = {}
     for p in REGISTRY:
-        if only and p["id"] != only:
+        if (only and p["id"] != only) or p.get("hidden"):
             continue
         status = {"state": "ok", "message": "", "at": datetime.now(timezone.utc)}
         try:
@@ -369,6 +369,8 @@ def summary(db, days: int = 30) -> dict:
         rows.setdefault(d["provider"], {})[d["day"]] = d.get("m") or {}
     out = []
     for p in REGISTRY:
+        if p.get("hidden"):          # taken off the Analytics page on purpose (remove the flag to bring it back)
+            continue
         st = stat.get(p["id"]) or {}
         at = st.get("at")
         mets = []

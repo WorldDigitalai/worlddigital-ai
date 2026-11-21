@@ -50,6 +50,11 @@ export function nextLocalHour(after, hour = 9) {
   return after + 86400e3;
 }
 
+// Days until the next post. 2.5 means "every 2-3 days": alternates 2 and 3 days between posts.
+export function gapDays(cfg) {
+  return cfg.every_days === 2.5 ? ((cfg.runs || 0) % 2 ? 3 : 2) : cfg.every_days;
+}
+
 export function cleanAutopilot(input, prev = AUTOPILOT_DEFAULTS) {
   const s = (v, n) => String(v ?? '').trim().slice(0, n);
   const list = (v, n, len) => (Array.isArray(v) ? v : String(v || '').split(',')).map((x) => s(x, len)).filter(Boolean).slice(0, n);
@@ -57,7 +62,7 @@ export function cleanAutopilot(input, prev = AUTOPILOT_DEFAULTS) {
   return {
     ...prev,
     enabled: !!input.enabled,
-    every_days: [1, 2, 3.5, 7].includes(every) ? every : prev.every_days,
+    every_days: [1, 2, 2.5, 3.5, 7].includes(every) ? every : prev.every_days,
     hour: Number.isInteger(Number(input.hour)) && input.hour >= 0 && input.hour <= 23 ? Number(input.hour) : prev.hour,
     mode: input.mode === 'draft' ? 'draft' : 'publish',
     topics: list(input.topics, 12, 60), competitors: list(input.competitors, 6, 40),

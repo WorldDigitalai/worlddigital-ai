@@ -56,3 +56,10 @@ test('Autopilot targets mid-size & large companies by default and rotates indust
     assert.deepEqual(bodies.map((b) => [b.topic, b.industry]), [[MIDLARGE_TOPICS[0], INDUSTRIES[0]], [MIDLARGE_TOPICS[1], INDUSTRIES[1]], [MIDLARGE_TOPICS[3], INDUSTRIES[1]]]);
   } finally { globalThis.fetch = orig; }
 });
+
+test('"Every 2-3 days" alternates 2 and 3 day gaps', async () => {
+  const { gapDays, cleanAutopilot: clean } = await import('../src/autopilot.js');
+  assert.equal(clean({ every_days: 2.5 }).every_days, 2.5);
+  assert.deepEqual([0, 1, 2, 3].map((runs) => gapDays({ every_days: 2.5, runs })), [2, 3, 2, 3]);
+  assert.equal(gapDays({ every_days: 7, runs: 1 }), 7);
+});

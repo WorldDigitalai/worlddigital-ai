@@ -1,6 +1,6 @@
 // One SQLite-backed Durable Object holds the blog (posts, images), editor sign-in and form submissions.
 import { DurableObject } from 'cloudflare:workers';
-import { AUTOPILOT_DEFAULTS, callAi, cleanAutopilot, nextLocalHour, runAutopilot, savePost as saveAiPost } from './autopilot.js';
+import { AUTOPILOT_DEFAULTS, callAi, cleanAutopilot, gapDays, nextLocalHour, runAutopilot, savePost as saveAiPost } from './autopilot.js';
 import { sendEmail, validate } from './admin.js';
 import { shareToBuffer } from './buffer.js';
 import { buildRealtime, buildReport, windowOf } from './analytics.js';
@@ -77,6 +77,15 @@ export class Store extends DurableObject {
         Object.assign(c, { enabled: true, every_days: 1, mode: 'publish', topics: [], mix_vs: true, next_run: nextLocalHour(Date.now() + 60e3, c.hour || 9) });
         this.putAutopilot(c);
         this.sql.exec(`INSERT INTO kv (k,v) VALUES ('autopilot_daily_v1', ?)`, nowIso());
+      }
+      // Requested 2026-11-21: a new post every 2-3 days (alternating), counted from the last post.
+      if (!one(this.sql.exec(`SELECT v FROM kv WHERE k = 'autopilot_every_2_3_v1'`))) {
+        const c = this.getAutopilot();
+        const last = c.last_run && Date.parse(c.last_run.at);
+        c.every_days = 2.5;
+        if (c.enabled) c.next_run = nextLocalHour(Math.max(Date.now() + 60e3, (last || Date.now()) + gapDays(c) * 86400e3 - 6 * 3600e3), c.hour || 9);
+        this.putAutopilot(c);
+        this.sql.exec(`INSERT INTO kv (k,v) VALUES ('autopilot_every_2_3_v1', ?)`, nowIso());
       }
       // Requested 2026-11-04: focus on mid-size and large companies across industries.
       if (!one(this.sql.exec(`SELECT v FROM kv WHERE k = 'autopilot_midlarge_v1'`))) {
@@ -462,7 +471,7 @@ export class Store extends DurableObject {
     if (cfg.enabled && cfg.next_run && cfg.next_run <= n + 30e3) {
       const pending = one(this.sql.exec(`SELECT COUNT(*) AS c FROM ai_jobs WHERE kind='autopilot' AND state IN ('queued','running')`)).c;
       if (!pending) this.sql.exec(`INSERT INTO ai_jobs (id,kind,input,state,who,created,updated) VALUES (?,?,?,?,?,?,?)`, crypto.randomUUID(), 'autopilot', '{}', 'queued', 'autopilot', n, n);
-      cfg.next_run = nextLocalHour(n + cfg.every_days * 86400e3 - 6 * 3600e3, cfg.hour);
+      cfg.next_run = nextLocalHour(n + gapDays(cfg) * 86400e3 - 6 * 3600e3, cfg.hour);
       this.putAutopilot(cfg);
     }
     const jobs = rows(this.sql.exec(`SELECT id,kind,input,who FROM ai_jobs WHERE state='queued' ORDER BY created LIMIT 4`));

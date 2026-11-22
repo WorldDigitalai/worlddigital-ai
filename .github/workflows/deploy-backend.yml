@@ -10,7 +10,7 @@ on:
 # One-time setup: run backend/setup-gcp.sh in Google Cloud Shell. GitHub signs in to Google with
 # Workload Identity Federation (short-lived tokens, no stored service-account key).
 # Secret values live only in Google Secret Manager: MONGODB_URI, OPENAI_API_KEY, DATAFORSEO_LOGIN,
-# DATAFORSEO_PASSWORD, STRIPE_SECRET_KEY, RESEND_API_KEY, INTERNAL_TOKEN
+# DATAFORSEO_PASSWORD, STRIPE_SECRET_KEY, RESEND_API_KEY, INTERNAL_TOKEN, OPENAI_ADMIN_KEY, ANTHROPIC_ADMIN_KEY
 env:
   SERVICE: worlddigital-ai-api
   REGION: us-central1
@@ -86,8 +86,6 @@ jobs:
             GH_RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}
             STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }}
             # optional: switch on more cards on the admin Analytics page (empty = that card says what it needs)
-            OPENAI_ADMIN_KEY=${{ secrets.OPENAI_ADMIN_KEY }}
-            ANTHROPIC_ADMIN_KEY=${{ secrets.ANTHROPIC_ADMIN_KEY }}
             MERCURY_API_TOKEN=${{ secrets.MERCURY_API_TOKEN }}
             CLOUDFLARE_API_TOKEN=${{ secrets.CLOUDFLARE_API_TOKEN }}
             CLOUDFLARE_ZONE_ID=${{ secrets.CLOUDFLARE_ZONE_ID }}
@@ -103,6 +101,8 @@ jobs:
             DATAFORSEO_PASSWORD=DATAFORSEO_PASSWORD:latest
             STRIPE_SECRET_KEY=STRIPE_SECRET_KEY:latest
             RESEND_API_KEY=RESEND_API_KEY:latest
+            OPENAI_ADMIN_KEY=OPENAI_ADMIN_KEY:latest
+            ANTHROPIC_ADMIN_KEY=ANTHROPIC_ADMIN_KEY:latest
       - name: Health check
         run: |
           curl -fsS "${{ steps.run.outputs.url }}/api/tools/health" -H "x-internal-token: ${{ secrets.TOOLS_API_TOKEN }}" -o /tmp/h.json

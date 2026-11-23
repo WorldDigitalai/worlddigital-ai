@@ -1,5 +1,5 @@
 ---
-description: Comparing TikTok Ads and Instagram Ads for SMBs in 2026. We break down audience differences, ad formats, costs, and which platform delivers better ROI for your business type.
+description: TikTok Ads vs Instagram Ads for small businesses in 2026: audience, ad formats, costs, and which platform delivers better ROI for your business type.
 title: TikTok Ads vs Instagram Ads: Which is Right for Your Business?
 category: Platform Comparison
 date: 2026-05-07

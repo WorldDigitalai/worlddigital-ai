@@ -1,5 +1,5 @@
 ---
-description: How local businesses can use Google Ads to generate phone calls, form fills, and in-store visits. A practical guide to campaign types, budgets, and avoiding common mistakes.
+description: How local businesses use Google Ads to get calls, form fills, and store visits: campaign types, realistic budgets, and the common mistakes to avoid.
 title: Google Ads Management for Local Businesses
 category: Google Ads
 date: 2026-05-07

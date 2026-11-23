@@ -1,5 +1,5 @@
 ---
-description: A plain-English explanation of how AI marketing automation works — from ad creative generation to campaign optimization and reporting. What it does, what it doesn't, and what to expect.
+description: A plain-English guide to AI marketing automation, from ad creative to campaign optimization and reporting. What it does, what it doesn't, what to expect.
 title: How AI Marketing Automation Works
 category: AI Marketing
 date: 2026-05-07

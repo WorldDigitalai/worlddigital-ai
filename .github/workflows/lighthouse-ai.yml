@@ -11,6 +11,9 @@ on:
         description: "Diagnosis: block Google tags (gateway /5cex/, GTM, GA, Ads) to see the site's own score"
         type: boolean
         default: false
+permissions:
+  contents: read
+
 jobs:
   lighthouse:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'

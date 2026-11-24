@@ -1,5 +1,5 @@
 ---
-description: Why advertising on a single platform is no longer enough — and how running coordinated campaigns across Google, Meta, TikTok, and Snapchat drives compounding results for SMBs.
+description: Advertising on one platform is no longer enough. See how coordinated Google, Meta, TikTok, and Snapchat campaigns compound results for small businesses.
 title: Why Businesses Need Multi-Platform Advertising in 2026
 category: Marketing Strategy
 date: 2026-05-07

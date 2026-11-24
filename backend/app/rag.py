@@ -656,11 +656,13 @@ class Rag:
     def provider_set(self, provider: str, on: bool) -> dict:
         if provider not in SWITCHABLE:
             raise ApiError("bad provider", 400, "Unknown switch.")
+        _SW_CACHE[0] = None   # read the saved switches fresh: another server instance may have changed them in the last 5 s
         sw = dict(self.provider_switches())
         sw[provider] = bool(on)
         if not any(sw[p] for p in AI_PROVIDERS):
             raise ApiError("last provider", 400, "At least one of Cerebras, Claude and OpenAI has to stay on, or the site cannot write answers.")
-        self.meta.update_one({"_id": "provider_switches"}, {"$set": {"on": sw, "at": now()}}, upsert=True)
+        # write only this one switch (not the whole map), so a click never undoes a switch changed a moment ago elsewhere
+        self.meta.update_one({"_id": "provider_switches"}, {"$set": {f"on.{provider}": bool(on), "at": now()}}, upsert=True)
         if on:   # turning a provider on by hand also ends an automatic pause
             self.meta.update_one({"_id": "provider_trips"}, {"$unset": {provider: ""}})
         _SW_CACHE[0] = None

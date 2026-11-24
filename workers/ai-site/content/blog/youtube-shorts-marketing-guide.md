@@ -1,5 +1,5 @@
 ---
-description: Complete guide to YouTube Shorts marketing for businesses in 2026 — how Shorts ads work, what content performs, budgets, and how to reach YouTube's 2B+ users with short-form video.
+description: A 2026 guide to YouTube Shorts marketing for businesses: how Shorts ads work, what content performs, budgets, and how to reach 2B+ viewers.
 title: YouTube Shorts Marketing Guide for Businesses
 category: YouTube Marketing
 date: 2026-05-07

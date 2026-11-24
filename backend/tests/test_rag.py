@@ -1135,3 +1135,16 @@ def test_daily_openai_dollar_limit(env, monkeypatch):
     assert out["paused_for_today"] is True and out["prepared"] == 0 and out["errors"] == 0
     with pytest.raises(services.ApiError):
         r.evaluate("gpt-5.4-mini", limit=3)
+
+
+def test_switch_click_never_undoes_a_recent_change_from_another_instance(env):
+    c, _ = env
+    r = rag_mod.Rag(main.settings(), db())
+    for p in ("cerebras", "bulk", "live", "archive"):
+        r.provider_set(p, False)
+    r.provider_state()   # this instance now holds the all-off settings in its 5 s cache
+    # another server instance turns Cerebras on (a direct write: this instance's cache is not told)
+    db()["rag_meta"].update_one({"_id": "provider_switches"}, {"$set": {"on.cerebras": True}})
+    r.provider_set("live", True)   # a click handled by this instance with its stale cache
+    on = {x["id"]: x["on"] for x in r.provider_state()["providers"]}
+    assert on["cerebras"] is True and on["live"] is True and on["bulk"] is False and on["archive"] is False
